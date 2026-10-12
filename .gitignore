@@ -1,0 +1,46 @@
+# Build output and local runtime
+dist/
+runtime/
+engines/
+*.exe
+*.dll
+
+# Models, references and generated media
+models/
+voices/
+voice-model-packages/
+*.pth
+*.index
+*.pt
+*.onnx
+*.safetensors
+*.cosyvoice.ttsmodel
+*.wav
+*.flac
+*.mp3
+*.m4a
+
+# Local state and evidence
+data/
+acceptance/
+release-evidence/
+release-manifest.json
+*.log
+*.tmp
+__pycache__/
+*.py[cod]
+
+# Machine-specific development and private migration scripts
+training/
+tools/preserve_private.py
+tools/stage_engines.py
+tools/import_private_test.py
+tests/real_pipeline.py
+tests/airi_after_import.py
+
+# Editors and operating system
+.vs/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
