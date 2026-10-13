@@ -18,13 +18,13 @@ namespace AgentVoice {
             Add(card,Hint("导出音色名称（建议文件名保留“轻量”或“完整”字样，包内同时记录类型、引擎、模型类型和 SHA-256 指纹）"));modelPackageName=Input();modelPackageName.Text="我的声音";Add(card,modelPackageName);
             exportConfigurationButton=AsyncBtn("导出轻量音色包",async()=>await ChooseAndExport("lightweight"));
             exportFullConfigurationButton=AsyncBtn("导出完整便携包",async()=>await ChooseAndExport("full"));
-            importConfigurationButton=AsyncBtn("导入音色包",async()=>{
+            importConfigurationButton=Primary(AsyncBtn("导入音色包",async()=>{
                 string path=configurationTestPath;
                 if(path==null)using(var dialog=new OpenFileDialog{Filter="CosyVoice模型包|*.cosyvoice.ttsmodel",CheckFileExists=true,InitialDirectory=VoicePackageDirectory()}){
                     if(dialog.ShowDialog(this)!=DialogResult.OK)return;path=dialog.FileName;
                 }
                 await ImportConfiguration(path);
-            });
+            }));
             Add(card,Row(exportConfigurationButton,exportFullConfigurationButton,importConfigurationButton,Btn("打开音色模型包文件夹",()=>ServiceClient.Open(VoicePackageDirectory())),Btn("打开本地 TTS 引擎文件夹",()=>ServiceClient.Open(TtsEngineDirectory()))));
             Add(card,Hint("轻量包是默认选择。完整包适合离线迁移；导出会读取并哈希完整模型，处理时间取决于硬盘速度。正在生成或播放时等待队列完成再导入，服务空闲时会自动关闭并恢复。"));
         }
