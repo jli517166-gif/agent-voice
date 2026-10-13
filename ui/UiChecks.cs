@@ -73,6 +73,8 @@ namespace AgentVoice {
             if(FindButton(pages["home"],"保存声音配置")!=null||FindButton(pages["home"],"模型导入导出")!=null)errors.Add("本地 TTS 仍保留重复的声音保存或模型传输入口");
             if(FindButton(pages["home"],"选择训练音色模型包")==null)errors.Add("首页缺少音色模型包库选择入口");
             if(FindButton(pages["configuration"],"导出轻量音色包")==null||FindButton(pages["configuration"],"导出完整便携包")==null||FindButton(pages["configuration"],"导入音色包")==null)errors.Add("两种音色包的导入导出入口不完整");
+            string repeatedPackage=Path.Combine(directory,"小挽昼-轻量.cosyvoice.ttsmodel.cosyvoice.ttsmodel");
+            if(PackageDisplayName("小挽昼-轻量.cosyvoice.ttsmodel.cosyvoice.ttsmodel")!="小挽昼"||NormalizePackagePath(repeatedPackage)!=Path.Combine(Path.GetFullPath(directory),"小挽昼-轻量.cosyvoice.ttsmodel"))errors.Add("音色包导出文件名未去除重复类型或后缀");
             if(FindButton(pages["engine"],"打开本地 TTS 引擎文件夹")==null)errors.Add("本地 TTS 引擎专用目录入口缺失");
             if(FindButton(pages["profiles"],"刷新目录")!=null||FindButton(pages["profiles"],"保存组合声音")!=null)errors.Add("RVC 页面仍保留重复模型列表或组合保存入口");
             if(FindButton(pages["voices"],"打开配置储存位置")==null)errors.Add("声音配置储存位置入口缺失");

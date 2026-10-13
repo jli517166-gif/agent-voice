@@ -30,20 +30,22 @@ namespace AgentVoice {
         }
         async Task ChooseAndExport(string mode){
             string path=configurationTestPath;
-            string name=SafeProfileName(modelPackageName.Text.Trim());if(name=="未命名配置")throw new InvalidOperationException("请先填写导出音色名称。");
+            string name=SafeProfileName(PackageDisplayName(modelPackageName.Text));if(name=="未命名配置")throw new InvalidOperationException("请先填写导出音色名称。");
             string label=mode=="lightweight"?"轻量":"完整";
-            if(path==null)using(var dialog=new SaveFileDialog{Filter="CosyVoice模型包|*.cosyvoice.ttsmodel",DefaultExt="cosyvoice.ttsmodel",AddExtension=true,FileName=name+"-"+label+".cosyvoice.ttsmodel",InitialDirectory=VoicePackageDirectory()}){
-                if(dialog.ShowDialog(this)!=DialogResult.OK)return;path=dialog.FileName;
+            string packageDirectory=Path.Combine(VoicePackageDirectory(),name);Directory.CreateDirectory(packageDirectory);
+            if(path==null)using(var dialog=new SaveFileDialog{Filter="CosyVoice模型包|*.cosyvoice.ttsmodel",DefaultExt="cosyvoice.ttsmodel",AddExtension=false,FileName=name+"-"+label+".cosyvoice.ttsmodel",InitialDirectory=packageDirectory}){
+                if(dialog.ShowDialog(this)!=DialogResult.OK)return;path=NormalizePackagePath(dialog.FileName);
             }
             await ExportConfiguration(path,mode);
         }
         async Task ExportConfiguration(string path,string mode){
             Status(mode=="lightweight"?"正在生成模型指纹并导出轻量音色包……":"正在导出完整基础模型与参考声音……");
             lastTransfer=Json.Object(await Service.RunTool("tts_bundle.py","export --root "+ServiceClient.Quote(Store.Root)+" --file "+ServiceClient.Quote(path)+" --package-mode "+mode));
-            string stored=configurationTestPath==null?await KeepModelPackage(path):path;
-            Status((mode=="lightweight"?"轻量音色包":"完整便携包")+"已导出并登记 · "+stored);
+            Status((mode=="lightweight"?"轻量音色包":"完整便携包")+"已导出 · "+path);
         }
-        async Task<string> KeepModelPackage(string path){string source=Path.GetFullPath(path),library=Path.GetFullPath(VoicePackageDirectory()).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar)+Path.DirectorySeparatorChar;if(source.StartsWith(library,StringComparison.OrdinalIgnoreCase))return source;string target=Path.Combine(VoicePackageDirectory(),Path.GetFileName(source));if(!source.Equals(target,StringComparison.OrdinalIgnoreCase)){Status("正在把模型包归档到程序专用文件夹……");await Task.Run(()=>File.Copy(source,target,true));}return target;}
+        string PackageDisplayName(string value){const string suffix=".cosyvoice.ttsmodel";value=(value??"").Trim();while(value.EndsWith(suffix,StringComparison.OrdinalIgnoreCase))value=value.Substring(0,value.Length-suffix.Length).Trim();foreach(string label in new[]{"-轻量","-完整"})if(value.EndsWith(label,StringComparison.OrdinalIgnoreCase))value=value.Substring(0,value.Length-label.Length).Trim();return value;}
+        string NormalizePackagePath(string path){const string suffix=".cosyvoice.ttsmodel";string value=Path.GetFullPath(path);while(value.EndsWith(suffix,StringComparison.OrdinalIgnoreCase))value=value.Substring(0,value.Length-suffix.Length);return value+suffix;}
+        async Task<string> KeepModelPackage(string path,string displayName){string source=Path.GetFullPath(path),library=Path.GetFullPath(VoicePackageDirectory()).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar)+Path.DirectorySeparatorChar;if(source.StartsWith(library,StringComparison.OrdinalIgnoreCase))return source;string folder=Path.Combine(VoicePackageDirectory(),SafeProfileName(PackageDisplayName(displayName)));Directory.CreateDirectory(folder);string target=Path.Combine(folder,Path.GetFileName(NormalizePackagePath(source)));if(!source.Equals(target,StringComparison.OrdinalIgnoreCase)){Status("正在把音色包登记到程序专用文件夹……");await Task.Run(()=>File.Copy(source,target,true));}return target;}
         async Task ImportConfiguration(string path){
             bool running=await Service.Running();
             if(running){var health=await Service.Request("/health");if(Convert.ToBoolean(health["busy"])||Convert.ToInt32(health["queued"])>0)throw new InvalidOperationException("请等待当前朗读队列完成，再导入配置。");await Service.Stop();}
@@ -51,7 +53,7 @@ namespace AgentVoice {
             try{
                 Status("正在校验音色包并匹配本地 TTS 引擎……");
                 lastTransfer=Json.Object(await Service.RunTool("tts_bundle.py","import --root "+ServiceClient.Quote(Store.Root)+" --file "+ServiceClient.Quote(path)));
-                if(configurationTestPath==null)await KeepModelPackage(path);
+                if(configurationTestPath==null)await KeepModelPackage(path,Json.Text(lastTransfer,"name"));
                 Config=Store.Read();BindVoice();BindSettings();ApplyTheme();ApplyIcon();lastJob="";deleted=null;
                 string kind=Json.Text(lastTransfer,"packageMode")=="lightweight"?"轻量音色包":"完整便携包";
                 Status(kind+"“"+Json.Text(lastTransfer,"name")+"”已导入并匹配本地 TTS 引擎 · 原配置备份："+Json.Text(lastTransfer,"backup"));
