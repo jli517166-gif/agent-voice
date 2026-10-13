@@ -72,6 +72,8 @@ namespace AgentVoice {
             if(FindButton(pages["home"],"应用当前设置的声音配置")==null||FindButton(pages["home"],"应用当前本地声音")!=null)errors.Add("首页当前声音应用入口命名不正确");
             if(FindButton(pages["home"],"保存声音配置")!=null||FindButton(pages["home"],"模型导入导出")!=null)errors.Add("本地 TTS 仍保留重复的声音保存或模型传输入口");
             if(FindButton(pages["home"],"选择训练音色模型包")==null)errors.Add("首页缺少音色模型包库选择入口");
+            if(FindButton(pages["configuration"],"导出轻量音色包")==null||FindButton(pages["configuration"],"导出完整便携包")==null||FindButton(pages["configuration"],"导入音色包")==null)errors.Add("两种音色包的导入导出入口不完整");
+            if(FindButton(pages["engine"],"打开本地 TTS 引擎文件夹")==null)errors.Add("本地 TTS 引擎专用目录入口缺失");
             if(FindButton(pages["profiles"],"刷新目录")!=null||FindButton(pages["profiles"],"保存组合声音")!=null)errors.Add("RVC 页面仍保留重复模型列表或组合保存入口");
             if(FindButton(pages["voices"],"打开配置储存位置")==null)errors.Add("声音配置储存位置入口缺失");
             ShowCelebration("界面自检");Application.DoEvents();var celebration=shell.Controls.Cast<Control>().OfType<Celebration>().FirstOrDefault();if(celebration==null||celebration.Dock!=DockStyle.Fill||celebration.Width<shell.ClientSize.Width-2||celebration.Height<shell.ClientSize.Height-2)errors.Add("接入成功礼花没有覆盖完整页面");if(celebration!=null)celebration.Dispose();
@@ -102,7 +104,7 @@ namespace AgentVoice {
             var current=Json.Copy(Config);current.profiles.Add(new SavedVoice{name="自检",voice=clone});string temp=Path.Combine(directory,"config-test");var fixture=new SettingsStore(temp);fixture.Write(current);var read=fixture.Read();if(Json.Encode(read)!=Json.Encode(current))errors.Add("配置重开不一致");
             var record=read.profiles.Last();read.profiles.Remove(record);fixture.Write(read);if(fixture.Read().profiles.Any(p=>p.id==record.id))errors.Add("删除未持久化");read.profiles.Add(record);fixture.Write(read);if(fixture.Read().profiles.Last().voice.formant!=.65)errors.Add("撤销未恢复参数");
             foreach(var container in pages.Values)foreach(Control stack in container.Controls)foreach(Control card in stack.Controls)if(card is ScenePanel && card.Width<300)errors.Add("卡片宽度异常");
-            ShowPage("home");return new{ok=errors.Count==0,pages=pages.Count,switches=120,controls=before,backNavigationChecks=5,harnessStateChecks=4,tooltipChecks=tooltipChecks,newFeatureChecks=8,errors=errors};
+            ShowPage("home");return new{ok=errors.Count==0,pages=pages.Count,switches=120,controls=before,backNavigationChecks=5,harnessStateChecks=4,tooltipChecks=tooltipChecks,newFeatureChecks=10,errors=errors};
         }
         static int CountControls(Control control){return 1+control.Controls.Cast<Control>().Sum(c=>CountControls(c));}
         static void CheckFlowLayout(Control root,List<string> errors){

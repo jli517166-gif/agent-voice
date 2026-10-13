@@ -9,7 +9,8 @@
 
 - 本地 TTS 直接输出，默认使用 CosyVoice 3。
 - 可选 RVC `.pth` 与 `.index`，支持音调、声线粗细和相关高级参数。
-- 导入、导出带引擎标识和逐文件校验的 `.cosyvoice.ttsmodel` 音色包。
+- 导入、导出两种 `.cosyvoice.ttsmodel`：轻量包复用严格匹配的本地基础模型，完整便携包同时携带模型权重。
+- 本地 TTS 引擎统一放在 `tts-engines`，按引擎 ID、模型类型、源码、Python 依赖和模型 SHA-256 指纹自动匹配。
 - 保存、应用和删除本地 TTS 或 RVC＋本地 TTS 声音配置。
 - 长回复按完整句号、问号、感叹号或自然换行分段，生成首句后立即播放，后续句子保持原顺序排队。
 - 接入 Codex、DeepSeek Harness、Claude Code、pi、OpenCode，并以真实回复与播放结果验证连接。
@@ -39,7 +40,7 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1
 .\dist\agent语音.exe
 ```
 
-首次启动不会自带声音资产。请在首页选择完整的 CosyVoice 训练音色模型包，或在“CosyVoice 训练相关参考”中选择参考音频并填写逐字一致的台词。
+首次启动不会自带声音资产。请先按照安装手册把 CosyVoice 放进 `tts-engines`，再导入轻量或完整音色包；也可以在“CosyVoice 训练相关参考”中选择参考音频并填写逐字一致的台词。
 
 ## 默认目录
 
@@ -49,12 +50,15 @@ dist/
 ├─ service/                         # 本地语音服务
 ├─ integrations/                    # Harness 与 AIRI 连接器
 ├─ tools/                           # 配置、音色包与接入工具
+├─ tts-engines/                     # 所有本地 TTS 引擎的专用根目录
+│  └─ cosyvoice/
+│     ├─ source/                    # 用户自行下载的 CosyVoice 源码
+│     ├─ runtime/tools/python.exe   # 用户自行创建的 CosyVoice Python 环境
+│     └─ models/
+│        └─ Fun-CosyVoice3-0.5B/    # 用户自行下载的预训练模型
 ├─ engines/
-│  ├─ CosyVoice/                    # 用户自行下载的 CosyVoice 源码
-│  ├─ Fun-CosyVoice3-0.5B/          # 用户自行下载的预训练模型
 │  └─ rvc/                          # 可选 RVC 引擎，不随仓库提供
 ├─ runtime/
-│  ├─ cosyvoice/tools/python.exe    # 用户自行创建的 CosyVoice Python 环境
 │  └─ rvc/python.exe                # 可选 RVC/主服务运行环境
 ├─ voice-model-packages/             # 用户自己的 .cosyvoice.ttsmodel
 ├─ models/                           # 用户自己的 RVC .pth/.index
@@ -66,7 +70,9 @@ dist/
 
 - 首页“应用当前设置的声音配置”会更新当前运行设置，不会训练模型。
 - “保存声音配置”保存参数和资产路径快照，不会重复复制几 GB 的模型。
-- “模型导入导出”只处理本地 TTS 音色模型及其推理资源；不会写入 RVC、外观、Harness、AIRI 或连接密钥。
+- “轻量音色包”只保存参考音频、逐字台词、声音参数以及引擎源码、运行依赖和基础模型指纹；目标电脑必须已经安装完全一致的环境与模型。
+- “完整便携包”额外保存完整基础模型，适合离线换机；相同模型指纹下，两种包输出一致。
+- “模型导入导出”不会写入 RVC、外观、Harness、AIRI、连接密钥或 Python 运行环境。
 - 高级声音与说话风格默认关闭。关闭后仍保留本地 TTS 模型、参考条件、语速，以及 RVC 音调与声线粗细。
 - `local` 表示当前 Windows 电脑的默认扬声器或耳机；选择 AIRI 输出才会把播放和嘴型交给桌宠。
 

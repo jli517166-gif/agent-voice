@@ -2,6 +2,7 @@
 dist/
 runtime/
 engines/
+tts-engines/
 *.exe
 *.dll
 
