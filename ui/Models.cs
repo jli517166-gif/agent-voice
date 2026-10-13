@@ -29,7 +29,7 @@ namespace AgentVoice {
         public VoiceConfig Clone() { return Json.Copy(this); }
     }
     public sealed class Engines {
-        public string pythonRvc="runtime/rvc/python.exe", rvcHome="engines/rvc", pythonTts="tts-engines/cosyvoice/runtime/tools/python.exe", cosyRepo="tts-engines/cosyvoice/source", cosyModel="tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B";
+        public string pythonRvc="tts-engines/cosyvoice/runtime/tools/python.exe", rvcHome="engines/rvc", pythonTts="tts-engines/cosyvoice/runtime/tools/python.exe", cosyRepo="tts-engines/cosyvoice/source", cosyModel="tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B";
     }
     public sealed class Appearance {
         public string accent="#C96791", backgroundColor="#FAF4F8", textColor="#332B3B", background="", icon="";

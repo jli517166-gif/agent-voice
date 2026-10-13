@@ -29,7 +29,7 @@ namespace AgentVoice {
         public async Task Start() {
             if(await Running())return;
             Settings cfg=Store.Read();string python=Store.Resolve(cfg.engines.pythonRvc);
-            if(!File.Exists(python))throw new InvalidOperationException("请在本地引擎设置中选择 RVC 的 Python 运行时。");
+            if(!File.Exists(python))throw new InvalidOperationException("请在本地引擎设置中选择主服务 Python 运行时。");
             Directory.CreateDirectory(Path.Combine(Store.Root,"data","logs"));
             var info=new ProcessStartInfo(python,"-X utf8 -u "+Quote(Path.Combine(Store.Root,"service","launcher.py"))+" --root "+Quote(Store.Root));
             info.WorkingDirectory=Store.Root;info.UseShellExecute=false;info.CreateNoWindow=true;info.WindowStyle=ProcessWindowStyle.Hidden;

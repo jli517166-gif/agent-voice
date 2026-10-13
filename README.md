@@ -59,7 +59,7 @@ dist/
 ├─ engines/
 │  └─ rvc/                          # 可选 RVC 引擎，不随仓库提供
 ├─ runtime/
-│  └─ rvc/python.exe                # 可选 RVC/主服务运行环境
+│  └─ rvc/python.exe                # 启用 RVC 时可另行选择的 RVC 环境
 ├─ voice-model-packages/             # 用户自己的 .cosyvoice.ttsmodel
 ├─ models/                           # 用户自己的 RVC .pth/.index
 ├─ voices/                           # 用户自己的参考资源

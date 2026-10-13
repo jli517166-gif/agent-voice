@@ -17,7 +17,7 @@ def defaults():
                  "instruction":"", "leadingSilence":0.35, "volume":1,
                  "processing":"standard", "protect":0.33, "assetScope":"public",
                  "synthesisMode":"base", "baseModel":"", "advancedEnabled":False},
-        "engines":{"pythonRvc":"runtime/rvc/python.exe", "rvcHome":"engines/rvc",
+        "engines":{"pythonRvc":"tts-engines/cosyvoice/runtime/tools/python.exe", "rvcHome":"engines/rvc",
                    "pythonTts":"tts-engines/cosyvoice/runtime/tools/python.exe", "cosyRepo":"tts-engines/cosyvoice/source",
                    "cosyModel":"tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B"},
         "appearance":{"accent":"#C96791", "backgroundColor":"#FAF4F8", "textColor":"#332B3B",
