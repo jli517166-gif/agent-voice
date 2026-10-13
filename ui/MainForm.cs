@@ -24,7 +24,7 @@ namespace AgentVoice {
         Dictionary<string,object> harnessStates;
         bool harnessOnline;
         ScenePanel shell,content;
-        Label footer,connection,voiceHint,harnessSummary,outputModeStatus,pageTitle;
+        Label footer,connection,voiceHint,harnessSummary,outputModeStatus,rvcModeStatus,pageTitle;
         NotifyIcon tray;
         readonly ToolTip tips=new ToolTip{AutomaticDelay=350,AutoPopDelay=10000,ReshowDelay=100,ShowAlways=true};
         readonly Timer poll=new Timer{Interval=1800};
@@ -171,11 +171,18 @@ namespace AgentVoice {
         void BuildProfiles(){
             var stack=Stack(NewPage("profiles"));
             var voice=Card(stack,"RVC模型配置");
+            rvcModeStatus=Hint("当前输出模式：读取中");rvcModeStatus.Font=new Font(Font.FontFamily,11F,FontStyle.Bold);Add(voice,rvcModeStatus);
             modelPath=Input();indexPath=Input();Add(voice,Hint("模型 .pth"));Add(voice,modelPath);Add(voice,Row(Btn("选择 .pth",()=>SelectPath(modelPath,"RVC 模型|*.pth",false))));Add(voice,Hint("索引 .index（可选，空白表示不使用）"));Add(voice,indexPath);Add(voice,Row(Btn("选择 .index",()=>SelectPath(indexPath,"RVC 索引|*.index",false)),Btn("不用索引",()=>indexPath.Text="")));
             pitch=Number(-16,16,1,0);formant=Number(-2,2,.05M,2);Add(voice,Row(Hint("音调（半音）"),pitch,Hint("性别因子／声线粗细"),formant));
 
-            Add(voice,Hint("RVC 是可选的第二步变声。默认本地 TTS 直出时，这些参数不参与生成。"));Add(voice,Row(Primary(AsyncBtn("应用RVC模型配置",SaveDraft)),Btn("切换输出模式",()=>OpenOutputMode())));
+            Add(voice,Hint("RVC 是可选的第二步变声。点击“应用并启用 RVC”会同时保存这里的参数并切换到 RVC＋本地 TTS；需要恢复纯 TTS 时再进入输出模式切换。"));Add(voice,Row(Primary(AsyncBtn("应用并启用 RVC",ApplyRvcConfiguration)),Btn("切换输出模式",()=>OpenOutputMode())));
             BuildSavedVoices();
+        }
+        async Task ApplyRvcConfiguration(){
+            int previous=synthesisChoice.SelectedIndex;
+            synthesisChoice.SelectedIndex=1;
+            try{await SaveDraft();UpdateVoiceControls();UpdateOutputModeStatus(true);Status("已应用 RVC 模型配置，当前输出模式：RVC＋本地 TTS。之后的新任务会经过 RVC 二次变声。");}
+            catch{synthesisChoice.SelectedIndex=previous;UpdateVoiceControls();throw;}
         }
         void BuildSavedVoices(){var stack=Stack(NewPage("voices"));var card=Card(stack,"保存声音配置");Add(card,Hint("“应用当前设置的声音配置”只更新正在使用的设置；这里把一整套参数保存为有名字的快照，方便以后在不同声音之间一键切换。本地配置保存 TTS 模型、参考条件及表达参数；组合配置还保存 RVC 模型、索引与转换参数。"));
             profileKind=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=330};profileKind.Items.AddRange(new object[]{"本地 TTS 配置","RVC＋本地 TTS 配置"});profileKind.SelectedIndex=0;Add(card,profileKind);

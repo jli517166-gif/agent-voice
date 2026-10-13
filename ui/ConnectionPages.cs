@@ -21,6 +21,7 @@ namespace AgentVoice {
             foreach(string key in new[]{"protect","indexRate","rmsMix","volume","leadingSilence"})if(numbers.ContainsKey(key))numbers[key].Enabled=advanced;
             if(f0Choice!=null)f0Choice.Enabled=advanced;if(fields.ContainsKey("instruction"))fields["instruction"].Enabled=advanced;
             if(voiceHint!=null)voiceHint.Text=!rvc?"本地 TTS 直接输出：RVC 模型、音调、声线粗细与索引均不参与生成。":processingChoice!=null&&processingChoice.SelectedIndex==1?"认可版兼容：保留原离线处理，声线粗细已禁用。":"标准 RVC：音调与声线粗细影响第二次变声。输出模式在设置中。";
+            if(rvcModeStatus!=null)rvcModeStatus.Text=Config.voice.synthesisMode=="rvc"?"● 当前已启用 RVC＋本地 TTS，生成内容会经过二次变声。":"○ 当前为本地 TTS 直出，下面的 RVC 参数处于备用状态。";
         }
         [DllImport("user32.dll")]static extern bool SetForegroundWindow(IntPtr window);
         [DllImport("user32.dll",EntryPoint="ShowWindow")]static extern bool ShowAiriWindow(IntPtr window,int command);

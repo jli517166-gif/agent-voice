@@ -68,6 +68,7 @@ namespace AgentVoice {
             if(!navigationButtons.ContainsKey("connections")||navigationButtons["connections"].Text!="连接与联动")errors.Add("重要的连接与联动入口未固定在主导航");
             if(Convert.ToString(serviceToggle.Tag)!="primary"||Convert.ToString(generate.Tag)!="primary"||Convert.ToString(saveVoiceButton.Tag)!="primary")errors.Add("首页主要操作没有视觉强调");
             ShowPage("profiles");var switchMode=FindButton(pages["profiles"],"切换输出模式");if(switchMode==null)errors.Add("RVC 页面缺少输出模式入口");else{switchMode.PerformClick();if(page!="outputMode"||outputModeStatus==null||!outputModeStatus.Text.Contains("本地 TTS")&&!outputModeStatus.Text.Contains("RVC＋本地 TTS"))errors.Add("输出模式入口未显示当前模式提示");}
+            if(FindButton(pages["profiles"],"应用并启用 RVC")==null||rvcModeStatus==null||(!rvcModeStatus.Text.Contains("已启用")&&!rvcModeStatus.Text.Contains("备用状态")))errors.Add("RVC 应用入口或当前生效状态提示不完整");
             if(!pages.ContainsKey("training")||FindButton(pages["training"],"选择训练完成的模型目录")==null)errors.Add("CosyVoice 训练指导入口不完整");
             if(!pages.ContainsKey("connections")||FindButton(pages["connections"],"接入 Harness")==null||FindButton(pages["connections"],"联动 AIRI 桌宠")==null)errors.Add("连接中心入口不完整");
             if(!pages.ContainsKey("cosyReference")||FindButton(pages["cosyReference"],"应用参考条件")==null)errors.Add("CosyVoice 训练相关参考入口不完整");
