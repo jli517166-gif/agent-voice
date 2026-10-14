@@ -69,21 +69,33 @@ namespace AgentVoice {
                 var result=Json.Object(await Service.RunTool("connect_harness.py","--source auto --root "+ServiceClient.Quote(Store.Root)+" --location "+ServiceClient.Quote(dialog.SelectedPath)));
                 string source=Json.Text(result,"source"),name=Json.Text(result,"name");
                 if(!Config.harness.ContainsKey(source))throw new InvalidOperationException("识别结果未适配："+source);
-                var next=Json.Copy(Config);next.harness[source]=true;checks[source].Checked=true;await Persist(next,new {harness=next.harness});
-                if(source=="codex")await Service.Request("/api/connections/reload",new {});
                 connectionHints[source]="已自动识别为 "+name+"，连接器安装完成。";
-                verificationHint.Text=connectionHints[source];
-                await VerifyHarness(source,dialog.SelectedPath);
+                verificationHint.Text=connectionHints[source]+" 正在检查真实验证命令。";
+                BusyStatus("第 2/5 步：正在检查 "+name+" 命令行组件……");
+                try{await Service.RunTool("verify_harness.py","--source "+source+" --location "+ServiceClient.Quote(dialog.SelectedPath)+" --probe");}
+                catch(Exception error){verificationHint.Text=source+"：连接器已安装，但未启用；真实验证命令检查失败。修复后重新选择同一目录即可继续。"+HarnessManualHelp(source);ShowPage("connectionGuide");throw new InvalidOperationException(verificationHint.Text+" 原因："+error.Message);}
+                var next=Json.Copy(Config);next.harness[source]=true;checks[source].Checked=true;await Persist(next,new {harness=next.harness});
+                Exception verificationError=null;
+                try{
+                    if(source=="codex")await Service.Request("/api/connections/reload",new {});
+                    verificationHint.Text=connectionHints[source]+" 命令行组件可用，开始真实回复验证。";
+                    await VerifyHarness(source,dialog.SelectedPath);
+                }catch(Exception error){verificationError=error;}
+                if(verificationError!=null){
+                    var rollback=Json.Copy(Config);rollback.harness[source]=false;checks[source].Checked=false;await Persist(rollback,new {harness=rollback.harness});
+                    connectionHints[source]="连接器已安装，但真实验证未通过；当前未启用。修复提示中的问题后，重新选择同一目录即可自动检查并修复。";
+                    throw verificationError;
+                }
             }
         }
         async Task VerifyHarness(string source,string harnessLocation){
             var item=await Service.Request("/api/verify/"+source,new {});verificationIds[source]=Json.Text(item,"id");
             string challenge=Json.Text(item,"text");string prompt=Json.Text(item,"prompt");
             if(String.IsNullOrWhiteSpace(prompt))prompt="Reply with exactly this line and nothing else:\n"+challenge;
-            BusyStatus("第 2/4 步：正在启动 "+source+" 的真实验证会话……");
+            BusyStatus("第 3/5 步：正在启动 "+source+" 的真实验证会话……");
             try{await Service.RunTool("verify_harness.py","--source "+source+" --location "+ServiceClient.Quote(harnessLocation)+" --prompt "+ServiceClient.Quote(prompt)+" --timeout 180");}
             catch(Exception error){Clipboard.SetText("请只回复下面这段文字，不加解释和标点：\r\n"+challenge);verificationHint.Text=source+"：自动验证停在“启动 Harness 并获取回复”。验证短句已复制。"+HarnessManualHelp(source);ShowPage("connectionGuide");throw new InvalidOperationException(verificationHint.Text+" 原因："+error.Message);}
-            BusyStatus("第 3/4 步：Harness 已回复，正在确认连接器回执……");
+            BusyStatus("第 4/5 步：Harness 已回复，正在确认连接器和播放回执……");
             await WaitForHarnessVerification(source,challenge);verificationHint.Text=source+"：自动识别、接入和真实播放验证成功。";ShowPage("connectionGuide");Status(verificationHint.Text);
         }
         async Task WaitForAiriVerification(){

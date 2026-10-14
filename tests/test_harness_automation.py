@@ -1,9 +1,16 @@
 import sys,tempfile,unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
-from verify_harness import command_for,candidates
+from verify_harness import command_for,candidates,probe
 
 class HarnessAutomationTests(unittest.TestCase):
+    def test_probe_accepts_powershell_shim(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);shim=root/'claude.ps1';shim.write_text('exit 0',encoding='utf8')
+            result=probe('claude',root)
+            self.assertEqual(result['stage'],'cli')
+            self.assertEqual(Path(result['executable']),shim)
+
     def test_commands_use_real_noninteractive_turns(self):
         root=Path(r'C:\Harness');exe=root/'tool.exe';prompt='只回复验证短句'
         self.assertEqual(command_for('codex',exe,prompt,root)[1:5],['exec','--skip-git-repo-check','-C',str(root)])

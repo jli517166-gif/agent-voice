@@ -41,17 +41,17 @@ def detect(location,user_home=None):
     if exists('sessions'):
         hit('codex',8,'sessions 目录')
         if exists('config.toml'):hit('codex',2,'config.toml')
-    executable=file_named('codex.exe','codex.cmd');
+    executable=file_named('codex.exe','codex.cmd','codex.ps1');
     if executable:hit('codex',7,executable.name)
     if exists('settings.json') and any(root.name.lower()=='.claude' for root in roots):hit('claude',8,'.claude/settings.json')
-    executable=file_named('claude.exe','claude.cmd');
+    executable=file_named('claude.exe','claude.cmd','claude.ps1');
     if executable:hit('claude',7,executable.name)
     if exists('extensions') and any(root.name.lower()=='agent' and root.parent.name.lower()=='.pi' for root in roots):hit('pi',8,'.pi/agent/extensions')
-    executable=file_named('pi.exe','pi.cmd');
+    executable=file_named('pi.exe','pi.cmd','pi.ps1');
     if executable:hit('pi',7,executable.name)
     if exists('plugins') and any(root.name.lower()=='opencode' for root in roots):hit('opencode',8,'opencode/plugins')
     if exists('opencode.json') or exists('opencode.jsonc'):hit('opencode',5,'OpenCode 配置文件')
-    executable=file_named('opencode.exe','opencode.cmd');
+    executable=file_named('opencode.exe','opencode.cmd','opencode.ps1');
     if executable:hit('opencode',7,executable.name)
     # DeepSeek users normally select the desktop installation directory.  Its
     # Cordis profiles live under the Windows user directory, so the installer

@@ -3,11 +3,11 @@ import argparse,json,os,shutil,subprocess,sys
 from pathlib import Path
 
 NAMES={
-    'codex':('codex.exe','codex.cmd','codex'),
-    'claude':('claude.exe','claude.cmd','claude'),
-    'pi':('pi.exe','pi.cmd','pi'),
-    'opencode':('opencode.exe','opencode.cmd','opencode'),
-    'deepseek':('dsh.exe','dsh.cmd','dsh'),
+    'codex':('codex.exe','codex.cmd','codex.ps1','codex'),
+    'claude':('claude.exe','claude.cmd','claude.ps1','claude'),
+    'pi':('pi.exe','pi.cmd','pi.ps1','pi'),
+    'opencode':('opencode.exe','opencode.cmd','opencode.ps1','opencode'),
+    'deepseek':('dsh.exe','dsh.cmd','dsh.ps1','dsh'),
 }
 
 def candidates(source,location):
@@ -55,10 +55,21 @@ def launch(source,location,prompt,timeout):
     if completed.returncode!=0:raise ValueError('Harness 自动验证命令退出码 %d：%s'%(completed.returncode,detail or '没有错误输出'))
     return {'ok':True,'source':source,'executable':str(executable),'exitCode':completed.returncode,'output':detail}
 
+def probe(source,location):
+    executable=next(candidates(source,location),None)
+    if executable is None:
+        expected='、'.join(NAMES.get(source,('对应命令行程序',)))
+        raise ValueError('连接器可以安装，但没有找到真实验证所需的 Harness 命令（'+expected+'）。请安装命令行组件，或选择包含该命令的安装目录')
+    return {'ok':True,'stage':'cli','source':source,'executable':str(executable)}
+
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--source',required=True);parser.add_argument('--location',required=True);parser.add_argument('--prompt',required=True);parser.add_argument('--timeout',type=int,default=180)
+    parser=argparse.ArgumentParser();parser.add_argument('--source',required=True);parser.add_argument('--location',required=True);parser.add_argument('--prompt');parser.add_argument('--probe',action='store_true');parser.add_argument('--timeout',type=int,default=180)
     args=parser.parse_args()
-    try:print(json.dumps(launch(args.source,args.location,args.prompt,max(30,min(args.timeout,600))),ensure_ascii=False))
+    try:
+        if args.probe:result=probe(args.source,args.location)
+        elif args.prompt:result=launch(args.source,args.location,args.prompt,max(30,min(args.timeout,600)))
+        else:raise ValueError('缺少 --prompt；只检查命令行组件时请使用 --probe')
+        print(json.dumps(result,ensure_ascii=False))
     except (ValueError,OSError) as error:print('Harness 自动验证失败：'+str(error),file=sys.stderr);raise SystemExit(1)
 
 if __name__=='__main__':main()
