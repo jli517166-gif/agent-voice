@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'service'))
 from state import Store
-from harness_setup import configure
+from harness_setup import configure,detect
 
 class SetupTests(unittest.TestCase):
     def setUp(self):
@@ -44,5 +44,24 @@ class SetupTests(unittest.TestCase):
         result=configure('deepseek',self.root,self.install,self.home);entries=yaml.safe_load(path.read_text())
         old=entries[0]['insert'][0];other=entries[0]['insert'][1]
         self.assertFalse(old['config']['enabled']);self.assertFalse(old['config']['autostart']);self.assertTrue(other['config']['enabled']);self.assertTrue(result['disabledLegacyVoice'])
+    def test_detects_every_supported_harness_from_strong_signature(self):
+        fixtures={
+            'codex':lambda root:(root/'sessions').mkdir(),
+            'deepseek':lambda root:(root/'cordis.yml').write_text('plugins: []'),
+            'claude':lambda root:(root/'claude.exe').write_bytes(b''),
+            'pi':lambda root:(root/'pi.cmd').write_text(''),
+            'opencode':lambda root:(root/'opencode.exe').write_bytes(b'')}
+        for expected,build in fixtures.items():
+            folder=self.base/('detect-'+expected);folder.mkdir();build(folder)
+            self.assertEqual(detect(folder,self.home)['source'],expected)
+    def test_auto_configure_reports_detected_source_and_evidence(self):
+        (self.install/'sessions').mkdir()
+        result=configure('auto',self.root,self.install,self.home)
+        self.assertEqual(result['detectedSource'],'codex');self.assertTrue(result['detectionEvidence'])
+    def test_detection_rejects_unknown_and_ambiguous_directories(self):
+        unknown=self.base/'unknown';unknown.mkdir()
+        with self.assertRaisesRegex(ValueError,'未识别'):detect(unknown,self.home)
+        mixed=self.base/'mixed';mixed.mkdir();(mixed/'sessions').mkdir();(mixed/'claude.exe').write_bytes(b'')
+        with self.assertRaisesRegex(ValueError,'同时匹配'):detect(mixed,self.home)
 
 if __name__=='__main__':unittest.main()

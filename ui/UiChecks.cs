@@ -71,6 +71,9 @@ namespace AgentVoice {
             if(FindButton(pages["profiles"],"启用 RVC")==null||rvcModeStatus==null||(!rvcModeStatus.Text.Contains("已启用")&&!rvcModeStatus.Text.Contains("备用状态")))errors.Add("RVC 应用入口或当前生效状态提示不完整");
             if(!pages.ContainsKey("training")||FindButton(pages["training"],"选择训练模型")==null||!pages.ContainsKey("advancedTraining")||FindButton(pages["advancedTraining"],"打开完整手册")==null)errors.Add("CosyVoice 训练入口不完整");
             if(!pages.ContainsKey("connections")||FindButton(pages["connections"],"Harness")==null||FindButton(pages["connections"],"AIRI 桌宠")==null)errors.Add("连接中心入口不完整");
+            if(FindButton(pages["harness"],"选择目录并自动接入")==null)errors.Add("Harness 缺少统一的目录自动识别入口");
+            if(FindButton(pages["harness"],"全自动接入")!=null)errors.Add("Harness 仍保留要求用户预先判断类型的旧入口");
+            if(FindButton(pages["airi"],"选择目录并接入验证")==null)errors.Add("AIRI 缺少选目录后自动接入验证入口");
             if(!pages.ContainsKey("cosyReference")||FindButton(pages["cosyReference"],"使用参考声音")==null)errors.Add("参考声音入口不完整");
             if(FindButton(pages["home"],"使用当前声音")==null)errors.Add("首页当前声音应用入口命名不正确");
             if(FindButton(pages["home"],"保存声音配置")!=null||FindButton(pages["home"],"模型导入导出")!=null)errors.Add("本地 TTS 仍保留重复的声音保存或模型传输入口");
@@ -111,7 +114,7 @@ namespace AgentVoice {
             var current=Json.Copy(Config);current.profiles.Add(new SavedVoice{name="自检",voice=clone});string temp=Path.Combine(directory,"config-test");var fixture=new SettingsStore(temp);fixture.Write(current);var read=fixture.Read();if(Json.Encode(read)!=Json.Encode(current))errors.Add("配置重开不一致");
             var record=read.profiles.Last();read.profiles.Remove(record);fixture.Write(read);if(fixture.Read().profiles.Any(p=>p.id==record.id))errors.Add("删除未持久化");read.profiles.Add(record);fixture.Write(read);if(fixture.Read().profiles.Last().voice.formant!=.65)errors.Add("撤销未恢复参数");
             foreach(var container in pages.Values)foreach(Control stack in container.Controls)foreach(Control card in stack.Controls)if(card is ScenePanel && card.Width<300)errors.Add("卡片宽度异常");
-            ShowPage("home");if(pageTitle.Text!="首页"||navigationButtons["home"].BackColor!=Accent)errors.Add("页面标题或主导航选中状态不正确");return new{ok=errors.Count==0,pages=pages.Count,switches=120,controls=before,backNavigationChecks=5,harnessStateChecks=4,tooltipChecks=tooltipChecks,newFeatureChecks=13,errors=errors};
+            ShowPage("home");if(pageTitle.Text!="首页"||navigationButtons["home"].BackColor!=Accent)errors.Add("页面标题或主导航选中状态不正确");return new{ok=errors.Count==0,pages=pages.Count,switches=120,controls=before,backNavigationChecks=5,harnessStateChecks=4,tooltipChecks=tooltipChecks,newFeatureChecks=16,errors=errors};
         }
         static int CountControls(Control control){return 1+control.Controls.Cast<Control>().Sum(c=>CountControls(c));}
         static void CheckFlowLayout(Control root,List<string> errors){
