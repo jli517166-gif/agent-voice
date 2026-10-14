@@ -62,6 +62,16 @@ class SetupTests(unittest.TestCase):
         (self.install/'sessions').mkdir()
         result=configure('auto',self.root,self.install,self.home)
         self.assertEqual(result['detectedSource'],'codex');self.assertTrue(result['detectionEvidence'])
+    def test_deepseek_install_directory_detects_then_uses_user_profile(self):
+        import yaml
+        (self.install/'DeepSeek Harness.exe').write_bytes(b'')
+        cli=self.install/'resources/runtime/cli/bin';cli.mkdir(parents=True);(cli/'dsh.cmd').write_text('@echo off')
+        profile=self.home/'.dsh/profiles/desktop';profile.mkdir(parents=True);(profile/'cordis.patch.yml').write_text('[]')
+        result=configure('auto',self.root,self.install,self.home)
+        self.assertEqual(result['detectedSource'],'deepseek')
+        self.assertIn('DeepSeek Harness.exe',result['detectionEvidence'][0])
+        entries=yaml.safe_load((profile/'cordis.patch.yml').read_text())
+        self.assertTrue(any(p.get('name')=='dsh-agent-voice-public' for entry in entries for p in entry.get('insert',[])))
     def test_detection_rejects_unknown_and_ambiguous_directories(self):
         unknown=self.base/'unknown';unknown.mkdir()
         with self.assertRaisesRegex(ValueError,'未识别'):detect(unknown,self.home)

@@ -53,6 +53,13 @@ def detect(location,user_home=None):
     if exists('opencode.json') or exists('opencode.jsonc'):hit('opencode',5,'OpenCode 配置文件')
     executable=file_named('opencode.exe','opencode.cmd');
     if executable:hit('opencode',7,executable.name)
+    # DeepSeek users normally select the desktop installation directory.  Its
+    # Cordis profiles live under the Windows user directory, so the installer
+    # root itself must be a strong, version-independent detection signature.
+    if exists('DeepSeek Harness.exe') and exists('resources','runtime','cli','bin','dsh.cmd'):
+        hit('deepseek',10,'DeepSeek Harness.exe + resources/runtime/cli/bin/dsh.cmd')
+    elif exists('resources','runtime','cli','bin','dsh.cmd'):
+        hit('deepseek',8,'resources/runtime/cli/bin/dsh.cmd')
     for root in roots:
         for name in ('cordis.yml','cordis.patch.yml'):
             if (root/name).is_file():hit('deepseek',8,str(root/name));break
