@@ -10,7 +10,7 @@ class HarnessAutomationTests(unittest.TestCase):
         self.assertEqual(command_for('claude',exe,prompt,root)[1:],['-p',prompt])
         self.assertEqual(command_for('pi',exe,prompt,root)[1:],['-p',prompt])
         self.assertEqual(command_for('opencode',exe,prompt,root)[1:],['run',prompt])
-        with self.assertRaisesRegex(ValueError,'没有统一'):command_for('deepseek',exe,prompt,root)
+        self.assertEqual(command_for('deepseek',exe,prompt,root)[1:],['headless','-'])
     def test_selected_directory_executable_has_priority(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);(root/'codex.exe').write_bytes(b'fixture')

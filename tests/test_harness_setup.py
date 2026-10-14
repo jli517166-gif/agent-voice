@@ -29,11 +29,15 @@ class SetupTests(unittest.TestCase):
     def test_deepseek_installs_and_enables_once_preserving_original_entries(self):
         import yaml
         profile=self.home/'.dsh/profiles/desktop';profile.mkdir(parents=True)
-        path=profile/'cordis.patch.yml';path.write_text(yaml.safe_dump([{'id':'existing','name':'existing-plugin','config':{'model':'keep'}}]))
+        headless=self.home/'.dsh/profiles/headless';headless.mkdir(parents=True);(headless/'cordis.patch.yml').write_text('[]')
+        path=profile/'cordis.patch.yml';path.write_text(yaml.safe_dump([{'id':'existing','name':'existing-plugin','config':{'model':'keep'}},{'id':'agent-default-model','name':'@deepseek-ai/dsh-agent-default-model','config':{'provider':'deepseek-account','model':'deepseek-flash'}}]))
         configure('deepseek',self.root,self.install,self.home);configure('deepseek',self.root,self.install,self.home)
         entries=yaml.safe_load(path.read_text());self.assertEqual(entries[0]['config']['model'],'keep')
         inserted=[p for e in entries for p in e.get('insert',[]) if p['name']=='dsh-agent-voice-public']
         self.assertEqual(len(inserted),1);self.assertTrue((profile/'node_modules/dsh-agent-voice-public/index.mjs').is_file())
+        self.assertTrue((headless/'node_modules/dsh-agent-voice-public/index.mjs').is_file())
+        self.assertEqual(len([p for e in yaml.safe_load((headless/'cordis.patch.yml').read_text()) for p in e.get('insert',[]) if p['name']=='dsh-agent-voice-public']),1)
+        headless_entries=yaml.safe_load((headless/'cordis.patch.yml').read_text());self.assertEqual(next(e for e in headless_entries if e.get('id')=='agent-default-model')['config']['provider'],'deepseek-account')
     def test_unknown_or_missing_location_is_not_success(self):
         with self.assertRaises(ValueError):configure('unknown',self.root,self.install,self.home)
         with self.assertRaises(ValueError):configure('pi',self.root,self.base/'missing',self.home)

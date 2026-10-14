@@ -85,6 +85,7 @@ namespace AgentVoice {
             if(FindButton(pages["profiles"],"刷新目录")!=null||FindButton(pages["profiles"],"保存组合声音")!=null)errors.Add("RVC 页面仍保留重复模型列表或组合保存入口");
             if(FindButton(pages["voices"],"打开方案目录")==null)errors.Add("声音方案储存位置入口缺失");
             if(!fields.ContainsKey("loadingAnimation")||FindButton(pages["appearance"],"使用默认动画")==null)errors.Add("自定义等待动画入口缺失");
+            StatusError("连接失败阶段自检");if(!footer.Text.StartsWith("操作失败：")||footer.BackColor.R<220||footer.Height<50)errors.Add("底部失败提示不够醒目或无法容纳完整信息");Status("界面状态提示自检通过。");
             ShowBusy("正在执行界面动画自检……");Application.DoEvents();if(busyOverlay==null||busyOverlay.Dock!=DockStyle.Fill||busyOverlay.Width<shell.ClientSize.Width-2)errors.Add("等待动画没有覆盖完整程序页面");if(busyOverlay!=null)using(var bitmap=new Bitmap(busyOverlay.Width,busyOverlay.Height)){busyOverlay.DrawToBitmap(bitmap,new Rectangle(Point.Empty,bitmap.Size));bitmap.Save(Path.Combine(directory,"loading-animation.png"));}HideBusy();
             ShowCelebration("界面自检");Application.DoEvents();var celebration=shell.Controls.Cast<Control>().OfType<Celebration>().FirstOrDefault();if(celebration==null||celebration.Dock!=DockStyle.Fill||celebration.Width<shell.ClientSize.Width-2||celebration.Height<shell.ClientSize.Height-2)errors.Add("接入成功礼花没有覆盖完整页面");if(celebration!=null)celebration.Dispose();
             ShowPage("home");

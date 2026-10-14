@@ -111,23 +111,42 @@ def configure(source,root,location,user_home=None):
         candidates=[location,location/'profiles/desktop',home/'.dsh/profiles/desktop']
         folder=next((p for p in candidates if (p/'cordis.patch.yml').is_file() or (p/'cordis.yml').is_file()),None)
         if folder is None:raise ValueError('未找到 DeepSeek Cordis 配置，请先启动 Harness，或选择含 cordis.yml 的配置目录')
-        plugin=folder/'node_modules/dsh-agent-voice-public'
-        wrapper(plugin/'index.mjs','export { default, apply, inject, name } from '+json.dumps((store.root/'integrations/deepseek-plugin.mjs').as_uri())+';\n')
-        wrapper(plugin/'package.json',json.dumps({'name':'dsh-agent-voice-public','version':'0.1.0','type':'module','main':'index.mjs'},indent=2)+'\n')
-        patch=folder/'cordis.patch.yml';entries=yaml.safe_load(patch.read_text(encoding='utf-8-sig')) if patch.exists() else []
-        if entries is None:entries=[]
-        if not isinstance(entries,list):raise ValueError('该 DeepSeek 配置格式尚未适配，原配置未改动')
-        for entry in entries:
-            if isinstance(entry,dict) and isinstance(entry.get('insert'),list):
-                entry['insert']=[p for p in entry['insert'] if p.get('name')!='dsh-agent-voice-public']
-                for plugin_entry in entry['insert']:
-                    if plugin_entry.get('name')=='dsh-tts-autoread':
-                        plugin_entry.setdefault('config',{}).update(enabled=False,autostart=False);legacy_disabled=True
-            if isinstance(entry,dict) and entry.get('name')=='dsh-tts-autoread':
-                entry.setdefault('config',{}).update(enabled=False,autostart=False);legacy_disabled=True
-        entries=[e for e in entries if not isinstance(e,dict) or (e.get('name')!='dsh-agent-voice-public' and (set(e)!={'insert'} or e['insert']))]
-        entries.append({'insert':[{'id':'agent-voice-tts','name':'dsh-agent-voice-public','config':{}}]})
-        save(patch,yaml.safe_dump(entries,allow_unicode=True,sort_keys=False))
+        profiles=[folder];preferred_model=None;trusted_ca=None
+        headless=folder.parent/'headless'
+        if headless!=folder and ((headless/'cordis.patch.yml').is_file() or (headless/'cordis.yml').is_file()):profiles.append(headless)
+        for profile in profiles:
+            plugin=profile/'node_modules/dsh-agent-voice-public'
+            wrapper(plugin/'index.mjs','export { default, apply, inject, name } from '+json.dumps((store.root/'integrations/deepseek-plugin.mjs').as_uri())+';\n')
+            wrapper(plugin/'package.json',json.dumps({'name':'dsh-agent-voice-public','version':'0.1.0','type':'module','main':'index.mjs'},indent=2)+'\n')
+            patch=profile/'cordis.patch.yml';entries=yaml.safe_load(patch.read_text(encoding='utf-8-sig')) if patch.exists() else []
+            if entries is None:entries=[]
+            if not isinstance(entries,list):raise ValueError('该 DeepSeek 配置格式尚未适配，原配置未改动：'+str(patch))
+            for entry in entries:
+                if profile==folder and isinstance(entry,dict) and entry.get('id')=='agent-default-model' and isinstance(entry.get('config'),dict):preferred_model=dict(entry['config'])
+                if isinstance(entry,dict) and isinstance(entry.get('insert'),list):
+                    entry['insert']=[p for p in entry['insert'] if p.get('name')!='dsh-agent-voice-public']
+                    if profile==folder:
+                        for plugin_entry in entry['insert']:
+                            if plugin_entry.get('name')=='dsh-local-trusted-ca':trusted_ca=json.loads(json.dumps(plugin_entry))
+                            if plugin_entry.get('name')=='dsh-tts-autoread':
+                                plugin_entry.setdefault('config',{}).update(enabled=False,autostart=False);legacy_disabled=True
+                if profile==folder and isinstance(entry,dict) and entry.get('name')=='dsh-tts-autoread':
+                    entry.setdefault('config',{}).update(enabled=False,autostart=False);legacy_disabled=True
+            entries=[e for e in entries if not isinstance(e,dict) or (e.get('name')!='dsh-agent-voice-public' and (set(e)!={'insert'} or e['insert']))]
+            if profile!=folder and preferred_model:
+                model_entry=next((e for e in entries if isinstance(e,dict) and e.get('id')=='agent-default-model'),None)
+                if model_entry is None:entries.append({'id':'agent-default-model','name':'@deepseek-ai/dsh-agent-default-model','config':preferred_model})
+                else:model_entry['config'].update(preferred_model)
+            if profile!=folder and trusted_ca:
+                entries=[e for e in entries if not (isinstance(e,dict) and isinstance(e.get('insert'),list) and any(p.get('name')=='dsh-local-trusted-ca' for p in e['insert']))]
+                source_plugin=folder/'node_modules/dsh-local-trusted-ca';target_plugin=profile/'node_modules/dsh-local-trusted-ca'
+                if (source_plugin/'index.js').is_file() and (source_plugin/'package.json').is_file():
+                    save(target_plugin/'index.js',(source_plugin/'index.js').read_text(encoding='utf-8-sig'))
+                    save(target_plugin/'package.json',(source_plugin/'package.json').read_text(encoding='utf-8-sig'))
+                    entries.append({'insert':[trusted_ca]})
+            entries.append({'insert':[{'id':'agent-voice-tts','name':'dsh-agent-voice-public','config':{}}]})
+            save(patch,yaml.safe_dump(entries,allow_unicode=True,sort_keys=False))
+        record['deepseekProfiles']=[str(profile) for profile in profiles]
     record['files']=changed
     registry=store.root/'data/harness-installations.json';records=json.loads(registry.read_text(encoding='utf8')) if registry.exists() else {}
     records[source]=record;atomic_json(registry,records)

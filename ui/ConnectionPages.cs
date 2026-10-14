@@ -34,7 +34,7 @@ namespace AgentVoice {
                 new[]{"Claude Code","验证时自动合并当前用户 .claude/settings.json 的 Stop hook（尊重 CLAUDE_CONFIG_DIR），并备份旧文件。重新打开 Claude Code，检查 /hooks 中 Stop 命令是否加载、是否获准运行，再发送验证提示。"},
                 new[]{"pi","验证时安装当前用户 .pi/agent/extensions/agent-voice.ts（尊重 PI_CODING_AGENT_DIR）。执行 /reload 或重启 pi，确认扩展加载无错误，再发送验证提示。移动语音服务目录后重新定位接入。"},
                 new[]{"OpenCode","验证时安装当前用户 .config/opencode/plugins/agent-voice.js（尊重 XDG_CONFIG_HOME）。退出并重启 OpenCode，检查插件日志，再发送验证提示；session.idle 后最新完成的助手回复才会朗读。"},
-                new[]{"DeepSeek Harness","验证时自动定位所选目录或当前用户 .dsh/profiles/desktop，安装并启用 dsh-agent-voice-public。程序备份配置并关闭已识别的旧 dsh-tts-autoread，防止重复朗读；其他插件保持。重新加载 Harness，再发送验证提示；turn/end 才提交最终正文。"},
+                new[]{"DeepSeek Harness","自动定位 .dsh/profiles/desktop，同时为 headless 真实验证配置连接器，并同步桌面端当前模型账号与已配置的本机受信任 CA。程序备份配置并关闭旧 dsh-tts-autoread，防止重复朗读。验证会自动调用安装包内的 dsh headless；桌面端重启后，turn/end 才提交日常回复。"},
                 new[]{"AIRI","默认不启用。勾选并保存联动后，点击“选择目录并接入验证”，选择含 airi.exe 的原安装目录。程序自动准备联动副本并打开，沿用原 ai.moeru.airi 用户资料及账号。桥接连通后自动提交播放验证，收到桌宠原生播放完成回执才通过，心跳不算成功。"}
             }){var section=Card(stack,entry[0]);Add(section,Hint(entry[1]));}
             var end=Card(stack,"结果与故障提示");verificationHint=Hint("尚未开始验证。监听就绪和连接器心跳只表示可用状态。换机、服务重启或超过 15 分钟需重新验证。");Add(end,verificationHint);
@@ -46,7 +46,7 @@ namespace AgentVoice {
             if(source=="claude")return "请确认 Claude Code CLI 已登录，重新打开 Claude Code 后手动发送验证短句，并检查 /hooks。";
             if(source=="pi")return "请执行 /reload 或重启 pi，再手动发送验证短句，检查扩展加载日志。";
             if(source=="opencode")return "请重启 OpenCode，再手动发送验证短句，检查插件日志。";
-            return "DeepSeek Harness 暂无统一的无界面命令；请重新加载桌面端，再手动发送验证短句。";
+            return "请确认 DeepSeek Harness 已登录，且安装目录中存在 resources/runtime/cli/bin/dsh.cmd；程序会使用 headless 配置执行真实验证。";
         }
         async Task WaitForHarnessVerification(string source,string challenge){
             for(int i=0;i<240;i++){

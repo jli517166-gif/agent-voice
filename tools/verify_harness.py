@@ -7,6 +7,7 @@ NAMES={
     'claude':('claude.exe','claude.cmd','claude'),
     'pi':('pi.exe','pi.cmd','pi'),
     'opencode':('opencode.exe','opencode.cmd','opencode'),
+    'deepseek':('dsh.exe','dsh.cmd','dsh'),
 }
 
 def candidates(source,location):
@@ -21,16 +22,20 @@ def candidates(source,location):
         if local.is_dir():
             for path in sorted(local.glob('*/codex.exe'),key=lambda p:p.stat().st_mtime,reverse=True):
                 if str(path).lower() not in seen:seen.add(str(path).lower());yield path
+    if source=='deepseek':
+        for path in (location/'resources/runtime/cli/bin/dsh.cmd',location/'resources/runtime/cli/bin/dsh.exe'):
+            if path.is_file() and str(path).lower() not in seen:seen.add(str(path).lower());yield path
 
 def command_for(source,executable,prompt,location):
     if source=='codex':args=['exec','--skip-git-repo-check','-C',str(location),prompt]
     elif source=='claude':args=['-p',prompt]
     elif source=='pi':args=['-p',prompt]
     elif source=='opencode':args=['run',prompt]
-    else:raise ValueError('DeepSeek Harness 当前没有统一的无界面命令。程序已完成连接器安装，但无法代替桌面端发送验证消息')
+    elif source=='deepseek':args=['headless','-']
+    else:raise ValueError('尚未配置该 Harness 的自动验证命令')
     executable=Path(executable)
     if executable.suffix.lower() in ('.cmd','.bat'):
-        return [os.environ.get('COMSPEC','cmd.exe'),'/d','/s','/c',subprocess.list2cmdline([str(executable)]+args)]
+        return [os.environ.get('COMSPEC','cmd.exe'),'/d','/c','call',str(executable)]+args
     if executable.suffix.lower()=='.ps1':
         return ['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',str(executable)]+args
     return [str(executable)]+args
@@ -43,7 +48,7 @@ def launch(source,location,prompt,timeout):
     command=command_for(source,executable,prompt,location)
     environment=os.environ.copy();environment['NO_COLOR']='1';environment['TERM']='dumb'
     try:
-        completed=subprocess.run(command,cwd=str(location),env=environment,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding='utf-8',errors='replace',timeout=timeout,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        completed=subprocess.run(command,cwd=str(location),env=environment,input=prompt if source=='deepseek' else None,stdin=None if source=='deepseek' else subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding='utf-8',errors='replace',timeout=timeout,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
     except subprocess.TimeoutExpired as exc:
         raise ValueError('Harness 在 %d 秒内没有完成验证回复；请检查登录状态、网络或权限弹窗'%timeout) from exc
     detail=(completed.stderr or completed.stdout or '').strip()[-3000:]
