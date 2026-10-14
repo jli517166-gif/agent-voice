@@ -10,7 +10,10 @@ class Verification:
 
     def start(self,source):
         with self.lock:
-            item={'id':secrets.token_hex(8),'source':source,'text':'语音接入验证 '+secrets.token_hex(3),
+            token='agent-voice-verify-'+secrets.token_hex(3)
+            text='语音接入验证 '+secrets.token_hex(3) if source=='airi' else token
+            prompt='Reply with exactly this line and nothing else:\n'+text
+            item={'id':secrets.token_hex(8),'source':source,'text':text,'prompt':prompt,
                   'state':'waiting','jobId':None,'expires':self.clock()+900,'error':None}
             self.checks[source]=item
             return self.snapshot(source)

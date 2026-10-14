@@ -34,6 +34,8 @@ class ModeTests(unittest.TestCase):
 
     def test_verification_never_accepts_heartbeat_wrong_source_failed_or_local_airi(self):
         jobs=Mock();clock=[0.0];checker=Verification(jobs,lambda:clock[0]);one=checker.start('pi')
+        self.assertRegex(one['text'],r'^agent-voice-verify-[0-9a-f]{6}$')
+        self.assertTrue(one['prompt'].endswith(one['text']))
         checker.receipt('claude',one['text'],{'jobId':'wrong'})
         checker.receipt('pi','别的正文',{'jobId':'wrong'})
         self.assertEqual(checker.snapshot('pi')['state'],'waiting')
@@ -41,6 +43,7 @@ class ModeTests(unittest.TestCase):
         jobs.get.return_value={'state':'completed','result':{'played':True,'output':'local'}}
         self.assertEqual(checker.snapshot('pi')['state'],'verified')
         airi=checker.start('airi');checker.receipt('airi',airi['text'],{'jobId':'airi'})
+        self.assertTrue(airi['text'].startswith('语音接入验证 '))
         self.assertEqual(checker.snapshot('airi')['state'],'failed')
         clock[0]=901;self.assertEqual(checker.snapshot('pi')['state'],'expired')
 

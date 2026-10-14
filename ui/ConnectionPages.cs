@@ -78,7 +78,8 @@ namespace AgentVoice {
         }
         async Task VerifyHarness(string source,string harnessLocation){
             var item=await Service.Request("/api/verify/"+source,new {});verificationIds[source]=Json.Text(item,"id");
-            string challenge=Json.Text(item,"text");string prompt="这是 agent语音 的自动接入验证。请只回复下面这段文字，不加解释和额外标点：\n"+challenge;
+            string challenge=Json.Text(item,"text");string prompt=Json.Text(item,"prompt");
+            if(String.IsNullOrWhiteSpace(prompt))prompt="Reply with exactly this line and nothing else:\n"+challenge;
             BusyStatus("第 2/4 步：正在启动 "+source+" 的真实验证会话……");
             try{await Service.RunTool("verify_harness.py","--source "+source+" --location "+ServiceClient.Quote(harnessLocation)+" --prompt "+ServiceClient.Quote(prompt)+" --timeout 180");}
             catch(Exception error){Clipboard.SetText("请只回复下面这段文字，不加解释和标点：\r\n"+challenge);verificationHint.Text=source+"：自动验证停在“启动 Harness 并获取回复”。验证短句已复制。"+HarnessManualHelp(source);ShowPage("connectionGuide");throw new InvalidOperationException(verificationHint.Text+" 原因："+error.Message);}
