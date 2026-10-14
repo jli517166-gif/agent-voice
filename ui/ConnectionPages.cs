@@ -35,10 +35,10 @@ namespace AgentVoice {
                 new[]{"pi","验证时安装当前用户 .pi/agent/extensions/agent-voice.ts（尊重 PI_CODING_AGENT_DIR）。执行 /reload 或重启 pi，确认扩展加载无错误，再发送验证提示。移动语音服务目录后重新定位接入。"},
                 new[]{"OpenCode","验证时安装当前用户 .config/opencode/plugins/agent-voice.js（尊重 XDG_CONFIG_HOME）。退出并重启 OpenCode，检查插件日志，再发送验证提示；session.idle 后最新完成的助手回复才会朗读。"},
                 new[]{"DeepSeek Harness","自动定位 .dsh/profiles/desktop，同时为 headless 真实验证配置连接器，并同步桌面端当前模型账号与已配置的本机受信任 CA。程序备份配置并关闭旧 dsh-tts-autoread，防止重复朗读。验证会自动调用安装包内的 dsh headless；桌面端重启后，turn/end 才提交日常回复。"},
-                new[]{"AIRI","默认不启用。勾选并保存联动后，点击“选择目录并接入验证”，选择含 airi.exe 的原安装目录。程序自动准备联动副本并打开，沿用原 ai.moeru.airi 用户资料及账号。桥接连通后自动提交播放验证，收到桌宠原生播放完成回执才通过，心跳不算成功。"}
+                new[]{"AIRI","默认不启用。勾选并保存联动后，点击“选择目录并接入验证”，选择含 airi.exe 的安装目录。程序在该 AIRI 中安装桥接并保留 app.asar 单文件备份，不再生成完整副本。桥接连通后自动提交播放验证，收到桌宠原生播放完成回执才通过，心跳不算成功。AIRI 更新可能覆盖桥接，失效后重新连接验证即可自动修复。"}
             }){var section=Card(stack,entry[0]);Add(section,Hint(entry[1]));}
             var end=Card(stack,"结果与故障提示");verificationHint=Hint("尚未开始验证。监听就绪和连接器心跳只表示可用状态。换机、服务重启或超过 15 分钟需重新验证。");Add(end,verificationHint);
-            Add(end,Hint("收不到正文：确认目标已启用、配置目录正确、客户端已重载、验证提示发给了对应 Harness。收到正文但失败：检查声音资源／输出设备与日志。AIRI 失败：确认正确实例已打开及播放桥已加载。安装备份在 data/connection-backups，可打开服务日志排查。"));
+            Add(end,Hint("收不到正文：确认目标已启用、配置目录正确、客户端已重载、验证提示发给了对应 Harness。收到正文但失败：检查声音资源／输出设备与日志。Harness 配置备份在 data/connection-backups；AIRI 原 app.asar 备份在所选 AIRI 的 resources 目录。可打开服务日志排查。"));
             Add(end,Row(Btn("返回",()=>ShowPage("connections")),Btn("打开 Harness",()=>ShowPage("harness")),Btn("打开 AIRI",()=>ShowPage("airi")),EntryBtn("打开日志","查看连接与播放诊断记录。",()=>{Directory.CreateDirectory(Store.Resolve("data/logs"));ServiceClient.Open(Store.Resolve("data/logs"));})));
         }
         string HarnessManualHelp(string source){
@@ -89,7 +89,7 @@ namespace AgentVoice {
         async Task WaitForAiriVerification(){
             for(int i=0;i<240;i++){
                 var item=await Service.Request("/api/verify/airi",null,3000);string state=Json.Text(item,"state");
-                if(state=="verified"){bool first=verificationIds.Remove("airi");verificationHint.Text="AIRI：桥接、实际播放与完成回执全部验证通过。";if(first)ShowCelebration("AIRI");return;}
+                if(state=="verified"){bool first=verificationIds.Remove("airi");verificationHint.Text="AIRI：桥接、实际播放与完成回执全部验证通过。AIRI 更新可能覆盖桥接，失效后请重新连接并验证。";if(first){ShowCelebration("AIRI");MessageBox.Show(this,"AIRI 桥接已经安装并通过真实播放验证。\r\n\r\nAIRI 更新可能覆盖桥接组件；如果更新后桌宠无法发声，请重新执行“选择目录并接入验证”，程序会自动检查和修复。","AIRI 接入成功",MessageBoxButtons.OK,MessageBoxIcon.Information);}return;}
                 if(state=="failed")throw new InvalidOperationException("AIRI 播放验证失败："+Json.Text(item,"error"));
                 BusyStatus(state=="playing"?"AIRI 正在播放测试语音并同步嘴型……":"等待 AIRI 播放桥接返回状态……");await Task.Delay(500);
             }
@@ -118,14 +118,11 @@ namespace AgentVoice {
         }
         async Task InstallAiri(string source){
             if(!File.Exists(Path.Combine(source,"airi.exe")))throw new InvalidOperationException("请选择包含 airi.exe 的原安装目录。");
-            string sibling=source.TrimEnd('\\')+"-agent语音联动版";
-            string target=Directory.Exists(sibling)?sibling:Path.Combine(Store.Root,"data","airi-companion");
-            bool targetRunning=false;
-            foreach(var process in Process.GetProcessesByName("airi"))try{if(process.MainModule.FileName.Equals(Path.Combine(target,"airi.exe"),StringComparison.OrdinalIgnoreCase))targetRunning=true;}catch(System.ComponentModel.Win32Exception){}
-            if(targetRunning){string marker=Path.Combine(target,"agent-voice-integration.json");if(!File.Exists(marker)||!Store.Resolve(Json.Text(Json.Object(File.ReadAllText(marker)),"voiceRoot")).Equals(Store.Root,StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("当前联动 AIRI 正在运行且连接位置不同，请退出它后再更新，登录资料会保留。");}
-            else{Status("正在自动准备 AIRI 联动组件……");await Service.RunTool("prepare_airi.py","--source "+ServiceClient.Quote(source)+" --target "+ServiceClient.Quote(target)+" --root "+ServiceClient.Quote(Store.Root)+(Directory.Exists(target)?" --refresh":""));}
+            Status("正在检查并安装 AIRI 桥接；原 app.asar 会保留单文件备份……");
+            try{await Service.RunTool("prepare_airi.py","--source "+ServiceClient.Quote(source)+" --root "+ServiceClient.Quote(Store.Root));}
+            catch(Exception error){throw new InvalidOperationException("AIRI 桥接安装失败。若 AIRI 正在运行，请先正常退出后重试；安装失败时程序会恢复原文件。原因："+error.Message);}
             string registry=Store.Resolve("data/airi-installation.json"),temp=registry+".tmp";
-            File.WriteAllText(temp,Json.Encode(new{original=source,companion=target}));if(File.Exists(registry))File.Replace(temp,registry,null);else File.Move(temp,registry);
+            File.WriteAllText(temp,Json.Encode(new{directory=source}));if(File.Exists(registry))File.Replace(temp,registry,null);else File.Move(temp,registry);
             var next=Json.Copy(Config);next.airi.directory=Store.Portable(source);next.airi.enabled=true;await Persist(next,new {airi=next.airi});
             fields["airiDirectory"].Text=Config.airi.directory;checks["airiEnabled"].Checked=true;OpenLoggedAiri();
         }
@@ -142,15 +139,11 @@ namespace AgentVoice {
         }
         void OpenLoggedAiri(){
             string source=Store.Resolve(fields["airiDirectory"].Text.Trim());
-            string companion=source.TrimEnd('\\')+"-agent语音联动版";
-            string registry=Store.Resolve("data/airi-installation.json");
-            if(File.Exists(registry)){var installed=Json.Object(File.ReadAllText(registry));if(Store.Resolve(Json.Text(installed,"original")).Equals(source,StringComparison.OrdinalIgnoreCase))companion=Store.Resolve(Json.Text(installed,"companion"));}
             foreach(var process in Process.GetProcessesByName("airi"))try{
                 string path=process.MainModule.FileName;
-                if((path.Equals(Path.Combine(source,"airi.exe"),StringComparison.OrdinalIgnoreCase)||path.Equals(Path.Combine(companion,"airi.exe"),StringComparison.OrdinalIgnoreCase))&&process.MainWindowHandle!=IntPtr.Zero){ShowAiriWindow(process.MainWindowHandle,9);SetForegroundWindow(process.MainWindowHandle);Status("已唤醒正在使用的 AIRI；是否有播放桥接请运行验证。");return;}
+                if(path.Equals(Path.Combine(source,"airi.exe"),StringComparison.OrdinalIgnoreCase)&&process.MainWindowHandle!=IntPtr.Zero){ShowAiriWindow(process.MainWindowHandle,9);SetForegroundWindow(process.MainWindowHandle);Status("已唤醒正在使用的 AIRI；是否有播放桥接请运行验证。");return;}
             }catch(System.ComponentModel.Win32Exception){}
-            string exe=Path.Combine(companion,"airi.exe");
-            if(!File.Exists(exe))exe=Path.Combine(source,"airi.exe");
+            string exe=Path.Combine(source,"airi.exe");
             if(!File.Exists(exe))throw new InvalidOperationException("请选择原 AIRI 安装目录。");
             Process.Start(new ProcessStartInfo(exe){WorkingDirectory=Path.GetDirectoryName(exe),UseShellExecute=true});
             Status("已打开 AIRI，沿用原用户登录资料；等待桌宠连接后验证。");

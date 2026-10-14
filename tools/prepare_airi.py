@@ -1,4 +1,4 @@
-"""Build a separate AIRI 0.10.2 companion; retain the original installation."""
+"""Install the AIRI 0.10.2 voice bridge in place with one-file rollback."""
 import argparse
 import copy
 import hashlib
@@ -220,42 +220,72 @@ if (process.argv.includes("--agent-voice-mouth-probe")) {
                     stream.seek(base+int(saved[name]));body=stream.read(entry['size'])
                 output.write(body)
 
-def prepare(source,target,root,refresh=False):
-    source=Path(source).resolve();target=Path(target).resolve();root=Path(root).resolve()
-    if target==source or source in target.parents or target in source.parents:
-        raise ValueError('联动副本须位于原 AIRI 目录之外')
-    if target.exists():
-        marker=target/'agent-voice-integration.json'
-        if not refresh or not marker.is_file() or Path(json.loads(marker.read_text(encoding='utf-8'))['original']).resolve()!=source:
-            raise ValueError('目录已存在；仅可更新本程序已创建的联动副本')
+def file_hash(path):
+    digest=hashlib.sha256()
+    with Path(path).open('rb') as stream:
+        for block in iter(lambda:stream.read(4*1024*1024),b''):digest.update(block)
+    return digest.hexdigest()
+
+def atomic_json(path,value):
+    staged=path.with_suffix(path.suffix+'.new')
+    staged.write_text(json.dumps(value,ensure_ascii=False,indent=2),encoding='utf-8')
+    os.replace(staged,path)
+
+def prepare(source,root):
+    source=Path(source).resolve();root=Path(root).resolve()
+    if not (source/'airi.exe').is_file():raise ValueError('请选择包含 airi.exe 的 AIRI 安装目录')
     config=json.loads((root/'data/settings.json').read_text(encoding='utf-8-sig'))
     source_archive=source/'resources/app.asar'
-    header,_=read_header(source_archive)
-    # Validate before copying a large installation.
-    package=header['files']['package.json']
-    with source_archive.open('rb') as stream:
-        _,offset=read_header(source_archive);stream.seek(offset+int(package['offset']))
-        if json.loads(stream.read(package['size']))['version']!='0.10.2':raise ValueError('AIRI 版本未适配')
-    target.mkdir(parents=True,exist_ok=True)
-    for item in source.iterdir():
-        if item.name=='resources':continue
-        if (target/item.name).exists():continue
-        if item.is_dir():shutil.copytree(item,target/item.name)
-        else:shutil.copy2(item,target/item.name)
-    (target/'resources').mkdir(exist_ok=True)
-    for item in (source/'resources').iterdir():
-        if item.name=='app.asar':continue
-        if (target/'resources'/item.name).exists():continue
-        if item.is_dir():shutil.copytree(item,target/'resources'/item.name)
-        else:shutil.copy2(item,target/'resources'/item.name)
+    if not source_archive.is_file():raise ValueError('AIRI 缺少 resources/app.asar')
+    marker_path=source/'agent-voice-integration.json'
+    backup=source/'resources/app.asar.agent-voice-backup'
+    marker={}
+    if marker_path.is_file():
+        try:marker=json.loads(marker_path.read_text(encoding='utf-8'))
+        except (ValueError,OSError):marker={}
+    current_hash=file_hash(source_archive)
+    connection={'base':'http://127.0.0.1:'+str(config['port']),'token':config['token']}
+    connection_hash=hashlib.sha256(json.dumps(connection,sort_keys=True,separators=(',',':')).encode()).hexdigest()
     bridge=(root/'integrations/airi-bridge.js').read_bytes()
     mouth=(root/'integrations/mouth-motion.js').read_bytes()
-    staged=target/'resources/app.asar.new'
-    rebuild(source_archive,staged,{'base':'http://127.0.0.1:'+str(config['port']),'token':config['token']},bridge,mouth)
-    os.replace(staged,target/'resources/app.asar')
-    (target/'agent-voice-integration.json').write_text(json.dumps({'original':str(source),'version':'0.10.2','voiceRoot':str(root)},ensure_ascii=False,indent=2),encoding='utf-8')
-    print(json.dumps({'ok':True,'directory':str(target),'originalUnchanged':True},ensure_ascii=False))
+    bridge_hash=hashlib.sha256(bridge+b'\0'+mouth).hexdigest()
+    same_install=(marker.get('installedHash')==current_hash and marker.get('voiceRoot')==str(root)
+                  and marker.get('connectionHash')==connection_hash and marker.get('bridgeHash')==bridge_hash)
+    if same_install:
+        print(json.dumps({'ok':True,'directory':str(source),'reused':True,'warning':'AIRI 更新可能覆盖桥接；失效后重新连接并验证。'},ensure_ascii=False));return
+    patched_current=marker.get('installedHash')==current_hash
+    if patched_current:
+        if not backup.is_file() or marker.get('originalHash')!=file_hash(backup):
+            raise ValueError('AIRI 桥接备份缺失或已改变，无法安全更新；请重新安装原版 AIRI 后再连接')
+        clean_archive=backup
+    else:
+        clean_archive=source_archive
+    header,_=read_header(clean_archive)
+    package=header['files']['package.json']
+    with clean_archive.open('rb') as stream:
+        _,offset=read_header(clean_archive);stream.seek(offset+int(package['offset']))
+        if json.loads(stream.read(package['size']))['version']!='0.10.2':raise ValueError('AIRI 版本未适配')
+    staged=source/'resources/app.asar.agent-voice-new'
+    backup_new=source/'resources/app.asar.agent-voice-backup-new'
+    replaced=False
+    try:
+        rebuild(clean_archive,staged,connection,bridge,mouth)
+        original_hash=file_hash(clean_archive);installed_hash=file_hash(staged)
+        if not patched_current:shutil.copy2(clean_archive,backup_new)
+        os.replace(staged,source_archive);replaced=True
+        if not patched_current:os.replace(backup_new,backup)
+        atomic_json(marker_path,{'directory':str(source),'version':'0.10.2','voiceRoot':str(root),
+                    'originalHash':original_hash,'installedHash':installed_hash,
+                    'connectionHash':connection_hash,'bridgeHash':bridge_hash})
+    except Exception:
+        if replaced and backup.is_file():shutil.copy2(backup,source_archive)
+        for path in (staged,backup_new):
+            try:path.unlink()
+            except FileNotFoundError:pass
+        raise
+    print(json.dumps({'ok':True,'directory':str(source),'reused':False,'backup':str(backup),
+                      'warning':'AIRI 更新可能覆盖桥接；失效后重新连接并验证。'},ensure_ascii=False))
 
 if __name__=='__main__':
-    parser=argparse.ArgumentParser();parser.add_argument('--source',required=True);parser.add_argument('--target',required=True);parser.add_argument('--root',required=True);parser.add_argument('--refresh',action='store_true')
-    args=parser.parse_args();prepare(args.source,args.target,args.root,args.refresh)
+    parser=argparse.ArgumentParser();parser.add_argument('--source',required=True);parser.add_argument('--root',required=True)
+    args=parser.parse_args();prepare(args.source,args.root)

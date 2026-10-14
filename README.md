@@ -49,7 +49,7 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1
 dist/
 ├─ agent语音.exe
 ├─ service/                         # 本地语音服务
-├─ integrations/                    # Harness 与 AIRI 连接器
+├─ integrations/                    # Harness 连接器及注入 AIRI 的桥接源码
 ├─ tools/                           # 配置、音色包与接入工具
 ├─ tts-engines/                     # 所有本地 TTS 引擎的专用根目录
 │  └─ cosyvoice/
@@ -59,13 +59,15 @@ dist/
 │        └─ Fun-CosyVoice3-0.5B/    # 用户自行下载的预训练模型
 ├─ engines/
 │  └─ rvc/                          # 可选 RVC 引擎，不随仓库提供
-├─ runtime/
-│  └─ rvc/python.exe                # 启用 RVC 时可另行选择的 RVC 环境
 ├─ voice-model-packages/             # 用户自己的 .cosyvoice.ttsmodel
 ├─ models/                           # 用户自己的 RVC .pth/.index
 ├─ voices/                           # 用户自己的参考资源
 └─ data/                             # 首次运行后生成的设置、缓存与输出
 ```
+
+默认情况下，主服务、CosyVoice 和 RVC 共用 `tts-engines/cosyvoice/runtime/tools/python.exe`，避免重复安装大型 Python、PyTorch 与 CUDA 依赖。RVC 引擎代码放在 `engines/rvc`；`.pth` 与 `.index` 可以放在 `models`、`voices` 或用户选择的外部目录。
+
+AIRI 不复制进程序目录。连接后，桥接直接安装到用户选择的单个 AIRI 目录，并在其 `resources` 下保留 `app.asar.agent-voice-backup` 单文件备份；`agent-voice-integration.json` 记录桥接版本和语音服务位置。AIRI 更新可能覆盖桥接，失效后重新执行连接验证即可自动检查和修复。
 
 ## 使用要点
 
