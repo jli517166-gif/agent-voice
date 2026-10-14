@@ -18,7 +18,7 @@ EXTENSION = '.cosyvoice.ttsmodel'
 FIELDS = ('engine','speed','style','referenceText','instruction','leadingSilence','volume','advancedEnabled','assetScope')
 REQUIRED = ('cosyvoice3.yaml','llm.pt','flow.pt','hift.pt','campplus.onnx','speech_tokenizer_v3.onnx')
 MODEL_SUFFIXES = {'.pt','.onnx','.yaml','.yml','.json','.safetensors','.bin','.txt','.model','.tiktoken','.md','.vocab'}
-PACKAGE_MODES = ('lightweight','full')
+PACKAGE_MODES = ('lightweight','full','trained','trained-full')
 MAX_BYTES = 64 * 1024**3
 SOURCE_SUFFIXES = {'.py','.yaml','.yml','.json','.toml','.txt','.md'}
 RUNTIME_PACKAGES = ('torch','torchaudio','numpy','hyperpyyaml','onnxruntime-gpu','onnxruntime','transformers','diffusers','soundfile','librosa')
@@ -153,9 +153,9 @@ def matching_model(store, engine, model_type, records, fingerprint):
     return None
 
 
-def export_model(root, target, profile_id=None, package_mode='lightweight'):
+def export_model(root, target, profile_id=None, package_mode='lightweight', trained_model_dir=None):
     if package_mode not in PACKAGE_MODES:
-        raise ValueError('音色包类型必须为 lightweight 或 full')
+        raise ValueError('音色包类型无效')
     store = Store(root); cfg = store.get(); voice = cfg['voice']
     if profile_id:
         matches = [item for item in cfg['profiles'] if item['id'] == profile_id]
@@ -164,8 +164,14 @@ def export_model(root, target, profile_id=None, package_mode='lightweight'):
         voice = matches[0]['voice']
     if voice['engine'] != 'cosyvoice':
         raise ValueError('当前引擎没有可导出的本地训练模型；请选择 CosyVoice')
-    directory = store.resolve(voice['baseModel'] or cfg['engines']['cosyModel'])
-    sources = model_sources(directory); model_records, fingerprint = inventory(sources)
+    base_directory = store.resolve(voice['baseModel'] or cfg['engines']['cosyModel'])
+    base_sources = model_sources(base_directory); base_records, base_fingerprint = inventory(base_sources)
+    advanced=package_mode in ('trained','trained-full')
+    if advanced:
+        if not trained_model_dir:raise ValueError('高级训练包需要选择训练完成的 CosyVoice3 模型目录')
+        directory=Path(trained_model_dir).resolve();sources=model_sources(directory);model_records,fingerprint=inventory(sources)
+    else:
+        directory=base_directory;sources=base_sources;model_records,fingerprint=base_records,base_fingerprint
     target = package_path(target)
     if directory == target or directory in target.parents:
         raise ValueError('导出文件请保存在模型目录之外')
@@ -176,17 +182,25 @@ def export_model(root, target, profile_id=None, package_mode='lightweight'):
     if reference.suffix.lower() not in {'.wav','.flac','.mp3','.m4a','.ogg'}:
         raise ValueError('参考音频类型不支持')
     package_sources = {ref_entry:reference}
-    if package_mode == 'full':
+    delta=[];removed=[]
+    if package_mode == 'full' or package_mode == 'trained-full':
         package_sources.update({'model/'+name:file for name,file in sources.items()})
+    elif package_mode == 'trained':
+        base_by_name={item['path']:item for item in base_records};target_by_name={item['path']:item for item in model_records}
+        delta=sorted(name for name,item in target_by_name.items() if name not in base_by_name or item['size']!=base_by_name[name]['size'] or item['sha256']!=base_by_name[name]['sha256'])
+        removed=sorted(set(base_by_name)-set(target_by_name))
+        if not delta and not removed:raise ValueError('高级训练结果与当前基础模型完全相同，没有可导出的训练权重')
+        package_sources.update({'model/'+name:sources[name] for name in delta})
     if len(package_sources) > 10000 or sum(f.stat().st_size for f in package_sources.values()) > MAX_BYTES:
         raise ValueError('模型资源数量或总大小超限')
     records = [{'entry':name,'size':file.stat().st_size,'sha256':digest(file)} for name,file in package_sources.items()]
     manifest = {
-        'format':'agent-voice-tts-model','version':2,'name':package_name(target),'packageMode':package_mode,
+        'format':'agent-voice-tts-model','version':3 if advanced else 2,'name':package_name(target),'packageMode':package_mode,
         'engine':{'id':'cosyvoice','modelType':'cosyvoice3','modelName':directory.name,'modelFingerprint':fingerprint,
                   'sourceFingerprint':source_fingerprint(store,'cosyvoice'),'runtimeFingerprint':runtime_fingerprint()},
         'modelFiles':model_records,'voice':{key:voice[key] for key in FIELDS},'reference':ref_entry,'files':records,
     }
+    if advanced:manifest['baseModel']={'modelName':base_directory.name,'modelFingerprint':base_fingerprint,'modelFiles':base_records,'deltaFiles':delta,'removedFiles':removed}
     target.parent.mkdir(parents=True,exist_ok=True); temp=target.with_name(target.name+'.'+uuid.uuid4().hex+'.tmp')
     try:
         with zipfile.ZipFile(temp,'w',compression=zipfile.ZIP_STORED,allowZip64=True) as archive:
@@ -224,8 +238,12 @@ def normalize_manifest(manifest, fallback_name):
         manifest=copy.deepcopy(manifest);manifest.update(version=2,packageMode='full',engine={
             'id':'cosyvoice','modelType':'cosyvoice3','modelName':fallback_name,'modelFingerprint':inventory_fingerprint(model_records),
             'sourceFingerprint':'legacy-unverified','runtimeFingerprint':'legacy-unverified'},modelFiles=model_records)
-    if manifest.get('version')!=2 or manifest.get('packageMode') not in PACKAGE_MODES:
+    if manifest.get('version') not in (2,3) or manifest.get('packageMode') not in PACKAGE_MODES:
         raise ValueError('TTS 音色包版本或类型不受支持')
+    if manifest.get('version')==2 and manifest.get('packageMode') not in ('lightweight','full'):
+        raise ValueError('旧版音色包不能声明高级训练类型')
+    if manifest.get('version')==3 and manifest.get('packageMode') not in ('trained','trained-full'):
+        raise ValueError('高级音色包类型无效')
     engine=manifest.get('engine')
     if not isinstance(engine,dict) or set(engine)!={'id','modelType','modelName','modelFingerprint','sourceFingerprint','runtimeFingerprint'}:
         raise ValueError('TTS 引擎匹配信息不完整')
@@ -235,6 +253,11 @@ def normalize_manifest(manifest, fallback_name):
         raise ValueError('基础模型名称无效')
     for key in ('sourceFingerprint','runtimeFingerprint'):
         if engine[key]!='legacy-unverified' and not re.fullmatch('[0-9a-f]{64}',str(engine[key])):raise ValueError('TTS 引擎源码或运行环境指纹无效')
+    if manifest.get('version')==3:
+        base=manifest.get('baseModel')
+        if not isinstance(base,dict) or set(base)!={'modelName','modelFingerprint','modelFiles','deltaFiles','removedFiles'}:raise ValueError('高级训练基础模型信息不完整')
+        if not isinstance(base['modelName'],str) or not re.fullmatch('[0-9a-f]{64}',str(base['modelFingerprint'])):raise ValueError('高级训练基础模型信息无效')
+        if not isinstance(base['modelFiles'],list) or not isinstance(base['deltaFiles'],list) or not isinstance(base['removedFiles'],list):raise ValueError('高级训练差异清单无效')
     return manifest
 
 
@@ -278,6 +301,22 @@ def import_model(root, source):
             packaged_models={name[6:] for name in allowed if name.startswith('model/')}
             if manifest['packageMode']=='lightweight' and packaged_models:raise ValueError('轻量包不得携带基础模型权重')
             if manifest['packageMode']=='full' and packaged_models!=model_names:raise ValueError('完整便携包的模型资源与指纹清单不一致')
+            if manifest['packageMode']=='trained-full' and packaged_models!=model_names:raise ValueError('高级完整模型包的资源与指纹清单不一致')
+            base_directory=None
+            if manifest['packageMode'] in ('trained','trained-full'):
+                base=manifest['baseModel'];base_records=base['modelFiles'];base_names=set()
+                if not base_records or len(base_records)>10000:raise ValueError('高级训练基础模型清单无效')
+                for item in base_records:
+                    path=validate_record(item,archive,'path')
+                    if path in base_names or PurePosixPath(path).suffix.lower() not in MODEL_SUFFIXES:raise ValueError('高级训练基础模型清单重复或无效')
+                    base_names.add(path)
+                if inventory_fingerprint(base_records)!=base['modelFingerprint']:raise ValueError('高级训练基础模型清单已损坏')
+                delta=set(base['deltaFiles']);removed=set(base['removedFiles'])
+                if (len(delta)!=len(base['deltaFiles']) or len(removed)!=len(base['removedFiles']) or
+                    any(str(safe_entry(x))!=x for x in delta|removed) or delta&removed or
+                    not delta.issubset(model_names) or not removed.issubset(base_names)):
+                    raise ValueError('高级训练差异清单无效')
+                if manifest['packageMode']=='trained' and packaged_models!=delta:raise ValueError('高级训练包的增量权重清单不一致')
             engine=manifest['engine']
             if engine['sourceFingerprint']!='legacy-unverified' and source_fingerprint(store,engine['id'])!=engine['sourceFingerprint']:
                 raise ValueError('本机 TTS 引擎源码版本与音色包不一致，请安装匹配版本后重试')
@@ -286,12 +325,19 @@ def import_model(root, source):
             model_directory=matching_model(store,engine['id'],engine['modelType'],model_records,engine['modelFingerprint'])
             if model_directory is None and manifest['packageMode']=='lightweight':
                 raise ValueError('轻量音色包需要完全一致的本地 TTS 基础模型。请把对应模型安装到 tts-engines/'+engine['id']+'/models 后重试；要求指纹：'+engine['modelFingerprint'])
-            if shutil.disk_usage(voice_parent).free<sum(item['size'] for item in records)+256*1024**2:raise ValueError('磁盘空间不足，请为音色包导入预留空间')
+            if model_directory is None and manifest['packageMode']=='trained':
+                base=manifest['baseModel'];base_directory=matching_model(store,engine['id'],engine['modelType'],base['modelFiles'],base['modelFingerprint'])
+                if base_directory is None:raise ValueError('高级训练包需要匹配的基础模型，请先安装基础模型或改用高级完整模型包；要求指纹：'+base['modelFingerprint'])
+            required_space=sum(item['size'] for item in records)+256*1024**2
+            if model_directory is None and manifest['packageMode']=='trained':
+                required_space+=sum(item['size'] for item in manifest['baseModel']['modelFiles'])
+            if shutil.disk_usage(voice_parent).free<required_space:raise ValueError('磁盘空间不足，请为音色包导入预留空间')
             if model_directory is None:
                 model_parent=engine_model_root(store,engine['id']);model_parent.mkdir(parents=True,exist_ok=True)
                 model_stage=model_parent/('.staging-'+ident);model_final=model_parent/(storage_name(engine['modelName'])+'-'+engine['modelFingerprint'][:8])
                 if model_final.exists():raise ValueError('同名基础模型目录已经存在但指纹不匹配，请先检查：'+str(model_final))
-                model_stage.mkdir()
+                if manifest['packageMode']=='trained':shutil.copytree(base_directory,model_stage)
+                else:model_stage.mkdir()
             voice_stage.mkdir()
             for item in records:
                 name=item['entry']
@@ -309,8 +355,12 @@ def import_model(root, source):
                     for chunk in iter(lambda:incoming.read(1024*1024),b''):output.write(chunk);sha.update(chunk)
                 if sha.hexdigest()!=item['sha256']:raise ValueError('模型文件校验失败：'+name)
             if model_stage is not None:
+                if manifest['packageMode']=='trained':
+                    for name in manifest['baseModel']['removedFiles']:
+                        target=model_stage/name
+                        if target.is_file():target.unlink()
                 model_ready(model_stage);actual_records,actual_fingerprint=inventory(model_sources(model_stage))
-                if actual_records!=model_records or actual_fingerprint!=engine['modelFingerprint']:raise ValueError('完整便携包中的基础模型指纹不一致')
+                if actual_records!=model_records or actual_fingerprint!=engine['modelFingerprint']:raise ValueError('音色包中的模型指纹不一致')
                 os.replace(model_stage,model_final);created_model=True;model_directory=model_final
             assert_offline(store)
             proposed=store.get()['voice'];proposed.update(copy.deepcopy(voice),synthesisMode='base',baseModel=store.portable(model_directory),reference=store.portable(voice_final/reference));validate_voice(proposed)

@@ -39,7 +39,7 @@ namespace AgentVoice {
             }){var section=Card(stack,entry[0]);Add(section,Hint(entry[1]));}
             var end=Card(stack,"结果与故障提示");verificationHint=Hint("尚未开始验证。监听就绪和连接器心跳只表示可用状态。换机、服务重启或超过 15 分钟需重新验证。");Add(end,verificationHint);
             Add(end,Hint("收不到正文：确认目标已启用、配置目录正确、客户端已重载、验证提示发给了对应 Harness。收到正文但失败：检查声音资源／输出设备与日志。AIRI 失败：确认正确实例已打开及播放桥已加载。安装备份在 data/connection-backups，可打开服务日志排查。"));
-            Add(end,Row(Btn("返回连接中心",()=>ShowPage("connections")),Btn("Harness 设置",()=>ShowPage("harness")),Btn("AIRI 设置",()=>ShowPage("airi")),Btn("打开服务日志",()=>{Directory.CreateDirectory(Store.Resolve("data/logs"));ServiceClient.Open(Store.Resolve("data/logs"));})));
+            Add(end,Row(Btn("返回",()=>ShowPage("connections")),Btn("打开 Harness",()=>ShowPage("harness")),Btn("打开 AIRI",()=>ShowPage("airi")),EntryBtn("打开日志","查看连接与播放诊断记录。",()=>{Directory.CreateDirectory(Store.Resolve("data/logs"));ServiceClient.Open(Store.Resolve("data/logs"));})));
         }
         async Task BeginVerification(string source){
             if(!await Service.Running())throw new InvalidOperationException("请先启动语音服务。");

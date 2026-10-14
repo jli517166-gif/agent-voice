@@ -95,5 +95,47 @@ class TtsBundleTests(unittest.TestCase):
         (self.model/'cosyvoice3.yaml').write_text('llm: !new:cosyvoice.llm.llm.Qwen2LM {}')
         with self.assertRaises(ValueError):export_model(self.root,self.package)
 
+    def trained_model(self):
+        trained=Path(self.temp.name)/'trained-result';shutil.copytree(self.model,trained)
+        (trained/'llm.pt').write_bytes(b'fine-tuned-llm-weights')
+        return trained
+
+    def fresh_root(self,with_base):
+        target=Path(self.temp.name)/('fresh-with-base' if with_base else 'fresh-without-base');store=Store(target);cfg=store.get()
+        source=target/'tts-engines/cosyvoice/source/cosyvoice';source.mkdir(parents=True)
+        shutil.copy2(self.root/'tts-engines/cosyvoice/source/cosyvoice/version.py',source/'version.py')
+        if with_base:shutil.copytree(self.model,target/'tts-engines/cosyvoice/models/fixture-model')
+        with socket.socket() as s:s.bind(('127.0.0.1',0));cfg['port']=s.getsockname()[1]
+        atomic_json(store.path,cfg);return target,Store(target)
+
+    def test_advanced_trained_delta_roundtrip_requires_and_rebuilds_exact_base(self):
+        trained=self.trained_model();package=Path(self.temp.name)/'高级训练.cosyvoice.ttsmodel'
+        export_model(self.root,package,package_mode='trained',trained_model_dir=trained)
+        with zipfile.ZipFile(package) as archive:
+            manifest=json.loads(archive.read('manifest.json'));models={n for n in archive.namelist() if n.startswith('model/')}
+        self.assertEqual(manifest['version'],3);self.assertEqual(manifest['packageMode'],'trained')
+        self.assertEqual(manifest['baseModel']['deltaFiles'],['llm.pt']);self.assertEqual(models,{'model/llm.pt'})
+        target,store=self.fresh_root(True);result=import_model(target,package);installed=store.resolve(Store(target).get()['voice']['baseModel'])
+        self.assertEqual(result['packageMode'],'trained');self.assertEqual((installed/'llm.pt').read_bytes(),b'fine-tuned-llm-weights')
+        self.assertEqual((installed/'flow.pt').read_bytes(),(self.model/'flow.pt').read_bytes())
+
+    def test_advanced_trained_delta_rejects_when_base_is_missing(self):
+        trained=self.trained_model();package=Path(self.temp.name)/'高级训练缺基础.cosyvoice.ttsmodel'
+        export_model(self.root,package,package_mode='trained',trained_model_dir=trained)
+        target,_=self.fresh_root(False)
+        with self.assertRaisesRegex(ValueError,'需要匹配的基础模型'):import_model(target,package)
+
+    def test_advanced_full_roundtrip_does_not_require_base_model(self):
+        trained=self.trained_model();package=Path(self.temp.name)/'高级完整.cosyvoice.ttsmodel'
+        export_model(self.root,package,package_mode='trained-full',trained_model_dir=trained)
+        target,store=self.fresh_root(False);result=import_model(target,package);installed=store.resolve(Store(target).get()['voice']['baseModel'])
+        self.assertEqual(result['packageMode'],'trained-full');self.assertEqual((installed/'llm.pt').read_bytes(),b'fine-tuned-llm-weights')
+
+    def test_advanced_delta_manifest_tampering_is_rejected(self):
+        trained=self.trained_model();package=Path(self.temp.name)/'高级篡改.cosyvoice.ttsmodel'
+        export_model(self.root,package,package_mode='trained',trained_model_dir=trained)
+        bad=self.rewrite(package,lambda m,f:m['baseModel'].update(deltaFiles=['../outside.pt']))
+        self.rejected(bad)
+
 
 if __name__=='__main__':unittest.main()
