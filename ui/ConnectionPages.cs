@@ -31,10 +31,8 @@ namespace AgentVoice {
             Add(card,Hint("① 首页先试听声音并启动服务。② Harness 只需选择安装目录或用户配置目录，程序会识别类型；AIRI 先手动启用，再选择原安装目录。③ 程序自动安装连接器、启动真实验证、等待最终回复并确认播放。全部通过后显示绿色状态和礼炮；失败会停在具体步骤并给出处理方法。"));
             foreach(var entry in new[]{
                 new[]{"Codex","程序定位 CODEX_HOME/sessions（默认当前用户 .codex/sessions），或你所选目录中的会话目录，重新加载监听后开始复验。在 Codex 发送验证提示；最终回复进入队列。若未收到，检查是否是同一 Windows 用户及会话目录。"},
-                new[]{"Claude Code","验证时自动合并当前用户 .claude/settings.json 的 Stop hook（尊重 CLAUDE_CONFIG_DIR），并备份旧文件。重新打开 Claude Code，检查 /hooks 中 Stop 命令是否加载、是否获准运行，再发送验证提示。"},
-                new[]{"pi","验证时安装当前用户 .pi/agent/extensions/agent-voice.ts（尊重 PI_CODING_AGENT_DIR）。执行 /reload 或重启 pi，确认扩展加载无错误，再发送验证提示。移动语音服务目录后重新定位接入。"},
-                new[]{"OpenCode","验证时安装当前用户 .config/opencode/plugins/agent-voice.js（尊重 XDG_CONFIG_HOME）。退出并重启 OpenCode，检查插件日志，再发送验证提示；session.idle 后最新完成的助手回复才会朗读。"},
                 new[]{"DeepSeek Harness","自动定位 .dsh/profiles/desktop，同时为 headless 真实验证配置连接器，并同步桌面端当前模型账号与已配置的本机受信任 CA。程序备份配置并关闭旧 dsh-tts-autoread，防止重复朗读。验证会自动调用安装包内的 dsh headless；桌面端重启后，turn/end 才提交日常回复。"},
+                new[]{"其他 Harness","正式版不提供未经真机验证的开关。请从 Harness 页面打开二次开发指南，新增独立适配器后执行同样的随机回复与真实播放验证。"},
                 new[]{"AIRI","默认不启用。勾选并保存联动后，点击“选择目录并接入验证”，选择含 airi.exe 的安装目录。程序在该 AIRI 中安装桥接并保留 app.asar 单文件备份，不再生成完整副本。桥接连通后自动提交播放验证，收到桌宠原生播放完成回执才通过，心跳不算成功。AIRI 更新可能覆盖桥接，失效后重新连接验证即可自动修复。"}
             }){var section=Card(stack,entry[0]);Add(section,Hint(entry[1]));}
             var end=Card(stack,"结果与故障提示");verificationHint=Hint("尚未开始验证。监听就绪和连接器心跳只表示可用状态。换机、服务重启或超过 15 分钟需重新验证。");Add(end,verificationHint);
@@ -43,10 +41,12 @@ namespace AgentVoice {
         }
         string HarnessManualHelp(string source){
             if(source=="codex")return "请确认 Codex CLI 已登录且可运行 codex exec；也可在 Codex 中手动发送页面显示的验证短句。";
-            if(source=="claude")return "请确认 Claude Code CLI 已登录，重新打开 Claude Code 后手动发送验证短句，并检查 /hooks。";
-            if(source=="pi")return "请执行 /reload 或重启 pi，再手动发送验证短句，检查扩展加载日志。";
-            if(source=="opencode")return "请重启 OpenCode，再手动发送验证短句，检查插件日志。";
             return "请确认 DeepSeek Harness 已登录，且安装目录中存在 resources/runtime/cli/bin/dsh.cmd；程序会使用 headless 配置执行真实验证。";
+        }
+        async Task InstallHarnessMcp(string source){
+            BusyStatus("正在为 "+(source=="codex"?"Codex":"DeepSeek Harness")+" 安装聊天栏快捷控制……");
+            var result=Json.Object(await Service.RunTool("install_mcp.py","--source "+source+" --root "+ServiceClient.Quote(Store.Root)));
+            string message=Json.Text(result,"message"),usage=source=="codex"?"重启 Codex 后，在聊天栏选择 Agent Voice 控制台，或输入 $agent-voice-control。":"重启 DeepSeek Harness 后，在聊天栏输入 /voice 查看控制菜单。";Status(message);MessageBox.Show(this,message+"\r\n\r\n"+usage+"\r\n底层工具名为 agent_voice。","聊天控制安装完成",MessageBoxButtons.OK,MessageBoxIcon.Information);
         }
         async Task WaitForHarnessVerification(string source,string challenge){
             for(int i=0;i<240;i++){
@@ -167,10 +167,10 @@ namespace AgentVoice {
     }
     sealed class Celebration:Control {
         readonly Timer timer=new Timer{Interval=30};readonly Random random=new Random();readonly string title;readonly Bitmap snapshot;int frame;
-        readonly PointF[] pieces=new PointF[140];readonly Color[] colors={Color.HotPink,Color.Gold,Color.MediumTurquoise,Color.MediumPurple,Color.Coral,Color.LightGreen};
+        readonly PointF[] pieces=new PointF[140];readonly Color[] colors={Color.DeepSkyBlue,Color.White,Color.MediumTurquoise,Color.DodgerBlue,Color.LightCyan,Color.Navy};
         public Celebration(string text,Bitmap background){title=text;snapshot=background;SetStyle(ControlStyles.UserPaint|ControlStyles.OptimizedDoubleBuffer|ControlStyles.AllPaintingInWmPaint,true);for(int i=0;i<pieces.Length;i++)pieces[i]=new PointF((float)random.NextDouble(),(float)random.NextDouble()*-Height-random.Next(20,500));timer.Tick+=(s,e)=>{frame++;if(frame>110){Dispose();return;}Invalidate();};timer.Start();}
         protected override void OnPaintBackground(PaintEventArgs e){if(snapshot!=null)e.Graphics.DrawImage(snapshot,ClientRectangle);}
-        protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);using(var shade=new SolidBrush(Color.FromArgb(36,24,18,34)))e.Graphics.FillRectangle(shade,ClientRectangle);for(int i=0;i<pieces.Length;i++){float x=pieces[i].X*Width+(float)Math.Sin(frame*.08+i)*22;float y=(pieces[i].Y+frame*(2.2f+i%5*.22f))%(Height+30);using(var b=new SolidBrush(colors[i%colors.Length]))e.Graphics.FillRectangle(b,x,y,6,i%2==0?16:7);}var box=new Rectangle(Math.Max(20,Width/2-260),Math.Max(30,Height/2-50),Math.Min(520,Width-40),100);using(var brush=new SolidBrush(Color.FromArgb(220,40,34,54)))e.Graphics.FillRectangle(brush,box);TextRenderer.DrawText(e.Graphics,title,new Font(Font.FontFamily,16F,FontStyle.Bold),box,Color.White,TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter);}
+        protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);using(var shade=new SolidBrush(Color.FromArgb(42,3,18,30)))e.Graphics.FillRectangle(shade,ClientRectangle);for(int i=0;i<pieces.Length;i++){float x=pieces[i].X*Width+(float)Math.Sin(frame*.08+i)*22;float y=(pieces[i].Y+frame*(2.2f+i%5*.22f))%(Height+30);using(var b=new SolidBrush(colors[i%colors.Length]))e.Graphics.FillRectangle(b,x,y,6,i%2==0?16:7);}var box=new Rectangle(Math.Max(20,Width/2-260),Math.Max(30,Height/2-50),Math.Min(520,Width-40),100);using(var brush=new SolidBrush(Color.FromArgb(225,5,35,58)))e.Graphics.FillRectangle(brush,box);TextRenderer.DrawText(e.Graphics,title,new Font(Font.FontFamily,16F,FontStyle.Bold),box,Color.White,TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter);}
         protected override void Dispose(bool disposing){if(disposing){timer.Stop();timer.Dispose();if(snapshot!=null)snapshot.Dispose();}base.Dispose(disposing);}
     }
 }

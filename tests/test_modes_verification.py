@@ -33,19 +33,19 @@ class ModeTests(unittest.TestCase):
             self.assertIn('RVC 模型 .pth',store.missing())
 
     def test_verification_never_accepts_heartbeat_wrong_source_failed_or_local_airi(self):
-        jobs=Mock();clock=[0.0];checker=Verification(jobs,lambda:clock[0]);one=checker.start('pi')
+        jobs=Mock();clock=[0.0];checker=Verification(jobs,lambda:clock[0]);one=checker.start('deepseek')
         self.assertRegex(one['text'],r'^agent-voice-verify-[0-9a-f]{6}$')
         self.assertTrue(one['prompt'].endswith(one['text']))
-        checker.receipt('claude',one['text'],{'jobId':'wrong'})
-        checker.receipt('pi','别的正文',{'jobId':'wrong'})
-        self.assertEqual(checker.snapshot('pi')['state'],'waiting')
-        checker.receipt('pi',one['text'],{'jobId':'correct'})
+        checker.receipt('codex',one['text'],{'jobId':'wrong'})
+        checker.receipt('deepseek','别的正文',{'jobId':'wrong'})
+        self.assertEqual(checker.snapshot('deepseek')['state'],'waiting')
+        checker.receipt('deepseek',one['text'],{'jobId':'correct'})
         jobs.get.return_value={'state':'completed','result':{'played':True,'output':'local'}}
-        self.assertEqual(checker.snapshot('pi')['state'],'verified')
+        self.assertEqual(checker.snapshot('deepseek')['state'],'verified')
         airi=checker.start('airi');checker.receipt('airi',airi['text'],{'jobId':'airi'})
         self.assertTrue(airi['text'].startswith('语音接入验证 '))
         self.assertEqual(checker.snapshot('airi')['state'],'failed')
-        clock[0]=901;self.assertEqual(checker.snapshot('pi')['state'],'expired')
+        clock[0]=901;self.assertEqual(checker.snapshot('deepseek')['state'],'expired')
 
 class VerificationApiTests(unittest.TestCase):
     setUp=test_core.CoreTests.setUp
@@ -54,13 +54,13 @@ class VerificationApiTests(unittest.TestCase):
     wait=test_core.CoreTests.wait
     # Inherit fixture and protocol checks; additional checks exercise live HTTP.
     def test_verify_requires_source_reply_and_completed_playback(self):
-        self.store.update({'harness':{'claude':True}})
-        challenge=self.request('/api/verify/claude',{})
-        self.request('/api/harness/claude/heartbeat',{})
-        self.assertEqual(self.request('/api/verify/claude')['state'],'waiting')
-        response=self.request('/api/harness/claude',{'hook_event_name':'Stop','last_assistant_message':challenge['text'],'session_id':'verify'})
+        self.store.update({'harness':{'deepseek':True}})
+        challenge=self.request('/api/verify/deepseek',{})
+        self.request('/api/harness/deepseek/heartbeat',{})
+        self.assertEqual(self.request('/api/verify/deepseek')['state'],'waiting')
+        response=self.request('/api/harness/deepseek',{'type':'turn/end','text':challenge['text'],'session_id':'verify'})
         self.wait(response['jobId'])
-        self.assertEqual(self.request('/api/verify/claude')['state'],'verified')
+        self.assertEqual(self.request('/api/verify/deepseek')['state'],'verified')
 
     def test_unconfigured_challenge_reports_failure_instead_of_waiting_forever(self):
         self.store.update({'voice':{'model':'missing.pth'}})

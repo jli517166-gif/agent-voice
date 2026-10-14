@@ -47,23 +47,9 @@ def normalize(source,event):
     if source == "codex":
         if event.get("type") != "agent-turn-complete": return None
         text=event.get("last-assistant-message","")
-    elif source == "claude":
-        if event.get("hook_event_name") != "Stop": return None
-        text=event.get("last_assistant_message","")
     elif source == "deepseek":
         if event.get("type") != "turn/end": return None
         text=event.get("text","")
-    elif source == "pi":
-        if event.get("type") != "agent_end": return None
-        messages=[m for m in event.get("messages",[]) if isinstance(m,dict) and m.get("role")=="assistant" and m.get("stopReason") not in ("toolUse","error","aborted")]
-        if messages:
-            text=blocks(messages[-1].get("content")); ident=str(messages[-1].get("timestamp",ident))
-    elif source == "opencode":
-        if event.get("type") != "session.idle": return None
-        messages=[m for m in event.get("messages",[]) if isinstance(m,dict) and m.get("info",{}).get("role")=="assistant" and m.get("info",{}).get("time",{}).get("completed") and m.get("info",{}).get("finish") not in ("tool-calls","error")]
-        if messages:
-            latest=max(messages,key=lambda m:m["info"].get("time",{}).get("completed",0))
-            text=blocks(latest.get("parts")); ident=str(latest["info"].get("id",ident))
     else:
         raise ValueError("未知 Harness")
     if not isinstance(text,str) or not text.strip(): return None

@@ -16,7 +16,7 @@ namespace AgentVoice {
         public Settings Config;
         public Color Accent,CardColor;
         public bool HasBackground {get{return background!=null;}}
-        Bitmap background,scaledBackground;
+        Bitmap background,scaledBackground,defaultBackdrop;
         readonly Dictionary<string,ScenePanel> pages=new Dictionary<string,ScenePanel>();
         readonly Dictionary<string,Button> navigationButtons=new Dictionary<string,Button>();
         readonly List<string> pageHistory=new List<string>();
@@ -44,14 +44,14 @@ namespace AgentVoice {
         SavedVoice deleted;
         public MainForm(SettingsStore store,bool testing=false){
             Store=store;Service=new ServiceClient(store);Config=store.Read();
-            Text="agent语音";Font=new Font("Microsoft YaHei UI",10F);AutoScaleMode=AutoScaleMode.Dpi;
+            Text="Agent Voice · 星铃语音工作台";Font=new Font("Microsoft YaHei UI",10F);AutoScaleMode=AutoScaleMode.Dpi;
             ClientSize=new Size(1200,820);MinimumSize=new Size(1040,680);StartPosition=FormStartPosition.CenterScreen;
             SetStyle(ControlStyles.OptimizedDoubleBuffer|ControlStyles.AllPaintingInWmPaint|ControlStyles.ResizeRedraw,true);
             shell=new ScenePanel{Host=this,Dock=DockStyle.Fill};Controls.Add(shell);
             var outer=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=2,RowCount=1,BackColor=Color.Transparent,Padding=new Padding(16)};outer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,224));outer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));shell.Controls.Add(outer);
             var sidebar=new ScenePanel{Host=this,Card=true,Dock=DockStyle.Fill,Padding=new Padding(14),Margin=new Padding(0,0,12,0)};outer.Controls.Add(sidebar,0,0);
-            var sideLayout=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=1,RowCount=3,BackColor=Color.Transparent};sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,76));sideLayout.RowStyles.Add(new RowStyle(SizeType.Percent,100));sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,82));sidebar.Controls.Add(sideLayout);
-            var brand=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,BackColor=Color.Transparent};brand.Controls.Add(new Label{Text="agent语音",Font=new Font(Font.FontFamily,14F,FontStyle.Bold),AutoSize=false,Width=184,Height=32,Margin=new Padding(2,2,0,0)});brand.Controls.Add(new Label{Text="本地声音工作台",AutoSize=true,Margin=new Padding(3,0,0,0)});sideLayout.Controls.Add(brand,0,0);
+            var sideLayout=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=1,RowCount=3,BackColor=Color.Transparent};sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,86));sideLayout.RowStyles.Add(new RowStyle(SizeType.Percent,100));sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,82));sidebar.Controls.Add(sideLayout);
+            var brand=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=2,RowCount=1,BackColor=Color.Transparent};brand.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,62));brand.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));var mascot=new PictureBox{SizeMode=PictureBoxSizeMode.Zoom,Dock=DockStyle.Fill,Margin=new Padding(0,7,8,7)};string mascotPath=DefaultMascotPath();if(File.Exists(mascotPath))using(var source=Image.FromFile(mascotPath))mascot.Image=new Bitmap(source);brand.Controls.Add(mascot,0,0);var brandText=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,BackColor=Color.Transparent,Padding=new Padding(0,9,0,0)};brandText.Controls.Add(new Label{Text="AGENT VOICE",Font=new Font(Font.FontFamily,12.5F,FontStyle.Bold),AutoSize=true,Margin=new Padding(0,0,0,0)});brandText.Controls.Add(new Label{Text="✦ 星铃语音工作台",AutoSize=true,Margin=new Padding(0,2,0,0)});brand.Controls.Add(brandText,1,0);sideLayout.Controls.Add(brand,0,0);
             var navigation=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoScroll=true,BackColor=Color.Transparent,Padding=new Padding(0,4,0,4)};sideLayout.Controls.Add(navigation,0,1);
             AddNav(navigation,"首页","home","声音、服务和立即朗读。",true);
             navigation.Controls.Add(SideLabel("常用功能"));
@@ -74,19 +74,19 @@ namespace AgentVoice {
         }
         Label SideLabel(string text){return new Label{Text=text.ToUpperInvariant(),AutoSize=false,Width=180,Height=28,TextAlign=ContentAlignment.BottomLeft,Font=new Font(Font.FontFamily,8.5F,FontStyle.Bold),Margin=new Padding(4,8,0,2)};}
         void AddNav(FlowLayoutPanel navigation,string text,string id,string note,bool important){var button=EntryBtn(text,note,()=>ShowPage(id));button.Tag=important?"nav-primary":"nav";button.Name="nav_"+id;button.AutoSize=false;button.Width=180;button.Height=42;button.TextAlign=ContentAlignment.MiddleLeft;button.Padding=new Padding(12,0,0,0);button.Margin=new Padding(0,2,0,2);navigationButtons[id]=button;navigation.Controls.Add(button);}
-        Button Btn(string text,Action action){var b=new Button{Text=text,AutoSize=true,MinimumSize=new Size(108,38),FlatStyle=FlatStyle.Flat,Margin=new Padding(0,3,10,3),Padding=new Padding(8,0,8,0),Cursor=Cursors.Hand,Tag="secondary"};b.FlatAppearance.BorderSize=1;b.Click+=(s,e)=>{try{action();}catch(Exception exc){Status(exc.Message);}};return b;}
+        Button Btn(string text,Action action){var b=new AnimeButton{Text=text,AutoSize=true,MinimumSize=new Size(108,40),Margin=new Padding(0,3,10,3),Padding=new Padding(10,0,10,0),Cursor=Cursors.Hand,Tag="secondary"};b.FlatAppearance.BorderSize=1;b.Click+=(s,e)=>{try{action();}catch(Exception exc){Status(exc.Message);}};return b;}
         Button Primary(Button button){button.Tag="primary";button.Font=new Font(Font.FontFamily,Font.Size,FontStyle.Bold);button.MinimumSize=new Size(Math.Max(128,button.MinimumSize.Width),42);return button;}
         Button Danger(Button button){button.Tag="danger";return button;}
         Button EntryBtn(string text,string note,Action action){var button=Btn(text,action);button.AccessibleDescription=note;tips.SetToolTip(button,note);return button;}
         Button AsyncBtn(string text,Func<Task> action){var b=Btn(text,()=>{});b.Click+=async(s,e)=>await Guard(action,b.Text);return b;}
-        void StyleStatus(bool error){if(footer==null)return;footer.BackColor=error?Color.FromArgb(255,226,226):Mix(CardColor,Accent,18);footer.ForeColor=error?Color.FromArgb(150,25,35):(BackColor.GetBrightness()<.4F?Color.White:Color.FromArgb(65,42,58));}
+        void StyleStatus(bool error){if(footer==null)return;footer.BackColor=error?Color.FromArgb(255,226,226):Mix(CardColor,Accent,18);footer.ForeColor=error?Color.FromArgb(150,25,35):(BackColor.GetBrightness()<.4F?Color.White:Color.FromArgb(16,24,32));}
         void Status(string text){if(!IsDisposed){footer.Text="状态："+text.Replace("\r"," ").Replace("\n"," ");footer.AccessibleDescription=text;StyleStatus(false);}}
         void StatusError(string text){if(!IsDisposed){footer.Text="操作失败："+text.Replace("\r"," ").Replace("\n"," ");footer.AccessibleDescription=text;StyleStatus(true);}}
         void BusyStatus(string text){Status(text);if(busyOverlay!=null)busyOverlay.SetMessage(text);Application.DoEvents();}
         void ShowBusy(string text){
             if(busyOverlay!=null){busyOverlay.SetMessage(text);return;}
             var snapshot=new Bitmap(Math.Max(1,shell.ClientSize.Width),Math.Max(1,shell.ClientSize.Height));shell.DrawToBitmap(snapshot,new Rectangle(Point.Empty,snapshot.Size));
-            busyOverlay=new BusyOverlay(text,snapshot,Store.Resolve(Config.appearance.loadingAnimation));shell.Controls.Add(busyOverlay);busyOverlay.BringToFront();busyOverlay.Focus();
+            string animation=Store.Resolve(Config.appearance.loadingAnimation);if(!File.Exists(animation))animation=DefaultMascotPath();busyOverlay=new BusyOverlay(text,snapshot,animation);shell.Controls.Add(busyOverlay);busyOverlay.BringToFront();busyOverlay.Focus();
         }
         void HideBusy(){if(busyOverlay==null)return;var overlay=busyOverlay;busyOverlay=null;overlay.Dispose();shell.Invalidate(true);}
         async Task Guard(Func<Task> action,string label){if(operation)return;operation=true;Cursor=Cursors.AppStarting;ShowBusy(label+"…");try{await action();}catch(Exception exc){StatusError(exc.Message);}finally{HideBusy();operation=false;Cursor=Cursors.Default;}}
@@ -210,11 +210,11 @@ namespace AgentVoice {
         void EnsureProfileFolders(){foreach(var profile in Config.profiles)WriteProfileFolder(profile);}
         void ArchiveProfileFolder(SavedVoice profile){string folder=ProfileFolder(profile);if(!Directory.Exists(folder))return;string deletedRoot=Path.Combine(ProfileDirectory(),".deleted");Directory.CreateDirectory(deletedRoot);string target=Path.Combine(deletedRoot,Path.GetFileName(folder)+"-"+DateTime.Now.ToString("yyyyMMddHHmmss"));Directory.Move(folder,target);}
         protected override bool ProcessCmdKey(ref Message msg,Keys key){if(key==Keys.Escape){ShowPage("home");return true;}return base.ProcessCmdKey(ref msg,key);}
-        protected override void OnFormClosing(FormClosingEventArgs e){if(!exiting&&tray!=null){e.Cancel=true;Hide();return;}poll.Stop();tips.Dispose();if(tray!=null){tray.Visible=false;tray.Dispose();}if(background!=null)background.Dispose();if(scaledBackground!=null)scaledBackground.Dispose();base.OnFormClosing(e);}
+        protected override void OnFormClosing(FormClosingEventArgs e){if(!exiting&&tray!=null){e.Cancel=true;Hide();return;}poll.Stop();tips.Dispose();if(tray!=null){tray.Visible=false;tray.Dispose();}if(background!=null)background.Dispose();if(scaledBackground!=null)scaledBackground.Dispose();if(defaultBackdrop!=null)defaultBackdrop.Dispose();base.OnFormClosing(e);}
+        string DefaultMascotPath(){return Path.Combine(Store.Root,".agents","plugins","agent-voice-control","assets","voice-bell.png");}
         public void PaintScene(Graphics g,Control control){
-            using(var brush=new SolidBrush(BackColor))g.FillRectangle(brush,control.ClientRectangle);
-            if(background==null)return;
-            if(scaledBackground==null||scaledBackground.Size!=ClientSize){
+            Bitmap scene=background==null?DefaultScene():null;
+            if(background!=null&&(scaledBackground==null||scaledBackground.Size!=ClientSize)){
                 if(scaledBackground!=null)scaledBackground.Dispose();
                 scaledBackground=new Bitmap(Math.Max(1,ClientSize.Width),Math.Max(1,ClientSize.Height));
                 using(var graphics=Graphics.FromImage(scaledBackground)){
@@ -224,14 +224,17 @@ namespace AgentVoice {
                     graphics.DrawImage(background,(ClientSize.Width-w)/2,(ClientSize.Height-h)/2,w,h);
                 }
             }
+            if(background!=null)scene=scaledBackground;
+            if(scene==null){using(var brush=new SolidBrush(BackColor))g.FillRectangle(brush,control.ClientRectangle);return;}
             Point origin=PointToClient(control.PointToScreen(Point.Empty));
-            Rectangle source=Rectangle.Intersect(new Rectangle(origin,control.ClientSize),new Rectangle(Point.Empty,scaledBackground.Size));
-            if(source.Width>0&&source.Height>0)g.DrawImage(scaledBackground,new Rectangle(source.X-origin.X,source.Y-origin.Y,source.Width,source.Height),source,GraphicsUnit.Pixel);
+            Rectangle source=Rectangle.Intersect(new Rectangle(origin,control.ClientSize),new Rectangle(Point.Empty,scene.Size));
+            if(source.Width>0&&source.Height>0)g.DrawImage(scene,new Rectangle(source.X-origin.X,source.Y-origin.Y,source.Width,source.Height),source,GraphicsUnit.Pixel);
         }
+        Bitmap DefaultScene(){if(defaultBackdrop!=null&&defaultBackdrop.Size==ClientSize)return defaultBackdrop;if(defaultBackdrop!=null)defaultBackdrop.Dispose();defaultBackdrop=new Bitmap(Math.Max(1,ClientSize.Width),Math.Max(1,ClientSize.Height));using(var g=Graphics.FromImage(defaultBackdrop)){g.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;using(var gradient=new System.Drawing.Drawing2D.LinearGradientBrush(new Rectangle(Point.Empty,defaultBackdrop.Size),Mix(BackColor,Color.White,10),Mix(BackColor,Accent,9),32F))g.FillRectangle(gradient,new Rectangle(Point.Empty,defaultBackdrop.Size));using(var glow=new SolidBrush(Color.FromArgb(26,Accent))){g.FillEllipse(glow,-90,-110,390,390);g.FillEllipse(glow,defaultBackdrop.Width-330,defaultBackdrop.Height-290,420,420);}using(var pale=new SolidBrush(Color.FromArgb(18,120,210,255)))g.FillEllipse(pale,defaultBackdrop.Width-260,80,260,260);using(var pen=new Pen(Color.FromArgb(46,Accent),2)){for(int i=0;i<7;i++){int x=270+i*157,y=45+(i%3)*61;g.DrawLine(pen,x-7,y,x+7,y);g.DrawLine(pen,x,y-7,x,y+7);}}}return defaultBackdrop;}
         static Color Mix(Color one,Color two,int secondPercent){int first=100-secondPercent;return Color.FromArgb((one.R*first+two.R*secondPercent)/100,(one.G*first+two.G*secondPercent)/100,(one.B*first+two.B*secondPercent)/100);}
-        void StyleButton(Button button,bool selected=false){string kind=Convert.ToString(button.Tag);button.FlatStyle=FlatStyle.Flat;if(kind=="primary"){button.BackColor=Accent;button.ForeColor=Accent.GetBrightness()<.58?Color.White:Color.Black;button.FlatAppearance.BorderSize=0;}else if(kind=="danger"){button.BackColor=Color.FromArgb(190,62,72);button.ForeColor=Color.White;button.FlatAppearance.BorderSize=0;}else if(kind=="nav"||kind=="nav-primary"){button.BackColor=selected?Accent:(kind=="nav-primary"?Mix(CardColor,Accent,12):CardColor);button.ForeColor=selected?(Accent.GetBrightness()<.58?Color.White:Color.Black):ForeColor;button.FlatAppearance.BorderSize=0;}else{button.BackColor=CardColor;button.ForeColor=BackColor.GetBrightness()<.4F?Mix(Color.White,Accent,20):Color.FromArgb(75,55,70);button.FlatAppearance.BorderColor=Mix(CardColor,Accent,65);button.FlatAppearance.BorderSize=1;}}
-        void ApplyTheme(){var a=Config.appearance;Accent=ColorTranslator.FromHtml(a.accent);BackColor=ColorTranslator.FromHtml(a.backgroundColor);ForeColor=ColorTranslator.FromHtml(a.textColor);CardColor=BackColor.GetBrightness()<.4F?Color.FromArgb(43,38,50):Color.White;string image=Store.Resolve(a.background);if(background!=null){background.Dispose();background=null;}if(scaledBackground!=null){scaledBackground.Dispose();scaledBackground=null;}if(File.Exists(image))using(var source=Image.FromFile(image))background=new Bitmap(source);WalkTheme(shell);StyleStatus(false);UpdateHarnessIndicators(harnessStates,harnessOnline);Invalidate(true);}
+        void StyleButton(Button button,bool selected=false){string kind=Convert.ToString(button.Tag);button.FlatStyle=FlatStyle.Flat;if(kind=="primary"){button.BackColor=Accent;button.ForeColor=Accent.GetBrightness()<.58?Color.White:Color.Black;button.FlatAppearance.BorderSize=0;}else if(kind=="danger"){button.BackColor=Color.FromArgb(190,62,72);button.ForeColor=Color.White;button.FlatAppearance.BorderSize=0;}else if(kind=="nav"||kind=="nav-primary"){button.BackColor=selected?Accent:(kind=="nav-primary"?Mix(CardColor,Accent,12):CardColor);button.ForeColor=selected?(Accent.GetBrightness()<.58?Color.White:Color.Black):ForeColor;button.FlatAppearance.BorderSize=0;}else{button.BackColor=CardColor;button.ForeColor=BackColor.GetBrightness()<.4F?Mix(Color.White,Accent,20):Color.FromArgb(16,24,32);button.FlatAppearance.BorderColor=Mix(CardColor,Accent,65);button.FlatAppearance.BorderSize=1;}}
+        void ApplyTheme(){var a=Config.appearance;Accent=ColorTranslator.FromHtml(a.accent);BackColor=ColorTranslator.FromHtml(a.backgroundColor);ForeColor=ColorTranslator.FromHtml(a.textColor);CardColor=BackColor.GetBrightness()<.4F?Color.FromArgb(43,38,50):Mix(Color.White,Accent,3);string image=Store.Resolve(a.background);if(background!=null){background.Dispose();background=null;}if(scaledBackground!=null){scaledBackground.Dispose();scaledBackground=null;}if(defaultBackdrop!=null){defaultBackdrop.Dispose();defaultBackdrop=null;}if(File.Exists(image))using(var source=Image.FromFile(image))background=new Bitmap(source);WalkTheme(shell);StyleStatus(false);UpdateHarnessIndicators(harnessStates,harnessOnline);Invalidate(true);}
         void WalkTheme(Control parent){foreach(Control c in parent.Controls){c.ForeColor=ForeColor;if(c is Button)StyleButton((Button)c,navigationButtons.ContainsKey(page)&&navigationButtons[page]==c);else if(c is TextBox||c is ComboBox||c is ListBox||c is NumericUpDown){c.BackColor=CardColor;c.ForeColor=ForeColor;}WalkTheme(c);}}
-        void ApplyIcon(){string path=Store.Resolve(Config.appearance.icon);if(!File.Exists(path))return;try{using(var icon=new Icon(path)){Icon=(Icon)icon.Clone();if(tray!=null)tray.Icon=Icon;}}catch(Exception exc){Status(exc.Message);}}
+        void ApplyIcon(){string path=Store.Resolve(Config.appearance.icon);try{if(!File.Exists(path)){string mascot=DefaultMascotPath();if(File.Exists(mascot))path=Icons.Make(mascot,Path.Combine(Store.Root,"data","appearance"));}if(!File.Exists(path))return;using(var icon=new Icon(path)){Icon=(Icon)icon.Clone();if(tray!=null)tray.Icon=Icon;}}catch(Exception exc){Status(exc.Message);}}
     }
 }

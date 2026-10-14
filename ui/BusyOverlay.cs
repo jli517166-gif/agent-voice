@@ -24,14 +24,14 @@ namespace AgentVoice {
         protected override void OnPaintBackground(PaintEventArgs e){if(snapshot!=null)e.Graphics.DrawImage(snapshot,ClientRectangle);else base.OnPaintBackground(e);}
         protected override void OnPaint(PaintEventArgs e){
             base.OnPaint(e);e.Graphics.SmoothingMode=SmoothingMode.AntiAlias;
-            using(var shade=new SolidBrush(Color.FromArgb(105,20,16,28)))e.Graphics.FillRectangle(shade,ClientRectangle);
+            using(var shade=new SolidBrush(Color.FromArgb(112,3,18,30)))e.Graphics.FillRectangle(shade,ClientRectangle);
             int width=Math.Min(480,Math.Max(280,Width-48)),height=230;var box=new Rectangle((Width-width)/2,(Height-height)/2,width,height);
-            using(var path=Shapes.Rounded(box,18))using(var fill=new SolidBrush(Color.FromArgb(245,42,36,52)))using(var border=new Pen(Color.FromArgb(210,201,103,145),2)){e.Graphics.FillPath(fill,path);e.Graphics.DrawPath(border,path);}
+            using(var path=Shapes.Rounded(box,18))using(var fill=new SolidBrush(Color.FromArgb(245,7,25,42)))using(var border=new Pen(Color.FromArgb(220,11,159,216),2)){e.Graphics.FillPath(fill,path);e.Graphics.DrawPath(border,path);}
             var visual=new Rectangle(box.X+width/2-58,box.Y+26,116,116);
             if(custom!=null){if(customFrames>1)custom.SelectActiveFrame(FrameDimension.Time,frame%customFrames);e.Graphics.DrawImage(custom,visual);}
             else{
-                for(int i=0;i<10;i++){double angle=(i+frame*.24)*Math.PI*2/10;float alpha=(i+frame)%10/9f;int x=(int)(visual.X+visual.Width/2+Math.Cos(angle)*38),y=(int)(visual.Y+visual.Height/2+Math.Sin(angle)*38);using(var brush=new SolidBrush(Color.FromArgb(70+(int)(185*alpha),201,103,145)))e.Graphics.FillEllipse(brush,x-7,y-7,14,14);}
-                using(var pen=new Pen(Color.FromArgb(225,245,210,226),4)){for(int i=0;i<6;i++){float x=visual.X+24+i*14;float wave=(float)Math.Sin((frame+i)*.55);float h=18+Math.Abs(wave)*42;e.Graphics.DrawLine(pen,x,visual.Y+58-h/2,x,visual.Y+58+h/2);}}
+                for(int i=0;i<10;i++){double angle=(i+frame*.24)*Math.PI*2/10;float alpha=(i+frame)%10/9f;int x=(int)(visual.X+visual.Width/2+Math.Cos(angle)*38),y=(int)(visual.Y+visual.Height/2+Math.Sin(angle)*38);using(var brush=new SolidBrush(Color.FromArgb(70+(int)(185*alpha),11,159,216)))e.Graphics.FillEllipse(brush,x-7,y-7,14,14);}
+                using(var pen=new Pen(Color.FromArgb(235,206,246,255),4)){for(int i=0;i<6;i++){float x=visual.X+24+i*14;float wave=(float)Math.Sin((frame+i)*.55);float h=18+Math.Abs(wave)*42;e.Graphics.DrawLine(pen,x,visual.Y+58-h/2,x,visual.Y+58+h/2);}}
             }
             var textBox=new Rectangle(box.X+20,box.Bottom-66,box.Width-40,44);TextRenderer.DrawText(e.Graphics,message??"正在处理…",new Font(Font.FontFamily,11F,FontStyle.Bold),textBox,Color.White,TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter|TextFormatFlags.EndEllipsis);
         }

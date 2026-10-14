@@ -4,9 +4,6 @@ from pathlib import Path
 
 NAMES={
     'codex':('codex.exe','codex.cmd','codex.ps1','codex'),
-    'claude':('claude.exe','claude.cmd','claude.ps1','claude'),
-    'pi':('pi.exe','pi.cmd','pi.ps1','pi'),
-    'opencode':('opencode.exe','opencode.cmd','opencode.ps1','opencode'),
     'deepseek':('dsh.exe','dsh.cmd','dsh.ps1','dsh'),
 }
 
@@ -15,6 +12,7 @@ def candidates(source,location):
     for name in NAMES.get(source,()):
         for path in (location/name,location/'bin'/name,location/'resources'/name,location/'resources'/'app'/name):
             if path.is_file() and str(path).lower() not in seen:seen.add(str(path).lower());yield path
+    for name in NAMES.get(source,()):
         found=shutil.which(name)
         if found and found.lower() not in seen:seen.add(found.lower());yield Path(found)
     if source=='codex':
@@ -28,9 +26,6 @@ def candidates(source,location):
 
 def command_for(source,executable,prompt,location):
     if source=='codex':args=['exec','--skip-git-repo-check','-C',str(location),prompt]
-    elif source=='claude':args=['-p',prompt]
-    elif source=='pi':args=['-p',prompt]
-    elif source=='opencode':args=['run',prompt]
     elif source=='deepseek':args=['headless','-']
     else:raise ValueError('尚未配置该 Harness 的自动验证命令')
     executable=Path(executable)

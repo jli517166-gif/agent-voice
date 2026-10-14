@@ -1,0 +1,16 @@
+{
+  "name": "agent-voice-local",
+  "interface": { "displayName": "Agent Voice 本地扩展" },
+  "plugins": [
+    {
+      "name": "agent-voice-control",
+      "source": { "source": "local", "path": "./.agents/plugins/agent-voice-control" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL", "products": ["CODEX"] },
+      "category": "Productivity",
+      "interface": {
+        "displayName": "Agent Voice 控制台",
+        "description": "在 Codex 聊天栏控制语音服务、朗读和声音方案。"
+      }
+    }
+  ]
+}

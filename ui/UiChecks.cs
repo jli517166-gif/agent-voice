@@ -48,7 +48,7 @@ namespace AgentVoice {
             serviceToggle.PerformClick();await wait();if(!await Service.Running())throw new InvalidOperationException("启动按钮未开启服务："+footer.Text);results.Add("native start button");
             ShowPage("voices");profileName.Text="真实流程配置 A";profileKind.SelectedIndex=1;synthesisChoice.SelectedIndex=1;ShowPage("home");pitch.Value=2;formant.Value=Config.voice.processing=="accepted"?0:.4M;saveVoiceButton.PerformClick();await wait();
             ShowPage("voices");FindButton(pages["voices"],"保存方案").PerformClick();await wait();ShowPage("home");string ident=Config.profiles.Last().id;VoiceConfig saved=Config.profiles.Last().voice.Clone();if(!File.Exists(Path.Combine(ProfileFolder(Config.profiles.Last()),"profile.json")))throw new InvalidOperationException("声音方案没有建立独立文件夹");results.Add("full RVC plus TTS profile saved without applying and owns a named folder");
-            string switchFixture=Path.Combine(directory,"switch-fixture.pth");File.WriteAllBytes(switchFixture,new byte[]{1,2,3,4});processingChoice.SelectedIndex=0;modelPath.Text=switchFixture;indexPath.Text="";pitch.Value=-2;formant.Value=-.3M;saveVoiceButton.PerformClick();await wait();if(!Config.voice.model.EndsWith("switch-fixture.pth"))throw new InvalidOperationException("模型切换未应用");results.Add("different RVC model applied");
+            string currentModel=Store.Resolve(Config.voice.model),modelFolder=Path.GetDirectoryName(currentModel);string switchFixture=Directory.Exists(modelFolder)?Directory.GetFiles(modelFolder,"*.pth").FirstOrDefault(path=>!path.Equals(currentModel,StringComparison.OrdinalIgnoreCase)):null;if(String.IsNullOrWhiteSpace(switchFixture))switchFixture=currentModel;processingChoice.SelectedIndex=0;modelPath.Text=switchFixture;indexPath.Text="";pitch.Value=-2;formant.Value=-.3M;saveVoiceButton.PerformClick();await wait();if(!Store.Resolve(Config.voice.model).Equals(Path.GetFullPath(switchFixture),StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("模型切换未应用。界面模型="+modelPath.Text+"；实际模型="+Config.voice.model+"；状态="+footer.Text);results.Add(switchFixture.Equals(currentModel,StringComparison.OrdinalIgnoreCase)?"real RVC model reapplied":"different real RVC model applied");
             ShowPage("voices");for(int i=0;i<profileList.Items.Count;i++)if(((SavedVoice)profileList.Items[i]).id==ident)profileList.SelectedIndex=i;
             var restore=FindButton(pages["voices"],"使用选中方案");restore.PerformClick();await wait();if(!SameVoiceParameters(Config.voice,saved))throw new InvalidOperationException("声音方案未完整恢复");results.Add("native restore button preserves all parameters");
             ShowPage("home");body.Text="工作好久啦，起来动一动、喝口水吧～";generate.PerformClick();await wait();if(lastJob.Length==0)throw new InvalidOperationException("生成按钮没有提交任务");var job=await Service.Request("/api/jobs/"+lastJob);if(Json.Text(job,"state")!="completed")throw new InvalidOperationException(Json.Text(job,"error"));results.Add("native generation and local playback");
@@ -90,15 +90,15 @@ namespace AgentVoice {
             ShowCelebration("界面自检");Application.DoEvents();var celebration=shell.Controls.Cast<Control>().OfType<Celebration>().FirstOrDefault();if(celebration==null||celebration.Dock!=DockStyle.Fill||celebration.Width<shell.ClientSize.Width-2||celebration.Height<shell.ClientSize.Height-2)errors.Add("接入成功礼花没有覆盖完整页面");if(celebration!=null)celebration.Dispose();
             ShowPage("home");
             body.Text="页面切换不应丢失这份草稿";processingChoice.SelectedIndex=0;pitch.Value=3;formant.Value=.65M;
-            bool wasPi=Config.harness["pi"];Config.harness["pi"]=true;
+            bool wasDeepSeek=Config.harness["deepseek"];Config.harness["deepseek"]=true;
             foreach(string state in new[]{"verified","connected","recent_event","waiting"}){
-                UpdateHarnessIndicators(new Dictionary<string,object>{{"pi",new Dictionary<string,object>{{"state",state}}}},true);
+                UpdateHarnessIndicators(new Dictionary<string,object>{{"deepseek",new Dictionary<string,object>{{"state",state}}}},true);
                 bool shouldGreen=state=="verified";
-                if(harnessIndicators["pi"].Any(label=>(label.ForeColor!=ForeColor)!=shouldGreen))errors.Add("Harness 状态颜色未匹配实际连接证据");
+                if(harnessIndicators["deepseek"].Any(label=>(label.ForeColor!=ForeColor)!=shouldGreen))errors.Add("Harness 状态颜色未匹配实际连接证据");
             }
-            Config.harness["pi"]=false;UpdateHarnessIndicators(new Dictionary<string,object>{{"pi",new Dictionary<string,object>{{"state","connected"}}}},true);
-            if(harnessIndicators["pi"].Any(label=>!label.Text.EndsWith("未启用")||label.ForeColor!=ForeColor))errors.Add("未启用 Harness 被误报为在线");
-            Config.harness["pi"]=wasPi;UpdateHarnessIndicators(null,false);
+            Config.harness["deepseek"]=false;UpdateHarnessIndicators(new Dictionary<string,object>{{"deepseek",new Dictionary<string,object>{{"state","connected"}}}},true);
+            if(harnessIndicators["deepseek"].Any(label=>!label.Text.EndsWith("未启用")||label.ForeColor!=ForeColor))errors.Add("未启用 Harness 被误报为在线");
+            Config.harness["deepseek"]=wasDeepSeek;UpdateHarnessIndicators(null,false);
             ShowPage("settings");ShowPage("airi");backButton.PerformClick();
             if(page!="settings"||!backButton.Visible)errors.Add("设置子页面未返回上一页");
             backButton.PerformClick();if(page!="home"||backButton.Visible)errors.Add("设置未返回首页或首页仍显示返回按钮");

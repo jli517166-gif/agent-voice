@@ -6,6 +6,22 @@ using System.IO;
 using System.Windows.Forms;
 
 namespace AgentVoice {
+    public sealed class AnimeButton:Button {
+        bool hovering,pressed;
+        public AnimeButton(){FlatStyle=FlatStyle.Flat;FlatAppearance.BorderSize=0;SetStyle(ControlStyles.UserPaint|ControlStyles.OptimizedDoubleBuffer|ControlStyles.AllPaintingInWmPaint|ControlStyles.ResizeRedraw,true);}
+        protected override void OnMouseEnter(EventArgs e){hovering=true;Invalidate();base.OnMouseEnter(e);}
+        protected override void OnMouseLeave(EventArgs e){hovering=false;pressed=false;Invalidate();base.OnMouseLeave(e);}
+        protected override void OnMouseDown(MouseEventArgs e){pressed=true;Invalidate();base.OnMouseDown(e);}
+        protected override void OnMouseUp(MouseEventArgs e){pressed=false;Invalidate();base.OnMouseUp(e);}
+        static Color Shift(Color color,int amount){return Color.FromArgb(color.A,Math.Max(0,Math.Min(255,color.R+amount)),Math.Max(0,Math.Min(255,color.G+amount)),Math.Max(0,Math.Min(255,color.B+amount)));}
+        protected override void OnPaint(PaintEventArgs e){
+            e.Graphics.SmoothingMode=SmoothingMode.AntiAlias;var rect=new Rectangle(1,1,Width-3,Height-3);if(rect.Width<2||rect.Height<2)return;
+            Color top=hovering?Shift(BackColor,BackColor.GetBrightness()<.55F?16:-7):BackColor,bottom=Shift(top,BackColor.GetBrightness()<.55F?-8:5);if(pressed){top=Shift(top,-10);bottom=Shift(bottom,-10);}
+            using(var shape=Shapes.Rounded(rect,Math.Min(13,Math.Max(6,Height/3))))using(var fill=new LinearGradientBrush(rect,top,bottom,90F)){e.Graphics.FillPath(fill,shape);if(FlatAppearance.BorderSize>0)using(var pen=new Pen(FlatAppearance.BorderColor,FlatAppearance.BorderSize))e.Graphics.DrawPath(pen,shape);}
+            var textRect=new Rectangle(Padding.Left,0,Math.Max(1,Width-Padding.Horizontal),Height);TextRenderer.DrawText(e.Graphics,Text,Font,textRect,Enabled?ForeColor:SystemColors.GrayText,TextFormatFlags.VerticalCenter|(TextAlign==ContentAlignment.MiddleLeft?TextFormatFlags.Left:TextFormatFlags.HorizontalCenter)|TextFormatFlags.EndEllipsis);
+            if(Focused&&ShowFocusCues)ControlPaint.DrawFocusRectangle(e.Graphics,new Rectangle(5,5,Width-10,Height-10));
+        }
+    }
     public sealed class ScenePanel:Panel {
         public MainForm Host;
         public bool Card;
@@ -21,7 +37,7 @@ namespace AgentVoice {
             Invalidate(true);
         }
         protected override void OnPaintBackground(PaintEventArgs e){if(Host==null){base.OnPaintBackground(e);return;}Host.PaintScene(e.Graphics,this);}
-        protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);if(Card&&Host!=null){using(var path=Shapes.Rounded(new Rectangle(0,0,Width-1,Height-1),16)){using(var brush=new SolidBrush(Color.FromArgb(Host.HasBackground?210:245,Host.CardColor)))e.Graphics.FillPath(brush,path);using(var pen=new Pen(Color.FromArgb(45,Host.Accent)))e.Graphics.DrawPath(pen,path);}}}
+        protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);if(Card&&Host!=null){e.Graphics.SmoothingMode=SmoothingMode.AntiAlias;using(var path=Shapes.Rounded(new Rectangle(1,1,Width-3,Height-3),20)){using(var brush=new SolidBrush(Color.FromArgb(Host.HasBackground?222:248,Host.CardColor)))e.Graphics.FillPath(brush,path);using(var pen=new Pen(Color.FromArgb(82,Host.Accent),1.35F))e.Graphics.DrawPath(pen,path);}using(var accent=new SolidBrush(Color.FromArgb(175,Host.Accent)))e.Graphics.FillEllipse(accent,14,14,7,7);using(var glow=new Pen(Color.FromArgb(85,Host.Accent),2)){e.Graphics.DrawLine(glow,27,17,49,17);e.Graphics.DrawLine(glow,52,17,59,17);}}}
     }
     public sealed class BufferedTable:TableLayoutPanel {
         public BufferedTable(){SetStyle(ControlStyles.OptimizedDoubleBuffer|ControlStyles.AllPaintingInWmPaint|ControlStyles.ResizeRedraw,true);}

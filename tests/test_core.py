@@ -66,7 +66,7 @@ class CoreTests(unittest.TestCase):
             time.sleep(.01)
         self.fail('job did not finish')
     def test_initial_public_config_contains_no_private_voice(self):
-        cfg=defaults();self.assertEqual(cfg['voice']['model'],'');self.assertEqual(cfg['voice']['reference'],'');self.assertEqual([k for k,v in cfg['harness'].items() if v],['codex'])
+        cfg=defaults();self.assertEqual(cfg['voice']['model'],'');self.assertEqual(cfg['voice']['reference'],'');self.assertEqual(cfg['harness'],{'codex':True,'deepseek':False})
         self.assertEqual(cfg['voice']['synthesisMode'],'base');self.assertFalse(cfg['voice']['advancedEnabled'])
     def test_sanitizer_retains_body_skips_code_links_and_paths(self):
         self.assertEqual(sanitize('工作好久啦，起来动一动、喝口水吧～'),'工作好久啦，起来动一动、喝口水吧～')
@@ -100,37 +100,37 @@ class CoreTests(unittest.TestCase):
         with self.assertRaises(urllib.error.HTTPError) as err:self.request('/nothing')
         self.assertEqual(err.exception.code,404)
     def test_connector_heartbeat_auth_enabled_and_expiry(self):
-        self.assertEqual(self.request('/health')['harnessConnections']['pi']['state'],'disabled')
-        self.request('/api/harness/pi/heartbeat',{})
-        self.store.update({'harness':{'pi':True}})
-        self.assertEqual(self.request('/health')['harnessConnections']['pi']['state'],'waiting')
-        with self.assertRaises(urllib.error.HTTPError) as err:self.request('/api/harness/pi/heartbeat',{},auth=False)
+        self.assertEqual(self.request('/health')['harnessConnections']['deepseek']['state'],'disabled')
+        self.request('/api/harness/deepseek/heartbeat',{})
+        self.store.update({'harness':{'deepseek':True}})
+        self.assertEqual(self.request('/health')['harnessConnections']['deepseek']['state'],'waiting')
+        with self.assertRaises(urllib.error.HTTPError) as err:self.request('/api/harness/deepseek/heartbeat',{},auth=False)
         self.assertEqual(err.exception.code,401)
-        self.request('/api/harness/pi/heartbeat',{})
-        self.assertEqual(self.request('/health')['harnessConnections']['pi']['state'],'connected')
-        now=[0.0];presence=HarnessPresence(clock=lambda:now[0]);presence.heartbeat('pi')
+        self.request('/api/harness/deepseek/heartbeat',{})
+        self.assertEqual(self.request('/health')['harnessConnections']['deepseek']['state'],'connected')
+        now=[0.0];presence=HarnessPresence(clock=lambda:now[0]);presence.heartbeat('deepseek')
         now[0]=91
-        self.assertEqual(presence.snapshot({'pi':True})['pi']['state'],'waiting')
+        self.assertEqual(presence.snapshot({'deepseek':True})['deepseek']['state'],'waiting')
         self.assertEqual(presence.snapshot({'codex':True},True)['codex']['state'],'monitoring')
     def test_received_event_is_not_a_persistent_connection(self):
-        self.store.update({'harness':{'claude':True}})
-        self.request('/api/harness/claude',{'hook_event_name':'Other','last_assistant_message':'忽略'})
-        self.assertEqual(self.request('/health')['harnessConnections']['claude']['state'],'waiting')
-        self.request('/api/harness/claude',{'hook_event_name':'Stop','last_assistant_message':'最终回复'})
-        state=self.request('/health')['harnessConnections']['claude']
+        self.store.update({'harness':{'deepseek':True}})
+        self.request('/api/harness/deepseek',{'type':'other','text':'忽略'})
+        self.assertEqual(self.request('/health')['harnessConnections']['deepseek']['state'],'waiting')
+        self.request('/api/harness/deepseek',{'type':'turn/end','text':'最终回复'})
+        state=self.request('/health')['harnessConnections']['deepseek']
         self.assertEqual(state['state'],'recent_event');self.assertIsNotNone(state['lastReceived'])
-        now=[0.0];presence=HarnessPresence(clock=lambda:now[0]);presence.receipt('claude');now[0]=301
-        self.assertEqual(presence.snapshot({'claude':True})['claude']['state'],'waiting')
-        self.assertEqual(presence.snapshot({'claude':False})['claude']['state'],'disabled')
-    def test_five_harness_formats_select_final_text(self):
-        events={'codex':{'type':'agent-turn-complete','last-assistant-message':'最终回答'},'claude':{'hook_event_name':'Stop','last_assistant_message':'最终回答'},'deepseek':{'type':'turn/end','text':'最终回答'},'pi':{'type':'agent_end','messages':[{'role':'assistant','content':[{'type':'thinking','text':'不要读'},{'type':'text','text':'最终回答'}]}]},'opencode':{'type':'session.idle','messages':[{'info':{'role':'assistant','id':'a','time':{'completed':1}},'parts':[{'type':'reasoning','text':'不要读'},{'type':'text','text':'最终回答'}]}]}}
+        now=[0.0];presence=HarnessPresence(clock=lambda:now[0]);presence.receipt('deepseek');now[0]=301
+        self.assertEqual(presence.snapshot({'deepseek':True})['deepseek']['state'],'waiting')
+        self.assertEqual(presence.snapshot({'deepseek':False})['deepseek']['state'],'disabled')
+    def test_supported_harness_formats_select_final_text(self):
+        events={'codex':{'type':'agent-turn-complete','last-assistant-message':'最终回答'},'deepseek':{'type':'turn/end','text':'最终回答'}}
         for source,event in events.items():self.assertEqual(normalize(source,event)['text'],'最终回答')
-        self.assertIsNone(normalize('claude',{'hook_event_name':'StopFailure','last_assistant_message':'错误'}))
+        with self.assertRaisesRegex(ValueError,'未知 Harness'):normalize('claude',{'hook_event_name':'Stop','last_assistant_message':'错误'})
     def test_harness_enabling_and_deduplication(self):
         event={'type':'agent-turn-complete','thread-id':'a','turn-id':'b','last-assistant-message':'喝水吧'}
         first=self.request('/api/harness/codex',event);second=self.request('/api/harness/codex',event)
         self.assertEqual(first['jobId'],second['jobId']);self.assertTrue(second['duplicate']);self.assertEqual(self.wait(first['jobId'])['state'],'completed')
-        self.assertTrue(self.request('/api/harness/claude',{'hook_event_name':'Stop','last_assistant_message':'不会念'})['skipped'])
+        self.assertTrue(self.request('/api/harness/deepseek',{'type':'turn/end','text':'不会念'})['skipped'])
     def test_serial_queue_and_snapshot_isolation(self):
         one=self.request('/speak',{'text':'第一句','play':True})
         self.store.update({'voice':{'pitch':7}})

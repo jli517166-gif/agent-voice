@@ -10,18 +10,6 @@ class SetupTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory();self.base=Path(self.temp.name);self.root=self.base/'voice';Store(self.root)
         self.home=self.base/'home';self.home.mkdir();self.install=self.base/'installed';self.install.mkdir()
     def tearDown(self):self.temp.cleanup()
-    def test_claude_global_hook_preserves_existing_model_and_unrelated_hooks(self):
-        path=self.home/'.claude/settings.json';path.parent.mkdir();path.write_text(json.dumps({'model':'existing','hooks':{'Stop':[{'hooks':[{'type':'command','command':'existing-hook'}]}]}}))
-        with patch.dict(os.environ,{'CLAUDE_CONFIG_DIR':str(path.parent)}):
-            configure('claude',self.root,self.install,self.home);result=configure('claude',self.root,self.install,self.home)
-        cfg=json.loads(path.read_text());self.assertEqual(cfg['model'],'existing');self.assertEqual(len(cfg['hooks']['Stop']),2)
-        self.assertFalse(result['verified']);self.assertTrue(Path(result['backup']).is_dir())
-    def test_pi_and_opencode_install_global_wrappers_not_install_project(self):
-        with patch.dict(os.environ,{'PI_CODING_AGENT_DIR':str(self.home/'.pi/agent'),'XDG_CONFIG_HOME':str(self.home/'.config')}):
-            configure('pi',self.root,self.install,self.home);configure('opencode',self.root,self.install,self.home)
-        self.assertTrue((self.home/'.pi/agent/extensions/agent-voice.ts').is_file())
-        self.assertTrue((self.home/'.config/opencode/plugins/agent-voice.js').is_file())
-        self.assertFalse((self.install/'.opencode').exists())
     def test_codex_records_actual_sessions_directory(self):
         (self.install/'sessions').mkdir();result=configure('codex',self.root,self.install,self.home)
         record=json.loads((self.root/'data/harness-installations.json').read_text())['codex']
@@ -40,7 +28,7 @@ class SetupTests(unittest.TestCase):
         headless_entries=yaml.safe_load((headless/'cordis.patch.yml').read_text());self.assertEqual(next(e for e in headless_entries if e.get('id')=='agent-default-model')['config']['provider'],'deepseek-account')
     def test_unknown_or_missing_location_is_not_success(self):
         with self.assertRaises(ValueError):configure('unknown',self.root,self.install,self.home)
-        with self.assertRaises(ValueError):configure('pi',self.root,self.base/'missing',self.home)
+        with self.assertRaises(ValueError):configure('deepseek',self.root,self.base/'missing',self.home)
     def test_deepseek_handoff_disables_only_known_old_voice(self):
         import yaml
         profile=self.home/'.dsh/profiles/desktop';profile.mkdir(parents=True);path=profile/'cordis.patch.yml'
@@ -49,12 +37,7 @@ class SetupTests(unittest.TestCase):
         old=entries[0]['insert'][0];other=entries[0]['insert'][1]
         self.assertFalse(old['config']['enabled']);self.assertFalse(old['config']['autostart']);self.assertTrue(other['config']['enabled']);self.assertTrue(result['disabledLegacyVoice'])
     def test_detects_every_supported_harness_from_strong_signature(self):
-        fixtures={
-            'codex':lambda root:(root/'sessions').mkdir(),
-            'deepseek':lambda root:(root/'cordis.yml').write_text('plugins: []'),
-            'claude':lambda root:(root/'claude.exe').write_bytes(b''),
-            'pi':lambda root:(root/'pi.cmd').write_text(''),
-            'opencode':lambda root:(root/'opencode.exe').write_bytes(b'')}
+        fixtures={'codex':lambda root:(root/'sessions').mkdir(),'deepseek':lambda root:(root/'cordis.yml').write_text('plugins: []')}
         for expected,build in fixtures.items():
             folder=self.base/('detect-'+expected);folder.mkdir();build(folder)
             self.assertEqual(detect(folder,self.home)['source'],expected)
@@ -75,7 +58,12 @@ class SetupTests(unittest.TestCase):
     def test_detection_rejects_unknown_and_ambiguous_directories(self):
         unknown=self.base/'unknown';unknown.mkdir()
         with self.assertRaisesRegex(ValueError,'未识别'):detect(unknown,self.home)
-        mixed=self.base/'mixed';mixed.mkdir();(mixed/'sessions').mkdir();(mixed/'claude.exe').write_bytes(b'')
+        mixed=self.base/'mixed';mixed.mkdir();(mixed/'sessions').mkdir();(mixed/'cordis.yml').write_text('[]')
         with self.assertRaisesRegex(ValueError,'同时匹配'):detect(mixed,self.home)
+
+    def test_unverified_harness_is_not_detected_or_configured(self):
+        folder=self.base/'claude';folder.mkdir();(folder/'claude.exe').write_bytes(b'')
+        with self.assertRaisesRegex(ValueError,'未识别'):detect(folder,self.home)
+        with self.assertRaises(ValueError):configure('claude',self.root,folder,self.home)
 
 if __name__=='__main__':unittest.main()

@@ -7,7 +7,7 @@ from pathlib import Path
 import threading
 import uuid
 
-SOURCES = ("codex", "deepseek", "claude", "pi", "opencode")
+SOURCES = ("codex", "deepseek")
 
 def defaults():
     return {"version":1, "port":8820, "token":uuid.uuid4().hex,
@@ -20,7 +20,7 @@ def defaults():
         "engines":{"pythonRvc":"tts-engines/cosyvoice/runtime/tools/python.exe", "rvcHome":"engines/rvc",
                    "pythonTts":"tts-engines/cosyvoice/runtime/tools/python.exe", "cosyRepo":"tts-engines/cosyvoice/source",
                    "cosyModel":"tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B"},
-        "appearance":{"accent":"#C96791", "backgroundColor":"#FAF4F8", "textColor":"#332B3B",
+        "appearance":{"accent":"#0B9FD8", "backgroundColor":"#F7FBFE", "textColor":"#101820",
                       "background":"", "icon":"", "loadingAnimation":""},
         "cleanup":{"maxAgeMinutes":30, "keepLatest":3, "maxTotalMb":200, "intervalSeconds":900},
         "harness":{source:source == "codex" for source in SOURCES},
@@ -128,7 +128,12 @@ class Store:
         self.lock = threading.RLock()
         if self.path.exists():
             # Corrupt data is reported, never silently reset and overwritten.
-            self.data = validate(merge(defaults(),json.loads(self.path.read_text(encoding="utf-8-sig"))))
+            saved=json.loads(self.path.read_text(encoding="utf-8-sig"))
+            # Versions before the supported-scope audit exposed three
+            # unverified Harness adapters.  Drop those switches during load.
+            if isinstance(saved.get("harness"),dict):
+                saved["harness"]={key:value for key,value in saved["harness"].items() if key in SOURCES}
+            self.data = validate(merge(defaults(),saved))
         else:
             self.data = defaults()
             atomic_json(self.path,self.data)

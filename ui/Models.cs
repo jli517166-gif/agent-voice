@@ -32,7 +32,7 @@ namespace AgentVoice {
         public string pythonRvc="tts-engines/cosyvoice/runtime/tools/python.exe", rvcHome="engines/rvc", pythonTts="tts-engines/cosyvoice/runtime/tools/python.exe", cosyRepo="tts-engines/cosyvoice/source", cosyModel="tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B";
     }
     public sealed class Appearance {
-        public string accent="#C96791", backgroundColor="#FAF4F8", textColor="#332B3B", background="", icon="", loadingAnimation="";
+        public string accent="#0B9FD8", backgroundColor="#F7FBFE", textColor="#101820", background="", icon="", loadingAnimation="";
     }
     public sealed class Cleanup {
         public int maxAgeMinutes=30, keepLatest=3, maxTotalMb=200, intervalSeconds=900;
@@ -54,7 +54,7 @@ namespace AgentVoice {
         public Appearance appearance=new Appearance();
         public Cleanup cleanup=new Cleanup();
         public AiriConfig airi=new AiriConfig();
-        public Dictionary<string,bool> harness=new Dictionary<string,bool>{{"codex",true},{"deepseek",false},{"claude",false},{"pi",false},{"opencode",false}};
+        public Dictionary<string,bool> harness=new Dictionary<string,bool>{{"codex",true},{"deepseek",false}};
         public List<string> modelRoots=new List<string>{"models"};
         public List<string> phrases=new List<string>{"工作好久啦，起来动一动、喝口水吧～"};
         public List<SavedVoice> profiles=new List<SavedVoice>();
@@ -72,7 +72,7 @@ namespace AgentVoice {
         public SettingsStore(string root) {Root=AppPaths.CanonicalDirectory(root);FilePath=Path.Combine(Root,"data","settings.json");}
         public string Resolve(string path) {return string.IsNullOrEmpty(path)?"":Path.GetFullPath(Path.IsPathRooted(path)?path:Path.Combine(Root,path));}
         public string Portable(string path) {string absolute=Resolve(path),prefix=Root.TrimEnd('\\')+"\\";return absolute.StartsWith(prefix,StringComparison.OrdinalIgnoreCase)?absolute.Substring(prefix.Length).Replace('\\','/'):absolute;}
-        public Settings Read() {return File.Exists(FilePath)?Json.Decode<Settings>(File.ReadAllText(FilePath,Encoding.UTF8)):new Settings();}
+        public Settings Read() {var settings=File.Exists(FilePath)?Json.Decode<Settings>(File.ReadAllText(FilePath,Encoding.UTF8)):new Settings();var supported=new Dictionary<string,bool>();supported["codex"]=settings.harness.ContainsKey("codex")&&settings.harness["codex"];supported["deepseek"]=settings.harness.ContainsKey("deepseek")&&settings.harness["deepseek"];settings.harness=supported;return settings;}
         public void Write(Settings settings) {
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath));
             string temp=FilePath+"."+Guid.NewGuid().ToString("N")+".tmp";

@@ -43,14 +43,9 @@ class IsolationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)/'app';project=Path(temp)/'project';project.mkdir();Store(root)
             (root/'service').mkdir();(root/'service/state.py').write_bytes((BASE/'service/state.py').read_bytes())
-            existing={'permissions':{'allow':['Read']},'hooks':{'Stop':[{'hooks':[{'type':'command','command':'existing'}]}]}}
-            atomic_json(project/'.claude/settings.json',existing)
             with contextlib.redirect_stdout(io.StringIO()):
-                for source in ('claude','pi','opencode','deepseek'):export(source,root,project);export(source,root,project)
-            saved=json.loads((project/'.claude/settings.json').read_text(encoding='utf-8'))
-            self.assertEqual(saved['permissions'],existing['permissions']);self.assertEqual(len(saved['hooks']['Stop']),2)
-            path=project/'.pi/extensions/agent-voice.ts';path.write_text('user content',encoding='utf-8')
-            with self.assertRaises(ValueError):export('pi',root,project)
-            self.assertEqual(path.read_text(),'user content')
+                export('deepseek',root,project);export('deepseek',root,project)
+            self.assertTrue((project/'node_modules/dsh-agent-voice-public/index.mjs').is_file())
+            with self.assertRaises(ValueError):export('claude',root,project)
 
 if __name__=='__main__':unittest.main(verbosity=2)

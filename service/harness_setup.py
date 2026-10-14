@@ -3,7 +3,7 @@ import json,os,shutil,uuid
 from pathlib import Path
 from state import Store,atomic_json
 
-HARNESS_NAMES={'codex':'Codex','deepseek':'DeepSeek Harness','claude':'Claude Code','pi':'pi','opencode':'OpenCode'}
+HARNESS_NAMES={'codex':'Codex','deepseek':'DeepSeek Harness'}
 
 def detect(location,user_home=None):
     """Identify a supported Harness from stable files inside the selected directory.
@@ -15,11 +15,9 @@ def detect(location,user_home=None):
     if not location.is_dir():raise ValueError('所选目录不存在或不是文件夹')
     roots=[location]
     # Users commonly select an application root, its config root, or its parent.
-    for relative in ('.codex','.claude','.pi/agent','.config/opencode','profiles/desktop'):
+    for relative in ('.codex','profiles/desktop'):
         candidate=location/relative
         if candidate.is_dir():roots.append(candidate)
-    if location.name.lower()=='.pi' and (location/'agent').is_dir():roots.append(location/'agent')
-    if location.name.lower()=='.config' and (location/'opencode').is_dir():roots.append(location/'opencode')
     scores={key:0 for key in HARNESS_NAMES};evidence={key:[] for key in HARNESS_NAMES}
     def hit(source,points,label):scores[source]+=points;evidence[source].append(label)
     def exists(*parts):return any((root.joinpath(*parts)).exists() for root in roots)
@@ -43,16 +41,6 @@ def detect(location,user_home=None):
         if exists('config.toml'):hit('codex',2,'config.toml')
     executable=file_named('codex.exe','codex.cmd','codex.ps1');
     if executable:hit('codex',7,executable.name)
-    if exists('settings.json') and any(root.name.lower()=='.claude' for root in roots):hit('claude',8,'.claude/settings.json')
-    executable=file_named('claude.exe','claude.cmd','claude.ps1');
-    if executable:hit('claude',7,executable.name)
-    if exists('extensions') and any(root.name.lower()=='agent' and root.parent.name.lower()=='.pi' for root in roots):hit('pi',8,'.pi/agent/extensions')
-    executable=file_named('pi.exe','pi.cmd','pi.ps1');
-    if executable:hit('pi',7,executable.name)
-    if exists('plugins') and any(root.name.lower()=='opencode' for root in roots):hit('opencode',8,'opencode/plugins')
-    if exists('opencode.json') or exists('opencode.jsonc'):hit('opencode',5,'OpenCode 配置文件')
-    executable=file_named('opencode.exe','opencode.cmd','opencode.ps1');
-    if executable:hit('opencode',7,executable.name)
     # DeepSeek users normally select the desktop installation directory.  Its
     # Cordis profiles live under the Windows user directory, so the installer
     # root itself must be a strong, version-independent detection signature.
@@ -66,7 +54,7 @@ def detect(location,user_home=None):
     ranked=sorted(scores.items(),key=lambda item:item[1],reverse=True)
     best,score=ranked[0]
     if score<7:
-        raise ValueError('未识别出已适配的 Harness。请选择实际安装目录或用户配置目录；当前支持 Codex、DeepSeek Harness、Claude Code、pi、OpenCode。')
+        raise ValueError('未识别出已实测支持的 Harness。请选择 Codex 的 CODEX_HOME，或 DeepSeek Harness 的实际安装目录。其他 Harness 请按二次开发指南新增适配器。')
     conflicts=[key for key,value in ranked if value>=score-1 and value>=7]
     if len(conflicts)>1:
         names='、'.join(HARNESS_NAMES[key] for key in conflicts)
@@ -94,25 +82,6 @@ def configure(source,root,location,user_home=None):
         code_home=next((p for p in choices if (p/'sessions').is_dir()),None)
         if code_home is None:raise ValueError('未找到 Codex sessions，请先启动 Codex，或选择实际 CODEX_HOME 目录')
         record['codexHome']=str(code_home.resolve());reload=False
-    elif source=='claude':
-        folder=location if location.name=='.claude' else Path(os.environ.get('CLAUDE_CONFIG_DIR',str(home/'.claude')))
-        path=folder/'settings.json';cfg=json.loads(path.read_text(encoding='utf-8-sig')) if path.exists() else {}
-        python=store.resolve(store.get()['engines']['pythonRvc'])
-        quote=lambda value:'"'+str(value).replace('\\','/')+'"'
-        command=' '.join((quote(python),quote(store.root/'integrations/send_event.py'),'claude',quote(store.root)))
-        stops=cfg.setdefault('hooks',{}).setdefault('Stop',[])
-        # Replace only this program's previous hook, preserving unrelated hooks.
-        for entry in stops:
-            entry['hooks']=[h for h in entry.get('hooks',[]) if 'integrations/send_event.py' not in h.get('command','')]
-        stops[:]=[e for e in stops if e.get('hooks')]
-        stops.append({'hooks':[{'type':'command','command':command,'async':True,'timeout':5}]})
-        save(path,json.dumps(cfg,ensure_ascii=False,indent=2))
-    elif source=='pi':
-        folder=Path(os.environ.get('PI_CODING_AGENT_DIR',str(home/'.pi/agent')))
-        wrapper(folder/'extensions/agent-voice.ts','export { default } from '+json.dumps((store.root/'integrations/pi-extension.ts').as_uri())+';\n')
-    elif source=='opencode':
-        folder=Path(os.environ.get('XDG_CONFIG_HOME',str(home/'.config')))/'opencode'
-        wrapper(folder/'plugins/agent-voice.js','export { AgentVoicePlugin } from '+json.dumps((store.root/'integrations/opencode-plugin.mjs').as_uri())+';\n')
     else:
         import yaml
         candidates=[location,location/'profiles/desktop',home/'.dsh/profiles/desktop']
