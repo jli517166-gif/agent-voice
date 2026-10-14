@@ -30,7 +30,8 @@ class BundleTests(unittest.TestCase):
         with wave.open(str(self.root/'reference.wav'),'wb') as wav:wav.setparams((1,2,24000,0,'NONE',''));wav.writeframes(b'\0\0'*2400)
         from PIL import Image
         Image.new('RGB',(8,8),(210,90,130)).save(self.root/'background.png')
-        self.store.update({'voice':{'model':'voice.pth','index':'voice.index','reference':'reference.wav','referenceText':'认真说话。','engine':'sapi','processing':'accepted','assetScope':'private','style':'gentle'},'appearance':{'background':'background.png'}})
+        Image.new('RGB',(8,8),(80,160,220)).save(self.root/'loading.gif',save_all=True)
+        self.store.update({'voice':{'model':'voice.pth','index':'voice.index','reference':'reference.wav','referenceText':'认真说话。','engine':'sapi','processing':'accepted','assetScope':'private','style':'gentle'},'appearance':{'background':'background.png','loadingAnimation':'loading.gif'}})
         cfg=self.store.get();self.store.update({'profiles':[{'id':'accepted','name':'认可版','voice':cfg['voice']}],'phrases':['喝水。','休息。']})
         self.original=self.store.get();self.package=self.base/'accepted.avconfig';self.assets=self.base/'private-assets'
         export_bundle(self.root,self.package)
@@ -79,11 +80,13 @@ class BundleTests(unittest.TestCase):
                 self.assertEqual(digest(self.root/old[key]),digest(self.store.resolve(new[key])));old[key]=new[key]
         self.assertEqual(digest(self.root/expected['appearance']['background']),digest(self.store.resolve(actual['appearance']['background'])))
         expected['appearance']['background']=actual['appearance']['background']
-        self.assertEqual(actual,expected);self.assertEqual(result['assetCount'],4);self.assertEqual(result['scope'],'private')
+        self.assertEqual(digest(self.root/expected['appearance']['loadingAnimation']),digest(self.store.resolve(actual['appearance']['loadingAnimation'])))
+        expected['appearance']['loadingAnimation']=actual['appearance']['loadingAnimation']
+        self.assertEqual(actual,expected);self.assertEqual(result['assetCount'],5);self.assertEqual(result['scope'],'private')
         self.assertTrue(Path(result['backup'],'settings.json').is_file())
         with zipfile.ZipFile(self.package) as archive:
             manifest=json.loads(archive.read('manifest.json'));self.assertNotIn('token',manifest['config']);self.assertNotIn('port',manifest['config'])
-        registry=json.loads((self.root/'data/private-assets.json').read_text());self.assertEqual(len(registry['files']),4)
+        registry=json.loads((self.root/'data/private-assets.json').read_text());self.assertEqual(len(registry['files']),5)
         again=import_bundle(self.root,self.package,asset_root=self.assets);self.assertEqual(again['assetDirectory'],result['assetDirectory'])
     def test_damaged_asset_does_not_replace_settings(self):
         def change(manifest,entries):entries[manifest['assets'][0]['entry']]=b'X'*manifest['assets'][0]['size']

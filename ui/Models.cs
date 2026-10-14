@@ -32,7 +32,7 @@ namespace AgentVoice {
         public string pythonRvc="tts-engines/cosyvoice/runtime/tools/python.exe", rvcHome="engines/rvc", pythonTts="tts-engines/cosyvoice/runtime/tools/python.exe", cosyRepo="tts-engines/cosyvoice/source", cosyModel="tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B";
     }
     public sealed class Appearance {
-        public string accent="#C96791", backgroundColor="#FAF4F8", textColor="#332B3B", background="", icon="";
+        public string accent="#C96791", backgroundColor="#FAF4F8", textColor="#332B3B", background="", icon="", loadingAnimation="";
     }
     public sealed class Cleanup {
         public int maxAgeMinutes=30, keepLatest=3, maxTotalMb=200, intervalSeconds=900;

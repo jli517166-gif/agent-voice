@@ -21,7 +21,7 @@ def defaults():
                    "pythonTts":"tts-engines/cosyvoice/runtime/tools/python.exe", "cosyRepo":"tts-engines/cosyvoice/source",
                    "cosyModel":"tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B"},
         "appearance":{"accent":"#C96791", "backgroundColor":"#FAF4F8", "textColor":"#332B3B",
-                      "background":"", "icon":""},
+                      "background":"", "icon":"", "loadingAnimation":""},
         "cleanup":{"maxAgeMinutes":30, "keepLatest":3, "maxTotalMb":200, "intervalSeconds":900},
         "harness":{source:source == "codex" for source in SOURCES},
         "airi":{"enabled":False, "directory":"", "output":"local"},

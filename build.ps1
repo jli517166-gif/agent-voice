@@ -14,7 +14,7 @@ Move-Item -LiteralPath $compiledExecutable -Destination $finalExecutable -Force
 foreach ($folder in @('service','integrations','tools')) {
     $target = Join-Path $OutputDirectory $folder
     New-Item -ItemType Directory -Path $target -Force | Out-Null
-    Get-ChildItem -LiteralPath (Join-Path $sourceRoot $folder) -File | Where-Object { $folder -ne 'tools' -or $_.Name -in @('prepare_airi.py','release_audit.py','export_connector.py','config_bundle.py','tts_bundle.py','connect_harness.py') } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $target $_.Name) -Force }
+    Get-ChildItem -LiteralPath (Join-Path $sourceRoot $folder) -File | Where-Object { $folder -ne 'tools' -or $_.Name -in @('prepare_airi.py','release_audit.py','export_connector.py','config_bundle.py','tts_bundle.py','connect_harness.py','verify_harness.py') } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $target $_.Name) -Force }
 }
 Get-ChildItem -LiteralPath $sourceRoot -Filter '*.md' -File | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $OutputDirectory $_.Name) -Force }
 New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'models'),(Join-Path $OutputDirectory 'voices'),(Join-Path $OutputDirectory 'voice-model-packages'),(Join-Path $OutputDirectory 'data'),(Join-Path $OutputDirectory 'tts-engines'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\source'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\runtime\tools'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\models') -Force | Out-Null

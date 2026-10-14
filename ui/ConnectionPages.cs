@@ -28,7 +28,7 @@ namespace AgentVoice {
 
         void BuildConnectionGuide(){
             var stack=Stack(NewPage("connectionGuide"));var card=Card(stack,"接入步骤与真实验证");
-            Add(card,Hint("① 首页选取本地模型与参考，先手动朗读成功。② 启动语音服务。③ 点击目标的验证按钮；未接入时选择其安装或用户配置目录，程序自动配置。④ 重新加载对应 Harness。⑤ 将自动复制的验证提示发给它，让它只回复随机短句。实际回复与播放完成后才显示绿色和礼炮，验证等待最多 15 分钟。"));
+            Add(card,Hint("① 首页先试听声音并启动服务。② 点击目标的“全自动接入”，选择安装目录或用户配置目录。③ 程序安装连接器、启动真实 Harness 验证会话、等待最终回复并确认语音播放。全部通过后显示绿色状态和礼炮。某一步无法自动完成时，会保留已完成设置并给出具体的手动处理方法。"));
             foreach(var entry in new[]{
                 new[]{"Codex","程序定位 CODEX_HOME/sessions（默认当前用户 .codex/sessions），或你所选目录中的会话目录，重新加载监听后开始复验。在 Codex 发送验证提示；最终回复进入队列。若未收到，检查是否是同一 Windows 用户及会话目录。"},
                 new[]{"Claude Code","验证时自动合并当前用户 .claude/settings.json 的 Stop hook（尊重 CLAUDE_CONFIG_DIR），并备份旧文件。重新打开 Claude Code，检查 /hooks 中 Stop 命令是否加载、是否获准运行，再发送验证提示。"},
@@ -41,6 +41,26 @@ namespace AgentVoice {
             Add(end,Hint("收不到正文：确认目标已启用、配置目录正确、客户端已重载、验证提示发给了对应 Harness。收到正文但失败：检查声音资源／输出设备与日志。AIRI 失败：确认正确实例已打开及播放桥已加载。安装备份在 data/connection-backups，可打开服务日志排查。"));
             Add(end,Row(Btn("返回",()=>ShowPage("connections")),Btn("打开 Harness",()=>ShowPage("harness")),Btn("打开 AIRI",()=>ShowPage("airi")),EntryBtn("打开日志","查看连接与播放诊断记录。",()=>{Directory.CreateDirectory(Store.Resolve("data/logs"));ServiceClient.Open(Store.Resolve("data/logs"));})));
         }
+        string HarnessManualHelp(string source){
+            if(source=="codex")return "请确认 Codex CLI 已登录且可运行 codex exec；也可在 Codex 中手动发送页面显示的验证短句。";
+            if(source=="claude")return "请确认 Claude Code CLI 已登录，重新打开 Claude Code 后手动发送验证短句，并检查 /hooks。";
+            if(source=="pi")return "请执行 /reload 或重启 pi，再手动发送验证短句，检查扩展加载日志。";
+            if(source=="opencode")return "请重启 OpenCode，再手动发送验证短句，检查插件日志。";
+            return "DeepSeek Harness 暂无统一的无界面命令；请重新加载桌面端，再手动发送验证短句。";
+        }
+        async Task WaitForHarnessVerification(string source,string challenge){
+            for(int i=0;i<240;i++){
+                var item=await Service.Request("/api/verify/"+source,null,3000);string state=Json.Text(item,"state");
+                if(state=="verified"){
+                    bool first=verificationIds.Remove(source);verificationHint.Text=source+"：连接器、真实回复和语音播放全部验证通过。";BusyStatus("第 4/4 步："+verificationHint.Text);if(first)ShowCelebration(source);return;
+                }
+                if(state=="failed")throw new InvalidOperationException("播放验证失败："+Json.Text(item,"error"));
+                BusyStatus(state=="playing"?"已收到真实回复，正在生成并播放验证语音……":"Harness 已执行，正在等待连接器返回验证短句……");
+                await Task.Delay(500);
+            }
+            Clipboard.SetText("请只回复下面这段文字，不加解释和标点：\r\n"+challenge);
+            throw new InvalidOperationException("程序没有在两分钟内收到完整播放回执。验证短句已复制。"+HarnessManualHelp(source));
+        }
         async Task BeginVerification(string source){
             if(!await Service.Running())throw new InvalidOperationException("请先启动语音服务。");
             if(source=="airi"&&!Config.airi.enabled){var enabled=Json.Copy(Config);enabled.airi.enabled=true;checks["airiEnabled"].Checked=true;await Persist(enabled,new {airi=enabled.airi});}
@@ -48,18 +68,18 @@ namespace AgentVoice {
             var health=await Service.Request("/health");bool connected=false;
             if(source=="airi")connected=Convert.ToBoolean(health["airiConnected"]);
             else{object raw;var states=health.TryGetValue("harnessConnections",out raw)?raw as Dictionary<string,object>:null;var presence=states!=null&&states.TryGetValue(source,out raw)?raw as Dictionary<string,object>:null;string state=presence==null?"":Json.Text(presence,"state");connected=state=="connected"||state=="recent_event";}
-            if(!connected){
-                using(var dialog=new FolderBrowserDialog{Description="未检测到接入，请选择 "+(source=="airi"?"AIRI 原安装目录":source+" 安装目录（也可选择其用户配置目录）"),ShowNewFolderButton=false}){
+            string harnessLocation="";
+            if(source!="airi"||!connected){
+                using(var dialog=new FolderBrowserDialog{Description="请选择 "+(source=="airi"?"AIRI 原安装目录":source+" 安装目录（也可选择其用户配置目录）"),ShowNewFolderButton=false}){
                     if(source=="airi"&&fields["airiDirectory"].Text.Trim().Length>0)dialog.SelectedPath=Store.Resolve(fields["airiDirectory"].Text.Trim());
                     if(dialog.ShowDialog(this)!=DialogResult.OK){Status("已取消定位，当前接入状态保留。");return;}
                     if(source=="airi")await InstallAiri(dialog.SelectedPath);
                     else{
-                        Status("正在配置 "+source+" 连接器……");
+                        harnessLocation=dialog.SelectedPath;BusyStatus("第 1/4 步：正在安装并校验 "+source+" 连接器……");
                         var result=Json.Object(await Service.RunTool("connect_harness.py","--source "+source+" --root "+ServiceClient.Quote(Store.Root)+" --location "+ServiceClient.Quote(dialog.SelectedPath)));
                         var next=Json.Copy(Config);next.harness[source]=true;checks[source].Checked=true;await Persist(next,new {harness=next.harness});
                         if(source=="codex")await Service.Request("/api/connections/reload",new {});
-                        connectionHints[source]=source=="codex"?"已定位会话目录，请在 Codex 发送验证提示。":"连接器已配置，请重载 Harness 后发送验证提示。";
-                        Status("连接器安装完成，已开始复验；请重新加载对应 Harness，再发送验证短句。安装完成不代表验证成功。");
+                        connectionHints[source]="连接器安装完成，正在执行真实验证。";
                     }
                 }
             }
@@ -70,8 +90,13 @@ namespace AgentVoice {
             var item=await Service.Request("/api/verify/"+source,new {});
             verificationIds[source]=Json.Text(item,"id");
             if(source!="airi"){
-                string prompt="请只回复下面这段文字，不加解释和标点：\r\n"+Json.Text(item,"text");Clipboard.SetText(prompt);
-                verificationHint.Text=source+"："+(connectionHints.ContainsKey(source)?connectionHints[source]+" ":"")+"验证提示已复制，粘贴到该 Harness，等待最终回复与实际播放。";
+                string challenge=Json.Text(item,"text");string prompt="这是 agent语音 的自动接入验证。请只回复下面这段文字，不加解释和额外标点：\n"+challenge;
+                BusyStatus("第 2/4 步：正在启动 "+source+" 的真实验证会话……");
+                try{await Service.RunTool("verify_harness.py","--source "+source+" --location "+ServiceClient.Quote(harnessLocation)+" --prompt "+ServiceClient.Quote(prompt)+" --timeout 180");}
+                catch(Exception error){Clipboard.SetText("请只回复下面这段文字，不加解释和标点：\r\n"+challenge);verificationHint.Text=source+"：自动验证停在“启动 Harness 并获取回复”。验证短句已复制。"+HarnessManualHelp(source);ShowPage("connectionGuide");throw new InvalidOperationException(verificationHint.Text+" 原因："+error.Message);}
+                BusyStatus("第 3/4 步：Harness 已回复，正在确认连接器回执……");
+                await WaitForHarnessVerification(source,challenge);
+                verificationHint.Text=source+"：全自动接入验证成功。";
             }else verificationHint.Text="AIRI：测试语音已排队，等待桌宠播放完成回执。";
             ShowPage("connectionGuide");Status(verificationHint.Text);
         }

@@ -14,7 +14,7 @@ from state import Store, atomic_json, defaults, merge, validate
 
 FORMAT='agent-voice-config'
 MAX_BYTES=8*1024**3
-SUFFIXES={'.pth','.index','.wav','.flac','.mp3','.m4a','.ogg','.png','.jpg','.jpeg','.bmp','.ico'}
+SUFFIXES={'.pth','.index','.wav','.flac','.mp3','.m4a','.ogg','.png','.jpg','.jpeg','.bmp','.gif','.ico'}
 MODULES=set(defaults())-{'token','port'}
 
 def digest(path):
@@ -28,7 +28,7 @@ def slots(config):
     for voice in voices:
         for key in ('model','index','reference'):
             if voice[key]:yield voice,key,voice['assetScope']=='private'
-    for key in ('background','icon'):
+    for key in ('background','icon','loadingAnimation'):
         if config['appearance'][key]:yield config['appearance'],key,False
 
 def export_bundle(root,target,include_assets=True,config=None):
@@ -99,7 +99,7 @@ def preflight(store,cfg,adjustments):
             value=cfg['engines'][key]
             if not value or not store.resolve(value).exists():raise ValueError('请先配置本机引擎环境：'+key)
         if cfg['voice']['engine']=='cosyvoice' and (not cfg['voice']['reference'] or not cfg['voice']['referenceText'].strip()):raise ValueError('底音参考录音或台词不完整')
-    for key in ('background','icon'):
+    for key in ('background','icon','loadingAnimation'):
         if cfg['appearance'][key]:
             from PIL import Image
             with Image.open(store.resolve(cfg['appearance'][key])) as image:image.verify()

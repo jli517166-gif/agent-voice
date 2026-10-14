@@ -29,6 +29,7 @@ namespace AgentVoice {
         readonly ToolTip tips=new ToolTip{AutomaticDelay=350,AutoPopDelay=10000,ReshowDelay=100,ShowAlways=true};
         readonly Timer poll=new Timer{Interval=1800};
         bool polling,operation,exiting;
+        BusyOverlay busyOverlay;
         string page="home",lastJob="";
         Button serviceToggle,generate,saveVoiceButton,playButton,backButton;
         ComboBox phrases,profileKind;
@@ -77,9 +78,16 @@ namespace AgentVoice {
         Button Primary(Button button){button.Tag="primary";button.Font=new Font(Font.FontFamily,Font.Size,FontStyle.Bold);button.MinimumSize=new Size(Math.Max(128,button.MinimumSize.Width),42);return button;}
         Button Danger(Button button){button.Tag="danger";return button;}
         Button EntryBtn(string text,string note,Action action){var button=Btn(text,action);button.AccessibleDescription=note;tips.SetToolTip(button,note);return button;}
-        Button AsyncBtn(string text,Func<Task> action){var b=Btn(text,()=>{});b.Click+=async(s,e)=>await Guard(action);return b;}
+        Button AsyncBtn(string text,Func<Task> action){var b=Btn(text,()=>{});b.Click+=async(s,e)=>await Guard(action,b.Text);return b;}
         void Status(string text){if(!IsDisposed)footer.Text=text.Replace("\r"," ").Replace("\n"," ");}
-        async Task Guard(Func<Task> action){if(operation)return;operation=true;Cursor=Cursors.AppStarting;try{await action();}catch(Exception exc){Status(exc.Message);}finally{operation=false;Cursor=Cursors.Default;}}
+        void BusyStatus(string text){Status(text);if(busyOverlay!=null)busyOverlay.SetMessage(text);Application.DoEvents();}
+        void ShowBusy(string text){
+            if(busyOverlay!=null){busyOverlay.SetMessage(text);return;}
+            var snapshot=new Bitmap(Math.Max(1,shell.ClientSize.Width),Math.Max(1,shell.ClientSize.Height));shell.DrawToBitmap(snapshot,new Rectangle(Point.Empty,snapshot.Size));
+            busyOverlay=new BusyOverlay(text,snapshot,Store.Resolve(Config.appearance.loadingAnimation));shell.Controls.Add(busyOverlay);busyOverlay.BringToFront();busyOverlay.Focus();
+        }
+        void HideBusy(){if(busyOverlay==null)return;var overlay=busyOverlay;busyOverlay=null;overlay.Dispose();shell.Invalidate(true);}
+        async Task Guard(Func<Task> action,string label){if(operation)return;operation=true;Cursor=Cursors.AppStarting;ShowBusy(label+"…");try{await action();}catch(Exception exc){Status(exc.Message);}finally{HideBusy();operation=false;Cursor=Cursors.Default;}}
         public void ShowPage(string id){
             Navigate(id,true);
         }

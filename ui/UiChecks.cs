@@ -81,6 +81,8 @@ namespace AgentVoice {
             if(FindButton(pages["engine"],"打开引擎目录")==null)errors.Add("本地 TTS 引擎专用目录入口缺失");
             if(FindButton(pages["profiles"],"刷新目录")!=null||FindButton(pages["profiles"],"保存组合声音")!=null)errors.Add("RVC 页面仍保留重复模型列表或组合保存入口");
             if(FindButton(pages["voices"],"打开方案目录")==null)errors.Add("声音方案储存位置入口缺失");
+            if(!fields.ContainsKey("loadingAnimation")||FindButton(pages["appearance"],"使用默认动画")==null)errors.Add("自定义等待动画入口缺失");
+            ShowBusy("正在执行界面动画自检……");Application.DoEvents();if(busyOverlay==null||busyOverlay.Dock!=DockStyle.Fill||busyOverlay.Width<shell.ClientSize.Width-2)errors.Add("等待动画没有覆盖完整程序页面");if(busyOverlay!=null)using(var bitmap=new Bitmap(busyOverlay.Width,busyOverlay.Height)){busyOverlay.DrawToBitmap(bitmap,new Rectangle(Point.Empty,bitmap.Size));bitmap.Save(Path.Combine(directory,"loading-animation.png"));}HideBusy();
             ShowCelebration("界面自检");Application.DoEvents();var celebration=shell.Controls.Cast<Control>().OfType<Celebration>().FirstOrDefault();if(celebration==null||celebration.Dock!=DockStyle.Fill||celebration.Width<shell.ClientSize.Width-2||celebration.Height<shell.ClientSize.Height-2)errors.Add("接入成功礼花没有覆盖完整页面");if(celebration!=null)celebration.Dispose();
             ShowPage("home");
             body.Text="页面切换不应丢失这份草稿";processingChoice.SelectedIndex=0;pitch.Value=3;formant.Value=.65M;
