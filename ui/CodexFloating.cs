@@ -1,3 +1,4 @@
+using Button = AgentVoice.AnimeButton;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -57,6 +58,8 @@ namespace AgentVoice {
         [DllImport("dwmapi.dll")]static extern int DwmGetWindowAttribute(IntPtr window,int attribute,out int value,int size);
         readonly Dictionary<uint,bool> identities=new Dictionary<uint,bool>();
         DateTime scanned=DateTime.MinValue;
+        DateTime nextDiscovery=DateTime.MinValue,nextMonitor=DateTime.MinValue;
+        Rectangle monitorBounds,workArea;
         IntPtr last;
         public static bool IsCodexImage(string path){string normalized=(path??"").Replace('/','\\');if(normalized.IndexOf("\\OpenAI.Codex_",StringComparison.OrdinalIgnoreCase)>=0)return true;return Path.GetFileName(normalized).Equals("Codex.exe",StringComparison.OrdinalIgnoreCase)&&normalized.IndexOf("\\bin\\",StringComparison.OrdinalIgnoreCase)<0&&normalized.IndexOf("\\vendor\\",StringComparison.OrdinalIgnoreCase)<0;}
         bool IsCodex(IntPtr window){uint pid;GetWindowThreadProcessId(window,out pid);bool found;if(identities.TryGetValue(pid,out found))return found;IntPtr process=OpenProcess(0x1000,false,pid);try{var text=new StringBuilder(4096);int length=text.Capacity;found=process!=IntPtr.Zero&&QueryFullProcessImageName(process,0,text,ref length)&&IsCodexImage(text.ToString());identities[pid]=found;return found;}finally{if(process!=IntPtr.Zero)CloseHandle(process);}}
@@ -64,15 +67,18 @@ namespace AgentVoice {
         public FloatingTarget Read(IntPtr entry,IntPtr panel){
             if((DateTime.UtcNow-scanned).TotalSeconds>5){identities.Clear();scanned=DateTime.UtcNow;}
             IntPtr foreground=GetForegroundWindow(),root=GetAncestor(foreground,2),owner=GetAncestor(foreground,3),selected=IntPtr.Zero;
-            if(Candidate(root))selected=root;
+            if(root==last&&last!=IntPtr.Zero)selected=last;
+            else if(Candidate(root))selected=root;
             else if(foreground==entry||foreground==panel||owner==entry||owner==panel)selected=last;
             if(selected==IntPtr.Zero&&Candidate(last))selected=last;
-            if(selected==IntPtr.Zero){EnumWindows((w,p)=>{if(Candidate(w)){selected=w;return false;}return true;},IntPtr.Zero);}
+            if(selected==IntPtr.Zero&&DateTime.UtcNow>=nextDiscovery){nextDiscovery=DateTime.UtcNow.AddSeconds(1);EnumWindows((w,p)=>{if(Candidate(w)){selected=w;return false;}return true;},IntPtr.Zero);}
             if(selected==IntPtr.Zero)return null;
             Rect rect;if(!GetWindowRect(selected,out rect)||rect.right-rect.left<400||rect.bottom-rect.top<250)return null;
             int cloaked=0;try{DwmGetWindowAttribute(selected,14,out cloaked,4);}catch(DllNotFoundException){}
             last=selected;var bounds=Rectangle.FromLTRB(rect.left,rect.top,rect.right,rect.bottom);
-            return new FloatingTarget{handle=selected,bounds=bounds,workArea=Screen.FromRectangle(bounds).WorkingArea,minimized=IsIconic(selected)||!IsWindowVisible(selected)||cloaked!=0,active=root==selected||foreground==entry||foreground==panel||owner==entry||owner==panel};
+            var center=new Point(bounds.Left+bounds.Width/2,bounds.Top+bounds.Height/2);
+            if(!monitorBounds.Contains(center)||DateTime.UtcNow>=nextMonitor){var screen=Screen.FromRectangle(bounds);monitorBounds=screen.Bounds;workArea=screen.WorkingArea;nextMonitor=DateTime.UtcNow.AddSeconds(2);}
+            return new FloatingTarget{handle=selected,bounds=bounds,workArea=workArea,minimized=IsIconic(selected)||!IsWindowVisible(selected)||cloaked!=0,active=root==selected||foreground==entry||foreground==panel||owner==entry||owner==panel};
         }
     }
 
@@ -102,13 +108,17 @@ namespace AgentVoice {
 
     sealed class FloatingEntry:Form {
         public bool Dragging;
+        bool expanded,hovering;
+        public bool Expanded{get{return expanded;}set{if(expanded!=value){expanded=value;Invalidate();}}}
         public event Action OpenPanel,PositionSaved;
         Point mouseStart,windowStart;bool moved;
         readonly ToolTip hint=new ToolTip();
-        public FloatingEntry(float scale){AutoScaleMode=AutoScaleMode.None;FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;TopMost=true;StartPosition=FormStartPosition.Manual;Size=new Size((int)(104*scale),(int)(38*scale));Font=new Font("Microsoft YaHei UI",10F);Text="Codex 语音悬浮入口";AccessibleName=Text;AccessibleRole=AccessibleRole.PushButton;DoubleBuffered=true;Cursor=Cursors.Hand;hint.SetToolTip(this,"点击控制语音；按住拖动调整位置。设置／托盘中可关闭。");}
+        public FloatingEntry(float scale){AutoScaleMode=AutoScaleMode.None;FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;TopMost=true;StartPosition=FormStartPosition.Manual;Size=new Size((int)(110*scale),(int)(38*scale));Font=new Font("Microsoft YaHei UI",10F,FontStyle.Bold);Text="Codex 语音悬浮入口";AccessibleName=Text;AccessibleRole=AccessibleRole.PushButton;DoubleBuffered=true;Cursor=Cursors.Hand;hint.SetToolTip(this,"点击展开／关闭语音面板；按住拖动调整位置。");}
         protected override bool ShowWithoutActivation{get{return true;}}
         protected override CreateParams CreateParams{get{var p=base.CreateParams;p.ExStyle|=0x08000080;return p;}}
-        protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;float s=Height/38F;using(var pen=new Pen(ForeColor,1.6F*s)){pen.StartCap=pen.EndCap=LineCap.Round;for(int i=0;i<5;i++){float x=(12+i*3.5F)*s,h=(i==2?14:i%2==1?10:5)*s;g.DrawLine(pen,x,Height/2F-h/2,x,Height/2F+h/2);}}TextRenderer.DrawText(g,"语音",Font,new Rectangle((int)(34*s),0,Width-(int)(36*s),Height),ForeColor,TextFormatFlags.VerticalCenter|TextFormatFlags.HorizontalCenter);}
+        protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;float s=Height/38F;Color accent=Color.FromArgb(0,174,221);using(var shape=Shapes.Rounded(new RectangleF(.5F,.5F,Width-1,Height-1),8*s)){if(hovering||expanded)using(var fill=new SolidBrush(Color.FromArgb(BackColor.GetBrightness()<.4F?27:233,BackColor.GetBrightness()<.4F?57:248,BackColor.GetBrightness()<.4F?76:253)))g.FillPath(fill,shape);using(var stroke=new Pen(Color.FromArgb(90,accent),1))g.DrawPath(stroke,shape);}using(var pen=new Pen(accent,1.7F*s)){pen.StartCap=pen.EndCap=LineCap.Round;for(int i=0;i<5;i++){float x=(12+i*3.5F)*s,h=(i==2?14:i%2==1?10:5)*s;g.DrawLine(pen,x,Height/2F-h/2,x,Height/2F+h/2);}}TextRenderer.DrawText(g,"语音",Font,new Rectangle((int)(34*s),0,Width-(int)(53*s),Height),ForeColor,TextFormatFlags.VerticalCenter|TextFormatFlags.HorizontalCenter);using(var pen=new Pen(ForeColor,1.3F*s)){float x=Width-17*s,y=Height/2F;g.DrawLines(pen,expanded?new[]{new PointF(x-3*s,y+2*s),new PointF(x,y-1*s),new PointF(x+3*s,y+2*s)}:new[]{new PointF(x-3*s,y-1*s),new PointF(x,y+2*s),new PointF(x+3*s,y-1*s)});}}
+        protected override void OnMouseEnter(EventArgs e){base.OnMouseEnter(e);hovering=true;Invalidate();}
+        protected override void OnMouseLeave(EventArgs e){base.OnMouseLeave(e);hovering=false;Invalidate();}
         protected override void OnMouseDown(MouseEventArgs e){base.OnMouseDown(e);if(e.Button==MouseButtons.Left){Dragging=true;moved=false;mouseStart=Cursor.Position;windowStart=Location;Capture=true;}}
         protected override void OnMouseMove(MouseEventArgs e){base.OnMouseMove(e);if(!Dragging)return;Point delta=new Point(Cursor.Position.X-mouseStart.X,Cursor.Position.Y-mouseStart.Y);if(Math.Abs(delta.X)+Math.Abs(delta.Y)>5)moved=true;if(moved)Location=new Point(windowStart.X+delta.X,windowStart.Y+delta.Y);}
         protected override void OnMouseUp(MouseEventArgs e){if(Dragging){Dragging=false;Capture=false;if(moved&&PositionSaved!=null)PositionSaved();}base.OnMouseUp(e);}
@@ -117,66 +127,108 @@ namespace AgentVoice {
         protected override void Dispose(bool disposing){if(disposing)hint.Dispose();base.Dispose(disposing);}
     }
 
+    sealed class FloatingProfilePicker:ComboBox {
+        public Color BorderColor=Color.LightBlue;
+        public Color TextColor=Color.Black;
+        public FloatingProfilePicker(){DrawMode=DrawMode.OwnerDrawFixed;}
+        protected override void OnDrawItem(DrawItemEventArgs e){if(e.Index<0)return;bool selected=(e.State&DrawItemState.Selected)!=0;Color fill=selected?(BackColor.GetBrightness()<.4F?Color.FromArgb(20,82,110):Color.FromArgb(210,241,253)):BackColor;using(var brush=new SolidBrush(fill))e.Graphics.FillRectangle(brush,e.Bounds);TextRenderer.DrawText(e.Graphics,Convert.ToString(Items[e.Index]),Font,new Rectangle(e.Bounds.X+7,e.Bounds.Y,Math.Max(1,e.Bounds.Width-10),e.Bounds.Height),TextColor,TextFormatFlags.VerticalCenter|TextFormatFlags.EndEllipsis);}
+        protected override void WndProc(ref Message message){base.WndProc(ref message);if(message.Msg!=0xF&&message.Msg!=0x317&&message.Msg!=0x318)return;if(message.Msg!=0xF&&message.WParam==IntPtr.Zero)return;using(var g=message.Msg==0xF?Graphics.FromHwnd(Handle):Graphics.FromHdc(message.WParam)){int width=Math.Max(20,Height-4);var arrow=new Rectangle(Width-width-1,1,width,Height-2);using(var fill=new SolidBrush(BackColor))g.FillRectangle(fill,arrow);using(var border=new Pen(BorderColor))g.DrawRectangle(border,0,0,Width-1,Height-1);g.SmoothingMode=SmoothingMode.AntiAlias;float x=arrow.Left+arrow.Width/2F,y=Height/2F;using(var pen=new Pen(TextColor,1.5F))g.DrawLines(pen,new[]{new PointF(x-4,y-2),new PointF(x,y+2),new PointF(x+4,y-2)});}}
+    }
+
     sealed class FloatingPanel:Form {
         readonly SettingsStore store;readonly FloatingVoiceActions actions;readonly Action openMain,disable,reset;
         readonly List<Control> waiting=new List<Control>();
-        readonly Label status,title;
+        readonly Label status;
+        readonly PictureBox brand;
+        readonly TableLayoutPanel grid;
+        readonly Image[] artwork=new Image[4];
+        Bitmap backdrop;
+        bool dark;
         readonly ComboBox profiles;
         readonly Button quiet,automatic;
         int active,revision;bool refreshing;
         protected override bool ShowWithoutActivation{get{return true;}}
         public FloatingPanel(SettingsStore value,FloatingVoiceActions control,float scale,Action showMain,Action hideEntry,Action resetPosition){
             store=value;actions=control;openMain=showMain;disable=hideEntry;reset=resetPosition;
-            AutoScaleMode=AutoScaleMode.None;FormBorderStyle=FormBorderStyle.None;ControlBox=false;ShowInTaskbar=false;TopMost=true;StartPosition=FormStartPosition.Manual;Text="Codex 语音控制";Font=new Font("Microsoft YaHei UI",9.5F);ClientSize=new Size((int)(326*scale),(int)(306*scale));
-            var grid=new TableLayoutPanel{Dock=DockStyle.Fill,Padding=new Padding((int)(12*scale)),ColumnCount=2,RowCount=7};grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));foreach(int height in new[]{30,42,42,36,38,48,40})grid.RowStyles.Add(new RowStyle(SizeType.Absolute,height*scale));Controls.Add(grid);
-            title=new Label{Text="语音控制 · Codex",Dock=DockStyle.Fill,TextAlign=ContentAlignment.MiddleLeft,Font=new Font(Font,FontStyle.Bold)};grid.Controls.Add(title,0,0);
-            var close=MakeButton("收起",()=>Hide());grid.Controls.Add(close,1,0);
-            grid.Controls.Add(MakeAction("开启服务","start"),0,1);grid.Controls.Add(MakeAction("关闭服务","stop"),1,1);
-            quiet=MakeAction("停止朗读","quiet");grid.Controls.Add(quiet,0,2);automatic=MakeAction("自动朗读","auto");grid.Controls.Add(automatic,1,2);
-            profiles=new ComboBox{Dock=DockStyle.Fill,DropDownStyle=ComboBoxStyle.DropDownList,Margin=new Padding(3,(int)(5*scale),3,3),AccessibleName="选择保存的声音方案"};grid.Controls.Add(profiles,0,3);grid.SetColumnSpan(profiles,2);waiting.Add(profiles);
-            grid.Controls.Add(MakeAction("应用所选声音","profile"),0,4);grid.Controls.Add(MakeButton("打开主界面",()=>{Hide();openMain();}),1,4);
-            status=new Label{Text="正在读取状态…",Dock=DockStyle.Fill,TextAlign=ContentAlignment.MiddleLeft,AutoEllipsis=true,AccessibleName="悬浮控制执行状态"};grid.Controls.Add(status,0,5);grid.SetColumnSpan(status,2);
-            grid.Controls.Add(MakeButton("重置入口位置",()=>{Hide();reset();}),0,6);grid.Controls.Add(MakeButton("隐藏悬浮入口",()=>{Hide();disable();}),1,6);
+            AutoScaleMode=AutoScaleMode.None;FormBorderStyle=FormBorderStyle.None;ControlBox=false;ShowInTaskbar=false;TopMost=true;StartPosition=FormStartPosition.Manual;Text="Codex 语音控制";Font=new Font("Microsoft YaHei UI",9.5F);ClientSize=new Size((int)(326*scale),(int)(376*scale));Padding=new Padding((int)(8*scale));DoubleBuffered=true;
+            var names=new[]{"clean-0-fd79407a95b7.png","clean-1-94d1461c5b86.png","cutout-4-558a3d99f9e6.png","cutout-5-fb38fb77845b.png"};for(int i=0;i<names.Length;i++){string path=Path.Combine(store.Root,"assets","ui","codex-floating",names[i]);if(!File.Exists(path))path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"assets","ui","codex-floating",names[i]);if(File.Exists(path))using(var image=Image.FromFile(path))artwork[i]=new Bitmap(image);}
+            grid=new TableLayoutPanel{Dock=DockStyle.Fill,Padding=new Padding((int)(6*scale)),ColumnCount=2,RowCount=10};grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));foreach(int height in new[]{32,48,38,34,20,32,38,50,32,18})grid.RowStyles.Add(new RowStyle(SizeType.Absolute,height*scale));Controls.Add(grid);
+            brand=new PictureBox{Dock=DockStyle.Fill,SizeMode=PictureBoxSizeMode.Zoom,Margin=new Padding(2,2,(int)(90*scale),6),AccessibleName="Voice / Codex 语音控制"};brand.Click+=(s,e)=>Hide();grid.Controls.Add(brand,0,0);grid.SetColumnSpan(brand,2);
+            quiet=MakeAction("■  停止朗读","quiet");quiet.Tag="primary";quiet.Font=new Font(Font.FontFamily,10.5F,FontStyle.Bold);grid.Controls.Add(quiet,0,1);grid.SetColumnSpan(quiet,2);
+            grid.Controls.Add(MakeAction("开启服务","start"),0,2);grid.Controls.Add(MakeAction("关闭服务","stop"),1,2);
+            automatic=MakeAction("自动朗读","auto");automatic.Tag="automatic";grid.Controls.Add(automatic,0,3);grid.SetColumnSpan(automatic,2);
+            var voiceLabel=new Label{Text="声音方案",Dock=DockStyle.Fill,TextAlign=ContentAlignment.BottomLeft,Font=new Font(Font,FontStyle.Bold),Margin=new Padding(3,0,3,0)};grid.Controls.Add(voiceLabel,0,4);grid.SetColumnSpan(voiceLabel,2);
+            profiles=new FloatingProfilePicker{Dock=DockStyle.Fill,DropDownStyle=ComboBoxStyle.DropDownList,FlatStyle=FlatStyle.Flat,ItemHeight=(int)(20*scale),Margin=new Padding(3,(int)(4*scale),3,2),AccessibleName="选择保存的声音方案"};grid.Controls.Add(profiles,0,5);grid.SetColumnSpan(profiles,2);waiting.Add(profiles);
+            grid.Controls.Add(MakeAction("应用所选声音","profile"),0,6);grid.Controls.Add(MakeButton("打开主界面",()=>{Hide();openMain();}),1,6);
+            status=new Label{Text="正在读取状态…",Dock=DockStyle.Fill,TextAlign=ContentAlignment.MiddleLeft,AutoEllipsis=true,Padding=new Padding(10,3,8,3),Margin=new Padding(3,4,3,4),AccessibleName="悬浮控制执行状态"};grid.Controls.Add(status,0,7);grid.SetColumnSpan(status,2);
+            var resetButton=MakeButton("重置位置",()=>{Hide();reset();});resetButton.Tag="utility";grid.Controls.Add(resetButton,0,8);var hideButton=MakeButton("隐藏入口",()=>{Hide();disable();});hideButton.Tag="utility";grid.Controls.Add(hideButton,1,8);
+            var hint=new Label{Text="再次点击「语音」或空白处关闭",Dock=DockStyle.Fill,TextAlign=ContentAlignment.MiddleCenter,Font=new Font(Font.FontFamily,8F),Tag="muted"};hint.Click+=(s,e)=>Hide();grid.Controls.Add(hint,0,9);grid.SetColumnSpan(hint,2);grid.Click+=(s,e)=>Hide();
             MinimumSize=Size;
+            Deactivate+=(s,e)=>Hide();
         }
-        Button MakeButton(string text,Action action){var b=new Button{Text=text,Dock=DockStyle.Fill,FlatStyle=FlatStyle.Flat,Margin=new Padding(3),UseVisualStyleBackColor=false};b.FlatAppearance.BorderSize=0;b.Click+=(s,e)=>action();return b;}
+        Button MakeButton(string text,Action action){var b=new Button{Text=text,Dock=DockStyle.Fill,BorderSize=1,Margin=new Padding(3),Cursor=Cursors.Hand};b.Click+=(s,e)=>action();return b;}
         Button MakeAction(string text,string command){var b=MakeButton(text,()=>Run(command));waiting.Add(b);return b;}
-        public void Theme(bool dark){BackColor=dark?Color.FromArgb(35,38,43):Color.FromArgb(248,249,251);ForeColor=dark?Color.FromArgb(237,240,245):Color.FromArgb(28,34,42);foreach(Control parent in Controls)PaintControls(parent,dark);}
-        void PaintControls(Control node,bool dark){node.ForeColor=ForeColor;node.BackColor=node is Button||node is ComboBox?(dark?Color.FromArgb(51,56,63):Color.FromArgb(233,237,242)):BackColor;foreach(Control child in node.Controls)PaintControls(child,dark);}
+        public void Theme(bool value){dark=value;BackColor=dark?Color.FromArgb(19,34,49):Color.FromArgb(242,250,254);ForeColor=dark?Color.FromArgb(235,246,255):Color.FromArgb(22,50,74);grid.BackColor=dark?Color.FromArgb(23,40,57):Color.FromArgb(249,253,255);foreach(Control parent in Controls)PaintControls(parent);brand.Image=artwork[dark?3:2];if(backdrop!=null){BackgroundImage=null;backdrop.Dispose();backdrop=null;}var plate=artwork[dark?1:0];if(plate!=null){backdrop=new Bitmap(Width,Height);using(var g=Graphics.FromImage(backdrop)){g.InterpolationMode=InterpolationMode.HighQualityBicubic;g.DrawImage(plate,new Rectangle(Point.Empty,Size),new Rectangle(dark?4:0,0,dark?plate.Width-4:(int)(plate.Width*.82),plate.Height),GraphicsUnit.Pixel);}BackgroundImage=backdrop;}Invalidate();}
+        void PaintControls(Control node){node.ForeColor=ForeColor;node.BackColor=grid.BackColor;var button=node as Button;if(button!=null){string role=Convert.ToString(button.Tag);button.BorderColor=dark?Color.FromArgb(57,89,112):Color.FromArgb(185,222,239);button.BackColor=dark?Color.FromArgb(32,59,78):Color.FromArgb(231,246,253);if(role=="primary"){button.BackColor=Color.FromArgb(0,172,224);button.ForeColor=Color.White;button.BorderSize=0;}if(role=="utility"){button.BackColor=grid.BackColor;button.BorderSize=0;}if(role=="automatic"&&button.Text.EndsWith("开")){button.BackColor=dark?Color.FromArgb(12,76,100):Color.FromArgb(209,243,253);}}else if(node is ComboBox){node.BackColor=dark?Color.FromArgb(16,33,48):Color.White;var picker=node as FloatingProfilePicker;if(picker!=null){picker.BorderColor=dark?Color.FromArgb(57,89,112):Color.FromArgb(185,222,239);picker.TextColor=ForeColor;picker.ForeColor=picker.BorderColor;picker.Invalidate();}}if(Convert.ToString(node.Tag)=="muted")node.ForeColor=dark?Color.FromArgb(150,179,200):Color.FromArgb(92,128,153);foreach(Control child in node.Controls)PaintControls(child);if(node==status)node.BackColor=dark?Color.FromArgb(31,54,73):Color.FromArgb(225,244,253);}
         void Busy(){foreach(var c in waiting)c.Enabled=active==0;quiet.Enabled=true;}
         public async void Run(string command){if(active>0&&command!="quiet")return;string id=(profiles.SelectedItem as SavedVoice??new SavedVoice()).id;if(command=="profile"&&profiles.SelectedItem==null){status.Text="请先在主界面保存声音方案。";return;}int current=++revision;active++;Busy();status.Text="正在执行…";try{string text=await actions.Execute(command,id);if(!IsDisposed&&current==revision){status.Text=text;RefreshProfiles();}}catch(Exception error){if(!IsDisposed&&current==revision)status.Text="操作失败："+error.Message;}finally{active--;if(!IsDisposed)Busy();}}
-        public void RefreshProfiles(){var cfg=store.Read();string selected=(profiles.SelectedItem as SavedVoice??new SavedVoice()).id;profiles.BeginUpdate();profiles.Items.Clear();foreach(var item in cfg.profiles)profiles.Items.Add(item);var match=cfg.profiles.FirstOrDefault(p=>p.id==selected)??cfg.profiles.FirstOrDefault(p=>FloatingVoiceActions.SameVoice(p.voice,cfg.voice))??cfg.profiles.FirstOrDefault();profiles.SelectedItem=match;profiles.EndUpdate();automatic.Text="自动朗读："+(cfg.harness["codex"]?"开":"关");}
+        public void RefreshProfiles(){var cfg=store.Read();string selected=(profiles.SelectedItem as SavedVoice??new SavedVoice()).id;profiles.BeginUpdate();profiles.Items.Clear();foreach(var item in cfg.profiles)profiles.Items.Add(item);var match=cfg.profiles.FirstOrDefault(p=>p.id==selected)??cfg.profiles.FirstOrDefault(p=>FloatingVoiceActions.SameVoice(p.voice,cfg.voice))??cfg.profiles.FirstOrDefault();profiles.SelectedItem=match;profiles.EndUpdate();automatic.Text="自动朗读："+(cfg.harness["codex"]?"开":"关");PaintControls(automatic);}
         public async void RefreshStatus(){if(refreshing||active>0||IsDisposed)return;refreshing=true;int current=revision;try{string text=await actions.Status();if(!IsDisposed&&current==revision)status.Text=text;}catch(Exception error){if(!IsDisposed)status.Text="连接失败："+error.Message;}finally{refreshing=false;}}
         protected override bool ProcessCmdKey(ref Message msg,Keys key){if(key==Keys.Escape){Hide();return true;}return base.ProcessCmdKey(ref msg,key);}
         protected override void OnFormClosing(FormClosingEventArgs e){if(e.CloseReason==CloseReason.UserClosing){e.Cancel=true;Hide();}base.OnFormClosing(e);}
+        protected override void Dispose(bool disposing){if(disposing){brand.Image=null;BackgroundImage=null;if(backdrop!=null)backdrop.Dispose();foreach(var image in artwork)if(image!=null)image.Dispose();}base.Dispose(disposing);}
     }
 
     public sealed class CodexFloatingController:IDisposable {
         readonly SettingsStore store;readonly FloatingPreferences preferences;readonly FloatingEntry entry;readonly FloatingPanel panel;
-        readonly Timer timer=new Timer{Interval=250};readonly Func<IntPtr,IntPtr,FloatingTarget> targetReader;
-        readonly float scale;FloatingTarget target;bool disposed;string recorded="";DateTime nextStatus=DateTime.MinValue,nextTheme=DateTime.MinValue;
+        readonly Timer timer=new Timer{Interval=1000};readonly Func<IntPtr,IntPtr,FloatingTarget> targetReader;
+        readonly WindowFollowEvents windowEvents;
+        readonly float scale;FloatingTarget target;bool disposed,themeApplied,darkTheme;int refreshQueued;string recorded="";DateTime nextStatus=DateTime.MinValue,nextTheme=DateTime.MinValue;
         public event Action<bool> EnabledChanged;
         public bool Enabled{get{return preferences.enabled;}}
         public bool EntryVisible{get{return entry.Visible;}}
+        public bool PanelVisible{get{return panel.Visible;}}
+        public int PositionUpdates{get;private set;}
+        internal bool NativeFollowActive{get{return windowEvents!=null&&windowEvents.Listening;}}
         public bool HasTarget{get{return target!=null;}}
         public Rectangle EntryBounds{get{return entry.Bounds;}}
         public Rectangle PanelBounds{get{return panel.Bounds;}}
         public IntPtr EntryHandle{get{return entry.Handle;}}
         public IntPtr PanelHandle{get{return panel.Handle;}}
-        public CodexFloatingController(SettingsStore value,IFloatingVoiceService service,Action<Settings,bool> changed,Action openMain,Func<IntPtr,IntPtr,FloatingTarget> reader=null){
+        public CodexFloatingController(SettingsStore value,IFloatingVoiceService service,Action<Settings,bool> changed,Action openMain,Func<IntPtr,IntPtr,FloatingTarget> reader=null,bool watchOwnWindow=false){
             store=value;preferences=FloatingPreferences.Read(store);using(var g=Graphics.FromHwnd(IntPtr.Zero))scale=g.DpiX/96F;
             var tracker=new CodexWindowTracker();targetReader=reader??tracker.Read;
             entry=new FloatingEntry(scale);panel=new FloatingPanel(store,new FloatingVoiceActions(store,service,changed),scale,openMain,()=>SetEnabled(false),ResetPosition);
-            entry.OpenPanel+=OpenPanel;entry.PositionSaved+=SavePosition;timer.Tick+=(s,e)=>Refresh();timer.Start();Refresh();
+            panel.VisibleChanged+=(s,e)=>entry.Expanded=panel.Visible;
+            entry.OpenPanel+=TogglePanel;entry.PositionSaved+=SavePosition;
+            if(reader==null||watchOwnWindow){windowEvents=new WindowFollowEvents(()=>target==null?IntPtr.Zero:target.handle,QueueRefresh,watchOwnWindow);if(!windowEvents.Listening)timer.Interval=40;}
+            timer.Tick+=(s,e)=>Refresh();timer.Start();Refresh();
         }
         public void SetEnabled(bool enabled){preferences.enabled=enabled;preferences.Save(store);if(EnabledChanged!=null)EnabledChanged(enabled);Refresh();}
         public void ResetPosition(){preferences.offsetX=preferences.offsetY=0;preferences.Save(store);Refresh();}
         void SavePosition(){if(target==null)return;var origin=FloatingLayout.Entry(target.bounds,target.workArea,entry.Size,scale,0,0);var clamped=FloatingLayout.Clamp(entry.Bounds,target.workArea);entry.Bounds=clamped;preferences.offsetX=(clamped.X-origin.X)/scale;preferences.offsetY=(clamped.Y-origin.Y)/scale;preferences.Save(store);}
-        void Record(string reason){if(recorded==reason)return;recorded=reason;try{string folder=Path.Combine(store.Root,"data","logs");Directory.CreateDirectory(folder);File.WriteAllText(Path.Combine(folder,"codex-floating-status.json"),Json.Encode(new{time=DateTime.UtcNow.ToString("o"),enabled=Enabled,targetFound=target!=null,state=reason}),new UTF8Encoding(false));}catch(IOException){}catch(UnauthorizedAccessException){}}
-        public void Refresh(){if(disposed)return;target=targetReader(entry.Handle,panel.Handle);if(!Enabled||target==null||target.minimized||!target.active){panel.Hide();entry.Hide();Record(!Enabled?"disabled":target==null?"codex-not-found":target.minimized?"codex-minimized":"other-app-active");return;}if(!entry.Dragging)entry.Bounds=FloatingLayout.Entry(target.bounds,target.workArea,entry.Size,scale,preferences.offsetX,preferences.offsetY);if(!entry.Visible)entry.Show();Record("visible");if(panel.Visible)panel.Bounds=FloatingLayout.Panel(entry.Bounds,target.workArea,panel.Size,(int)(8*scale));if(DateTime.UtcNow>=nextTheme){nextTheme=DateTime.UtcNow.AddSeconds(3);bool dark=true;try{using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")){dark=key==null||Convert.ToInt32(key.GetValue("AppsUseLightTheme",0))==0;}}catch{}entry.BackColor=dark?Color.FromArgb(42,46,52):Color.FromArgb(244,247,250);entry.ForeColor=dark?Color.White:Color.FromArgb(25,35,45);panel.Theme(dark);entry.Invalidate();}if(panel.Visible&&DateTime.UtcNow>=nextStatus){nextStatus=DateTime.UtcNow.AddSeconds(3);panel.RefreshStatus();}}
+        void QueueRefresh(){if(disposed||System.Threading.Interlocked.Exchange(ref refreshQueued,1)!=0)return;try{entry.BeginInvoke((Action)(()=>{System.Threading.Interlocked.Exchange(ref refreshQueued,0);if(!disposed)Refresh();}));}catch(InvalidOperationException){System.Threading.Interlocked.Exchange(ref refreshQueued,0);}}
+        void Record(string reason){if(recorded==reason)return;recorded=reason;try{string folder=Path.Combine(store.Root,"data","logs");Directory.CreateDirectory(folder);File.WriteAllText(Path.Combine(folder,"codex-floating-status.json"),Json.Encode(new{time=DateTime.UtcNow.ToString("o"),enabled=Enabled,targetFound=target!=null,state=reason,followMode=windowEvents!=null&&windowEvents.Listening?"windows-events":"fallback",fallbackIntervalMs=timer.Interval}),new UTF8Encoding(false));}catch(IOException){}catch(UnauthorizedAccessException){}}
+        public void Refresh(){
+            if(disposed)return;
+            target=targetReader(entry.Handle,panel.Handle);
+            if(!Enabled||target==null||target.minimized||!target.active){if(panel.Visible)panel.Hide();if(entry.Visible)entry.Hide();Record(!Enabled?"disabled":target==null?"codex-not-found":target.minimized?"codex-minimized":"other-app-active");return;}
+            if(!entry.Dragging){var bounds=FloatingLayout.Entry(target.bounds,target.workArea,entry.Size,scale,preferences.offsetX,preferences.offsetY);if(entry.Bounds!=bounds){entry.Bounds=bounds;PositionUpdates++;}}
+            if(!entry.Visible)entry.Show();Record("visible");
+            if(panel.Visible){var bounds=FloatingLayout.Panel(entry.Bounds,target.workArea,panel.Size,(int)(8*scale));if(panel.Bounds!=bounds){panel.Bounds=bounds;PositionUpdates++;}}
+            if(DateTime.UtcNow>=nextTheme){
+                nextTheme=DateTime.UtcNow.AddSeconds(3);bool dark=true;
+                try{using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")){dark=key==null||Convert.ToInt32(key.GetValue("AppsUseLightTheme",0))==0;}}catch{}
+                if(!themeApplied||dark!=darkTheme)ApplyPalette(dark);
+            }
+            if(panel.Visible&&DateTime.UtcNow>=nextStatus){nextStatus=DateTime.UtcNow.AddSeconds(3);panel.RefreshStatus();}
+        }
+        public void TogglePanel(){TogglePanel(true);}
+        internal void TogglePanel(bool activate){if(panel.Visible)panel.Hide();else OpenPanel(activate);}
         public void OpenPanel(){OpenPanel(true);}
         internal void OpenPanel(bool activate){if(disposed||target==null||!Enabled)return;panel.RefreshProfiles();panel.Bounds=FloatingLayout.Panel(entry.Bounds,target.workArea,panel.Size,(int)(8*scale));panel.Show();if(activate)panel.Activate();panel.RefreshStatus();}
-        public void SavePreview(string directory){Directory.CreateDirectory(directory);using(var bitmap=new Bitmap(panel.Width,panel.Height)){panel.DrawToBitmap(bitmap,panel.ClientRectangle);bitmap.Save(Path.Combine(directory,"codex-floating-panel.png"));}using(var bitmap=new Bitmap(entry.Width,entry.Height)){entry.DrawToBitmap(bitmap,entry.ClientRectangle);bitmap.Save(Path.Combine(directory,"codex-floating-entry.png"));}}
-        public void Dispose(){if(disposed)return;disposed=true;timer.Stop();timer.Dispose();panel.Dispose();entry.Dispose();}
+        void ApplyPalette(bool dark){themeApplied=true;darkTheme=dark;entry.BackColor=dark?Color.FromArgb(23,40,57):Color.FromArgb(249,253,255);entry.ForeColor=dark?Color.FromArgb(235,246,255):Color.FromArgb(22,50,74);panel.Theme(dark);entry.Invalidate();}
+        public void SavePreview(string directory,bool? forcedTheme=null){if(forcedTheme.HasValue)ApplyPalette(forcedTheme.Value);Directory.CreateDirectory(directory);using(var bitmap=new Bitmap(panel.Width,panel.Height)){panel.DrawToBitmap(bitmap,panel.ClientRectangle);bitmap.Save(Path.Combine(directory,"codex-floating-panel.png"));}using(var bitmap=new Bitmap(entry.Width,entry.Height)){entry.DrawToBitmap(bitmap,entry.ClientRectangle);bitmap.Save(Path.Combine(directory,"codex-floating-entry.png"));}}
+        public void Dispose(){if(disposed)return;disposed=true;timer.Stop();timer.Dispose();if(windowEvents!=null)windowEvents.Dispose();panel.Dispose();entry.Dispose();}
     }
 }

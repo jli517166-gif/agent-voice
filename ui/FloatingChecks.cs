@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -40,7 +41,7 @@ namespace AgentVoice {
         public static int Run(string directory){Directory.CreateDirectory(directory);int exit=1;using(var host=new TestHost{ShowInTaskbar=false,StartPosition=FormStartPosition.Manual,Location=new Point(-32000,-32000)}){
             host.Shown+=async(s,e)=>{try{var result=await Verify(directory);File.WriteAllText(Path.Combine(directory,"floating-results.json"),Json.Encode(result));exit=result.ok?0:1;}catch(Exception error){File.WriteAllText(Path.Combine(directory,"floating-error.txt"),error.ToString());}host.Close();};Application.Run(host);
         }return exit;}
-        sealed class Result {public bool ok;public int layoutChecks,controlChecks;public bool actualCodexDetected;public List<string> errors;}
+        sealed class Result {public bool ok;public int layoutChecks,controlChecks;public bool actualCodexDetected;public double followMedianMs,followP95Ms;public List<string> errors;}
         static async Task<Result> Verify(string directory){
             var errors=new List<string>();int layouts=0;
             Check(CodexWindowTracker.IsCodexImage(@"C:\Program Files\WindowsApps\OpenAI.Codex_1.0_x64__abc\app\ChatGPT.exe"),"未识别 Codex 桌面包",errors);
@@ -49,7 +50,7 @@ namespace AgentVoice {
             foreach(float scale in new[]{1F,1.5F,2F})foreach(var work in new[]{new Rectangle(0,0,1920,1040),new Rectangle(-1920,0,1920,1040)})foreach(bool maximized in new[]{false,true}){
                 var window=maximized?work:new Rectangle(work.Left+100,work.Top+70,1000,800);
                 var entry=FloatingLayout.Entry(window,work,new Size((int)(104*scale),(int)(38*scale)),scale,0,0);
-                var panel=FloatingLayout.Panel(entry,work,new Size((int)(326*scale),(int)(335*scale)),(int)(8*scale));
+                var panel=FloatingLayout.Panel(entry,work,new Size((int)(326*scale),(int)(376*scale)),(int)(8*scale));
                 Check(work.Contains(entry)&&work.Contains(panel),"悬浮窗超出工作区",errors);Check(!entry.IntersectsWith(panel),"控制菜单遮挡入口",errors);layouts+=2;
             }
             var root=new SettingsStore(Path.Combine(directory,"fixture"));var cfg=new Settings();cfg.harness["deepseek"]=true;cfg.phrases.Add("保留的常用句");cfg.profiles.Add(new SavedVoice{id="one",name="测试声音一",voice=new VoiceConfig{pitch=2}});cfg.profiles.Add(new SavedVoice{id="two",name="测试声音二",voice=new VoiceConfig{pitch=7}});root.Write(cfg);
@@ -67,7 +68,13 @@ namespace AgentVoice {
                 control.Refresh();Check(!control.EntryVisible,"切换其他程序后入口未隐藏",errors);
                 target.active=true;control.Refresh();Check(control.EntryVisible,"目标在前台时未显示入口",errors);
                 var before=control.EntryBounds;target.bounds.Offset(50,30);control.Refresh();Check(control.EntryBounds.Location==new Point(before.X+50,before.Y+30),"移动目标窗口时入口未跟随",errors);
+                int positions=control.PositionUpdates;for(int i=0;i<200;i++)control.Refresh();Check(positions==control.PositionUpdates,"静止时重复定位造成重绘",errors);
                 control.OpenPanel(false);Application.DoEvents();var menu=Application.OpenForms.Cast<Form>().First(f=>f.Text=="Codex 语音控制");menu.Close();control.OpenPanel(false);Check(!menu.IsDisposed&&menu.Visible,"关闭菜单后无法重新打开",errors);control.SavePreview(directory);
+                var menuControls=AllControls(menu).ToArray();Check(!menuControls.Any(c=>c.Text=="收起"),"仍有多余收起按钮",errors);Check(menuControls.Count(c=>c is AnimeButton&&c.Text.Contains("停止朗读"))==1,"停止朗读入口重复",errors);
+                foreach(var container in menuControls.OfType<TableLayoutPanel>()){var children=container.Controls.Cast<Control>().Where(c=>c.Visible).ToArray();for(int i=0;i<children.Length;i++)for(int j=i+1;j<children.Length;j++)Check(!children[i].Bounds.IntersectsWith(children[j].Bounds),"悬浮面板控件重叠",errors);}
+                control.SavePreview(Path.Combine(directory,"light"),false);control.SavePreview(Path.Combine(directory,"dark"),true);
+                using(var light=new Bitmap(Path.Combine(directory,"light","codex-floating-panel.png")))using(var dark=new Bitmap(Path.Combine(directory,"dark","codex-floating-panel.png")))using(var comparison=new Bitmap(light.Width+dark.Width+48,Math.Max(light.Height,dark.Height)+32)){using(var g=Graphics.FromImage(comparison)){g.Clear(Color.FromArgb(230,241,248));g.DrawImageUnscaled(light,16,16);g.DrawImageUnscaled(dark,32+light.Width,16);}comparison.Save(Path.Combine(directory,"themes-comparison.png"));}
+                control.TogglePanel(false);Check(!control.PanelVisible,"再次点击入口未关闭面板",errors);control.TogglePanel(false);Check(control.PanelVisible,"入口无法再次打开面板",errors);
                 target.minimized=true;control.Refresh();Check(!control.EntryVisible,"最小化后入口未隐藏",errors);
                 target.minimized=false;target.active=true;control.Refresh();target=null;control.Refresh();Check(!control.EntryVisible,"目标关闭后入口未隐藏",errors);
                 target=new FloatingTarget{bounds=new Rectangle(-31800,-31900,1100,800),workArea=new Rectangle(-32000,-32000,1920,1080),active=true};control.Refresh();control.SetEnabled(false);Check(!control.EntryVisible&&!FloatingPreferences.Read(root).enabled,"关闭入口未保存",errors);
@@ -75,8 +82,23 @@ namespace AgentVoice {
             }
             var persisted=FloatingPreferences.Read(root);persisted.offsetX=-100;persisted.offsetY=-40;persisted.Save(root);
             using(var reopened=new CodexFloatingController(root,client,null,()=>{},(a,b)=>target)){var saved=reopened.EntryBounds;Check(FloatingPreferences.Read(root).offsetX==-100,"悬浮位置没有持久化",errors);reopened.ResetPosition();Check(reopened.EntryBounds.X>saved.X&&reopened.EntryBounds.Y>saved.Y,"重新启动后没有恢复保存的位置",errors);}
+            var latencies=new List<double>();
+            using(var moving=new TestHost{ShowInTaskbar=false,StartPosition=FormStartPosition.Manual,Location=new Point(-31800,-31900),Size=new Size(1000,800)}){
+                moving.Show();Application.DoEvents();
+                using(var follower=new CodexFloatingController(root,client,null,()=>{},(a,b)=>new FloatingTarget{handle=moving.Handle,bounds=moving.Bounds,workArea=new Rectangle(-32000,-32000,1920,1080),active=true},true)){
+                    Check(follower.NativeFollowActive,"窗口移动通知未注册",errors);
+                    for(int i=0;i<20;i++){
+                        var old=follower.EntryBounds;var watch=Stopwatch.StartNew();moving.Location=new Point(moving.Left+2,moving.Top+1);
+                        while(follower.EntryBounds==old&&watch.ElapsedMilliseconds<500)await Task.Delay(1);
+                        latencies.Add(watch.Elapsed.TotalMilliseconds);
+                        Check(follower.EntryBounds!=old,"移动事件未更新悬浮位置",errors);
+                    }
+                }
+            }
+            latencies.Sort();double p95=latencies[(int)((latencies.Count-1)*.95)];Check(p95<200,"移动跟随延迟仍超过 200 毫秒",errors);
             var actual=new CodexWindowTracker().Read(IntPtr.Zero,IntPtr.Zero);
-            return new Result{ok=errors.Count==0,layoutChecks=layouts,controlChecks=15,actualCodexDetected=actual!=null,errors=errors};
+            return new Result{ok=errors.Count==0,layoutChecks=layouts,controlChecks=18,actualCodexDetected=actual!=null,followMedianMs=Math.Round(latencies[latencies.Count/2],2),followP95Ms=Math.Round(p95,2),errors=errors};
         }
+        static IEnumerable<Control> AllControls(Control root){foreach(Control child in root.Controls){yield return child;foreach(Control nested in AllControls(child))yield return nested;}}
     }
 }

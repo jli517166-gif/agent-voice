@@ -17,6 +17,14 @@ foreach ($folder in @('service','integrations','tools')) {
     Get-ChildItem -LiteralPath (Join-Path $sourceRoot $folder) -File | Where-Object { $folder -ne 'tools' -or $_.Name -in @('prepare_airi.py','release_audit.py','export_connector.py','config_bundle.py','tts_bundle.py','connect_harness.py','verify_harness.py','install_mcp.py') } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $target $_.Name) -Force }
 }
 $agentAssets = Join-Path $sourceRoot '.agents'
+if (Test-Path -LiteralPath (Join-Path $sourceRoot 'assets')) {
+    $assetRoot = Join-Path $sourceRoot 'assets'
+    Get-ChildItem -LiteralPath $assetRoot -File -Recurse | ForEach-Object {
+        $targetAsset = Join-Path (Join-Path $OutputDirectory 'assets') $_.FullName.Substring($assetRoot.Length + 1)
+        New-Item -ItemType Directory -Path (Split-Path $targetAsset) -Force | Out-Null
+        Copy-Item -LiteralPath $_.FullName -Destination $targetAsset -Force
+    }
+}
 if (Test-Path -LiteralPath $agentAssets) { Copy-Item -LiteralPath $agentAssets -Destination (Join-Path $OutputDirectory '.agents') -Recurse -Force }
 foreach ($obsolete in @('integrations\opencode-plugin.mjs','integrations\pi-extension.ts')) {
     $obsoletePath = Join-Path $OutputDirectory $obsolete
