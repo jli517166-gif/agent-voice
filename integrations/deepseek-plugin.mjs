@@ -1,4 +1,4 @@
-import { send, startHeartbeat, mcpControl } from './connector.mjs';
+import { send, startHeartbeat, mcpControl, playbackStatus } from './connector.mjs';
 import { writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 export const name = 'agent-voice-public';
@@ -67,6 +67,20 @@ export function createReplyReader(deliver = event => send('deepseek', event)) {
 
 export function apply(ctx) {
   const stopHeartbeat = startHeartbeat('deepseek');
+  // Read-only native RPC avoids filling chat history with polling commands.
+  ctx.inject(['connection'], scope => {
+    if(!scope.connection?.fetch)return;
+    // The desktop shell carries exact /api routes; a standalone RPC channel
+    // works on web but is rejected by the desktop carrier with HTTP 405.
+    scope.connection.fetch.register({path:'/api/agent-voice-playback',methods:['POST'],requestBody:'buffered',fetch:async request=>{
+      const body=await request.json();
+      if(body.type!=='client-request'||body.method!=='agent-voice-playback'||typeof body.rpcId!=='string')return new Response('invalid playback request',{status:400});
+      let result;
+      try{result={ok:true,value:await playbackStatus()};}
+      catch(error){result={ok:false,error:{code:'INTERNAL_ERROR',message:error.message}};}
+      return Response.json({type:'server-response',rpcId:body.rpcId,result});
+    }});
+  });
   // Headless verification can run without the interactive command service.
   // Its reply reader must remain active even when that service is absent.
   let command;

@@ -68,6 +68,18 @@ class CoreTests(unittest.TestCase):
     def test_initial_public_config_contains_no_private_voice(self):
         cfg=defaults();self.assertEqual(cfg['voice']['model'],'');self.assertEqual(cfg['voice']['reference'],'');self.assertEqual(cfg['harness'],{'codex':True,'deepseek':False})
         self.assertEqual(cfg['voice']['synthesisMode'],'base');self.assertFalse(cfg['voice']['advancedEnabled'])
+    def test_playback_status_ignores_synthesis_only_and_cancelled_epoch(self):
+        jobs=self.server.jobs
+        with jobs.lock:
+            job={'id':'fixture','source':'deepseek','state':'generating','play':True,'generation':jobs.generation}
+            jobs.current=job
+            self.assertEqual(self.server.status()['playback']['state'],'generating')
+            job['state']='playing';self.assertEqual(self.server.status()['playback']['state'],'playing')
+            self.actor.playing=False;self.assertEqual(self.server.status()['playback']['state'],'generating','buffering between segments must not animate')
+            self.actor.playing=True;self.assertEqual(self.server.status()['playback']['state'],'playing')
+            job['play']=False;self.assertEqual(self.server.status()['playback']['state'],'idle')
+            job['play']=True;jobs.generation+=1;self.assertEqual(self.server.status()['playback']['state'],'idle')
+            jobs.current=None
     def test_sanitizer_retains_body_skips_code_links_and_paths(self):
         self.assertEqual(sanitize('工作好久啦，起来动一动、喝口水吧～'),'工作好久啦，起来动一动、喝口水吧～')
         self.assertEqual(sanitize('```py\nprint(1)\n``` https://example.com E:\\secret\\x.pth'),'')

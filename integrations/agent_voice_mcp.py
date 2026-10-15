@@ -87,6 +87,7 @@ class AgentVoice:
         cfg=self.settings();profiles=cfg.get("profiles",[]);current=cfg.get("voice",{})
         match=next((item for item in profiles if item.get("voice")==current),None)
         return {"running":True,"ready":health.get("ready"),"busy":health.get("busy"),"queued":health.get("queued"),
+            "playback":health.get("playback",{"state":"unknown"}),
             "currentProfile":{"id":match.get("id"),"name":match.get("name")} if match else None,
             "autoReading":bool(cfg.get("harness",{}).get(self.host)),"host":self.host,"error":health.get("error")}
 

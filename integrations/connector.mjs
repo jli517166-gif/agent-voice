@@ -72,3 +72,23 @@ export async function mcpControl(source, tool, args = {}, root = appRoot) {
     child.stdin.end(JSON.stringify({jsonrpc:'2.0', id:1, method:'tools/call', params:{name:tool, arguments:args}}) + '\n');
   });
 }
+
+// Read-only animation telemetry stays in the trusted backend. Do not launch a
+// Python MCP process for every frame/status poll or expose health bodies/token.
+export async function playbackStatus(root = appRoot) {
+  const cfg = JSON.parse(await readFile(path.join(root, 'data/settings.json'), 'utf8'));
+  let response;
+  try {
+    response = await fetch(`http://127.0.0.1:${cfg.port}/health`, {
+      headers:{Authorization:`Bearer ${cfg.token}`},signal:AbortSignal.timeout(2500),
+    });
+  } catch(error) {
+    if(error.cause?.code==='ECONNREFUSED')return {running:false,playback:{state:'offline'}};
+    throw new Error('语音播放状态连接中断');
+  }
+  if(!response.ok)throw new Error('语音播放状态读取失败');
+  const health=await response.json();
+  if(health.service!=='agent-voice-public')throw new Error('当前地址不是 Agent Voice 服务');
+  const state=health.playback?.state;
+  return {running:true,playback:{state:['idle','queued','generating','playing'].includes(state)?state:'unknown'},queued:health.queued??0};
+}

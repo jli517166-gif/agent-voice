@@ -73,9 +73,19 @@ class Server(ThreadingHTTPServer):
         verification=self.verification.snapshot_all()
         with self.jobs.lock:
             current=self.jobs.public(self.jobs.current) if self.jobs.current else None
+            job=self.jobs.current
+            # Busy also includes synthesis-only work. Animate only playback
+            # jobs, and stop immediately when the cancellation epoch changes.
+            playback={"state":"idle"}
+            if job and job.get("play") and job.get("generation")==self.jobs.generation:
+                state=job.get("state")
+                if state=='playing' and job.get('output')!='airi' and getattr(self.pipeline,'playing',True) is False:state='generating'
+                if state in ("queued","generating","playing"):
+                    playback={"state":state,"jobId":job["id"],"source":job["source"]}
+            elif not job and self.jobs.queue.qsize():playback={"state":"queued"}
             return {"service":"agent-voice-public","version":1,"pid":os.getpid(),
                 "ready":self.pipeline.loaded and not missing,"resourcesReady":not missing,"missing":missing,
-                "busy":current is not None,"current":current,"queued":self.jobs.queue.qsize(),
+                "busy":current is not None,"current":current,"queued":self.jobs.queue.qsize(),"playback":playback,
                 "error":self.jobs.last_error,"gpu":self.pipeline.gpu,
                 "airiConnected":self.store.get()['airi']['enabled'] and time.monotonic()-self.jobs.airi_seen<8,"generation":self.jobs.generation,
                 "harnessEvents":copy.deepcopy(self.last_events),

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, unlink, rmdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { startHeartbeat, send } from '../integrations/connector.mjs';
+import { startHeartbeat, send, playbackStatus } from '../integrations/connector.mjs';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'agent-voice-heartbeat-'));
 const data = path.join(root, 'data'), settings = path.join(data, 'settings.json');
@@ -33,6 +33,15 @@ try {
   assert.ok(requests[3].url.endsWith('/api/harness/deepseek'));
   assert.deepEqual(JSON.parse(requests[3].options.body), {type:'turn/end', text:'完成'});
   stop(); assert.equal(timers.size, 0);
+  globalThis.fetch=async()=>({ok:true,json:async()=>({service:'agent-voice-public',playback:{state:'playing',jobId:'private-id'},queued:2,current:{text:'private text'},token:'private-token'})});
+  const playback=await playbackStatus(root);assert.equal(playback.playback.state,'playing');assert.equal(playback.queued,2);
+  assert.ok(!JSON.stringify(playback).includes('private'),'passive telemetry does not expose text, paths or credentials');
+  globalThis.fetch=async()=>({ok:true,json:async()=>({service:'agent-voice-public',busy:true,current:{state:'generating'}})});
+  assert.equal((await playbackStatus(root)).playback.state,'unknown','old servers never guess playing from busy');
+  globalThis.fetch=async()=>{const error=new Error('offline');error.cause={code:'ECONNREFUSED'};throw error;};
+  assert.equal((await playbackStatus(root)).running,false);
+  globalThis.fetch=async()=>({ok:true,json:async()=>({service:'another-app'})});
+  await assert.rejects(playbackStatus(root),/不是 Agent Voice/);
   console.log(JSON.stringify({ok:true, checks:['startup heartbeat','periodic heartbeat','bearer authentication','non-blocking timer','reload disposes previous timer','final event unchanged','stop disposes timer']}));
 } finally {
   stop?.(); Object.assign(globalThis, original);
@@ -43,14 +52,16 @@ const { default: hostPlugin, apply, inject, createReplyReader, runVoiceCommand }
 assert.equal(hostPlugin.apply, apply);
 assert.equal(hostPlugin.inject, inject);
 assert.deepEqual(inject, []);
-let registered, disposed;
+let registered, disposed,statusHandler;
 const listeners = new Map();
 const fake = {
-  inject(dependencies,callback) { assert.deepEqual(dependencies,['commands']);callback(this); },
+  inject(dependencies,callback) { assert.ok(['commands','connection'].includes(dependencies[0]));callback(this); },
+  connection:{fetch:{register(route){assert.equal(route.path,'/api/agent-voice-playback');assert.deepEqual(route.methods,['POST']);statusHandler=route.fetch;}}},
   commands: { register(definition) { registered = definition; return {dispose(){disposed = true;}}; } },
   on(name, callback) { listeners.set(name, callback); },
 };
 apply(fake);
+assert.equal((await statusHandler({json:async()=>({type:'client-request',method:'execute',rpcId:'test'})})).status,400,'status channel only permits read-only snapshot');
 assert.equal((await runVoiceCommand('ui {"tool":"execute_shell"}')).kind,'error');
 assert.equal(registered.name, 'agent-voice');
 assert.equal(registered.definitionId, 'agent-voice.control');

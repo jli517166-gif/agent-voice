@@ -30,7 +30,7 @@ def hidden_process():
 class Pipeline:
     def __init__(self,store):
         self.store=store; self.rvc=None; self.rvc_key=None; self.tts=None; self.tts_key=None
-        self.loaded=False; self.gpu=None; self.play_lock=threading.RLock();self.prepare_lock=threading.RLock()
+        self.loaded=False; self.gpu=None; self.playing=False; self.play_lock=threading.RLock();self.prepare_lock=threading.RLock()
 
     def prepare(self,voice,check):
         with self.prepare_lock:return self._prepare(voice,check)
@@ -161,14 +161,19 @@ class Pipeline:
         with self.play_lock:
             check()
             sd.play(np.clip(audio*voice["volume"],-1,1),device_rate)
-        while sd.get_stream().active:
-            check()
-            import time
-            time.sleep(.05)
-        return device_rate
+            self.playing=True
+        try:
+            while sd.get_stream().active:
+                check()
+                import time
+                time.sleep(.05)
+            return device_rate
+        finally:
+            self.playing=False
 
     def stop(self):
         with self.play_lock:
+            self.playing=False
             if "sounddevice" in sys.modules:
                 sys.modules["sounddevice"].stop()
 

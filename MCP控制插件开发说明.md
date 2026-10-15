@@ -62,6 +62,10 @@ codex mcp add agent_voice -- <python.exe> <agent_voice_mcp.py> --root <程序目
 
 重启 DeepSeek Harness 后才能加载。安装成功后，浏览器半插件会在 `conversation.input.left` 槽位显示 **语音** 按钮；菜单通过 Harness 原生 `remote.commands.execute` 执行已注册的 `/agent-voice ui <JSON>` 控制命令，再调用本机 MCP。结果直接显示在菜单中，不修改聊天草稿、不发送给模型。声音方案可在菜单内下拉选择并直接应用。安装器同时刷新实际 profile 内的 client.js 并校验内容。入口仅显示图标和文字，无边框、透明背景；展开菜单继承 Harness 的明暗主题、文字和配色，并使用实色底层避免透字。安装失败不会删除备份，也不代表自动朗读连接器失效。
 
+播放动画另走只读状态通道：后端通过 `connection.fetch.register` 注册 `POST /api/agent-voice-playback`，前端用 `connection.rpc.call('/api', 'agent-voice-playback', {}, signal)` 请求。使用 Harness 原生连接认证，不在浏览器保存本机密钥，不通过聊天命令轮询，也不为每次轮询启动 Python。后端只返回运行状态、播放阶段和队列数量；正文、声音路径、本机密钥不会转发给按钮。
+
+`/health.playback.state` 区分 `idle`、`queued`、`generating` 和 `playing`。本机音频设备实际启动后才进入播放动画，单纯 `busy: true` 或仅生成文件均不会让波形运动。停止会立即使原任务的播放状态失效，避免旧请求把动画重新点亮。旧服务缺少此字段时显示“状态未确认”。播放时每 650 毫秒检查，生成或排队时每 1100 毫秒检查，空闲或出错时每 3 秒检查；隐藏页面暂停，卸载释放定时器，系统减少动态效果设置会关闭运动。此动画表达播放阶段，不分析声音振幅。
+
 DeepSeek 回复连接器同时向原生人工命令注册表注册 `/agent-voice`。它供支持原生人工命令分发的版本使用。部分桌面版会把手动提交的斜杠文本交给模型，因此日常控制请使用“语音”按钮；按钮直接调用命令服务，不向聊天输入框提交文本：
 
 ```text
