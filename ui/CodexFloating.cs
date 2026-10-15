@@ -22,7 +22,7 @@ namespace AgentVoice {
 
     // UI preferences stay outside voice settings and exported voice packages.
     public sealed class FloatingPreferences {
-        public bool enabled=true;
+        public bool enabled=false;
         public double offsetX=0,offsetY=0;
         public static FloatingPreferences Read(SettingsStore store){try{string p=Path.Combine(store.Root,"data","codex-floating.json");return File.Exists(p)?Json.Decode<FloatingPreferences>(File.ReadAllText(p)):new FloatingPreferences();}catch{return new FloatingPreferences();}}
         public void Save(SettingsStore store){string path=Path.Combine(store.Root,"data","codex-floating.json");Directory.CreateDirectory(Path.GetDirectoryName(path));string temp=path+".tmp";File.WriteAllText(temp,Json.Encode(this),new UTF8Encoding(false));if(File.Exists(path))File.Replace(temp,path,null);else File.Move(temp,path);}

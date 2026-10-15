@@ -64,6 +64,7 @@ namespace AgentVoice {
             bool rejected=false;try{await actions.Execute("profile","missing");}catch(InvalidOperationException){rejected=true;}Check(rejected&&root.Read().voice.pitch==2,"无效声音方案改变了配置",errors);
             Check(root.Read().token==token&&root.Read().phrases.Count==2,"控制操作改变无关配置",errors);
             FloatingTarget target=new FloatingTarget{bounds=new Rectangle(-31800,-31900,1100,800),workArea=new Rectangle(-32000,-32000,1920,1080),active=false};
+            new FloatingPreferences{enabled=true}.Save(root);
             using(var control=new CodexFloatingController(root,client,null,()=>{},(a,b)=>target)){
                 control.Refresh();Check(!control.EntryVisible,"切换其他程序后入口未隐藏",errors);
                 target.active=true;control.Refresh();Check(control.EntryVisible,"目标在前台时未显示入口",errors);

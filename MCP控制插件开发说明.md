@@ -10,6 +10,8 @@
 
 | MCP 工具 | 作用 |
 |---|---|
+| `open_voice_player` | 打开插件朗读面板；可选传入正文，不启动播放 |
+| `read_text` | 用当前声音朗读指定正文，必要时启动服务 |
 | `voice_service_status` | 查看服务、队列、当前声音和当前 Harness 自动朗读开关 |
 | `start_voice_service` | 启动后台语音服务 |
 | `stop_voice_service` | 关闭后台语音服务 |
@@ -97,4 +99,18 @@ DeepSeek 回复连接器同时向原生人工命令注册表注册 `/agent-voice
 - 新增工具后同时更新 `TOOLS`、`AgentVoice.call`、本说明和协议测试。
 - 为其他 Harness 安装时，只新增该 Harness 的配置安装器；不要复制一份 MCP 业务逻辑。
 
-桌面程序另外提供 Codex 独立悬浮控制窗，使用相同的本机 HTTP 服务接口，不经模型转发。它的显示与生命周期由桌面程序管理，与 MCP 插件安装分开。使用方法、前后台规则和位置重置见《接入说明》的“Codex 悬浮语音控制”。
+## 插件内嵌朗读面板（兼容性试验）
+
+1. 安装或更新语音控制插件后，重载插件或新建会话。
+2. 选择原生“语音控制”技能，发送“打开朗读面板”，可同时指定正文。
+3. 支持 MCP Apps 的客户端会读取 `ui://agent-voice/player.html`，显示正文、朗读、停止朗读及刷新状态。面板通过宿主的 `tools/call` 调用同一 MCP，不发送聊天消息、不直连 HTTP、不包含连接密钥。
+4. “朗读”提交当前正文；“停止朗读”停止播放并清空等待队列。打开面板及更新正文不会自动播放。服务、声音方案和自动朗读等其他功能通过技能调用。
+5. 若只有文字返回，或面板提示宿主不提供 MCP 调用能力，应继续使用技能及 MCP。安装成功、资源能读取、初始化声明支持 UI，均不能单独作为“按钮已显示并工作”的证据。
+
+工具通过 `_meta.ui.resourceUri` 关联 HTML，通过 `openai/ui.entrypoints: [{type: "thread"}]` 声明支持的会话面板入口。资源 MIME 为 `text/html;profile=mcp-app`。实现同时提供 `resources/list` 与 `resources/read`；不支持 UI 的宿主仍能调用全部文字工具。
+
+本机 `data/logs/mcp-ui-client-codex.json` 只记录客户端公开名称、版本、扩展能力名称及“尚未验证渲染”，不保存正文、密钥或初始化完整参数。未声明 UI 能力不等于绝对不支持；最终以面板实际显示和按钮执行结果为准。
+
+**客户端自带“朗读”尚未接管。** 本次核查的官方接口未提供替换该按钮播放源或注入本机 TTS 提供方的方法；插件面板不冒充该功能。参考 [MCP 界面](https://developers.openai.com/plugins/build/chatgpt-ui) 和 [会话面板扩展](https://developers.openai.com/plugins/build/extensions)。
+
+旧 Codex 悬浮窗默认关闭，仅保留为可选兼容功能，不作为插件面板的替代验证。已明确关闭的本机实例不会重新打开。
