@@ -1,4 +1,4 @@
-"""Harness-specific final message adapters and an opt-in Codex tail reader."""
+"""Visible assistant message adapters and an opt-in Codex tail reader."""
 import hashlib
 import json
 import os
@@ -45,11 +45,13 @@ def normalize(source,event):
     text=""; session=str(event.get("session_id",event.get("thread-id",event.get("sessionId","unknown"))))
     ident=str(event.get("turn-id",event.get("turn",event.get("messageId",""))))
     if source == "codex":
-        if event.get("type") != "agent-turn-complete": return None
+        if event.get("type") not in ("agent-turn-complete","agent-message-complete"): return None
         text=event.get("last-assistant-message","")
+        if event.get("type")=="agent-message-complete":ident="message:"+ident+":"+str(event.get("message-id") or hashlib.sha256(str(text).encode()).hexdigest())
     elif source == "deepseek":
-        if event.get("type") != "turn/end": return None
+        if event.get("type") not in ("turn/end","assistant/message"): return None
         text=event.get("text","")
+        if event.get("type")=="assistant/message":ident="message:"+str(event.get("messageId") or hashlib.sha256(str(text).encode()).hexdigest())
     else:
         raise ValueError("未知 Harness")
     if not isinstance(text,str) or not text.strip(): return None
@@ -60,9 +62,9 @@ def normalize(source,event):
 class CodexTail:
     def __init__(self,on_event,enabled,root=None):
         self.root=Path(root or os.environ.get("CODEX_HOME",str(Path.home()/".codex"))) / "sessions"
-        self.on_event=on_event; self.enabled=enabled; self.offsets={}; self.pending={}; self.ignored=set(); self.stopped=threading.Event()
+        self.on_event=on_event; self.enabled=enabled; self.offsets={}; self.pending={}; self.turns={}; self.progress={}; self.ignored=set(); self.stopped=threading.Event()
         self.monitor_ready=False
-        self.thread=threading.Thread(target=self.run,name="codex-final-messages",daemon=True)
+        self.thread=threading.Thread(target=self.run,name="codex-visible-messages",daemon=True)
 
     def run(self):
         initialized=False; was_enabled=False
@@ -72,11 +74,14 @@ class CodexTail:
                 enabled=self.enabled()
                 for path in files:
                     size=path.stat().st_size
-                    if path not in self.offsets or not initialized or not enabled or not was_enabled:
+                    if not initialized or not enabled or not was_enabled:
                         with path.open('rb') as stream:
-                            try:self.consume(path,json.loads(stream.readline()))
+                            try:
+                                metadata=json.loads(stream.readline())
+                                if metadata.get('type')=='session_meta':self.consume(path,metadata)
                             except ValueError:pass
                         self.offsets[path]=size; continue
+                    if path not in self.offsets:self.offsets[path]=0
                     offset=self.offsets[path]
                     if size<offset: offset=0
                     if size==offset: continue
@@ -91,13 +96,15 @@ class CodexTail:
                             except ValueError: continue
                             self.consume(path,record)
                     self.offsets[path]=offset
-                self.offsets={p:o for p,o in self.offsets.items() if p in files}
+                if len(self.offsets)>1024:self.offsets={p:o for p,o in self.offsets.items() if p in files}
                 self.pending={p:t for p,t in self.pending.items() if Path(p) in files}
-                self.ignored.intersection_update(map(str,files))
+                self.turns={p:t for p,t in self.turns.items() if Path(p) in files}
+                self.progress={p:t for p,t in self.progress.items() if Path(p) in files}
+                if len(self.ignored)>1024:self.ignored.intersection_update(map(str,files))
                 initialized=True; was_enabled=enabled; self.monitor_ready=self.root.is_dir()
             except (OSError,ValueError):
                 self.monitor_ready=False
-            self.stopped.wait(2)
+            self.stopped.wait(.5)
 
     def consume(self,path,record):
         payload=record.get("payload",{}); kind=record.get("type")
@@ -109,11 +116,21 @@ class CodexTail:
         if str(path) in self.ignored:return
         if kind=="event_msg" and payload.get("type")=="task_started":
             self.pending.pop(str(path),None)
+            self.progress.pop(str(path),None)
+            self.turns[str(path)]=payload.get("turn_id",record.get("timestamp",""))
+        if kind=="response_item" and payload.get("role")=="assistant" and payload.get("type")=="message" and payload.get("phase")=="commentary":
+            text=blocks(payload.get("content"))
+            if text.strip():
+                self.progress[str(path)]=text
+                self.on_event("codex",{"type":"agent-message-complete","thread-id":path.stem,
+                    "turn-id":self.turns.get(str(path),""),"message-id":payload.get("id") or hashlib.sha256(text.encode()).hexdigest(),
+                    "last-assistant-message":text})
         if kind=="response_item" and payload.get("role")=="assistant" and payload.get("type")=="message" and payload.get("phase") in ("final_answer","final"):
             self.pending[str(path)]=blocks(payload.get("content"))
         if kind=="event_msg" and payload.get("type")=="task_complete":
-            text=payload.get("last_agent_message") or self.pending.pop(str(path),"")
-            if text:
+            final=self.pending.pop(str(path),"")
+            text=payload.get("last_agent_message") or final
+            if text and (final or text!=self.progress.get(str(path))):
                 self.on_event("codex",{"type":"agent-turn-complete","thread-id":path.stem,
                     "turn-id":payload.get("turn_id",record.get("timestamp","")),"last-assistant-message":text})
 

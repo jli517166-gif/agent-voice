@@ -2,7 +2,7 @@
 
 ## 功能边界
 
-当前 MCP 控制插件只为 **Codex** 和 **DeepSeek Harness** 提供自动安装。它控制桌面语音服务，不负责捕获 Harness 的最终回复。自动朗读仍依赖各自经过验证的回复连接器。
+当前 MCP 控制插件只为 **Codex** 和 **DeepSeek Harness** 提供自动安装。它控制桌面语音服务，不负责捕获 Harness 的回复。自动朗读仍依赖各自经过验证的回复连接器。
 
 本地 MCP 服务器位于 `integrations/agent_voice_mcp.py`。它使用 stdio JSON-RPC，标准输出只写协议消息，诊断写标准错误。本地连接密钥从 Agent Voice 的 `data/settings.json` 读取，不写入 Codex 或 DeepSeek 配置。
 
@@ -16,7 +16,7 @@
 | `stop_speech` | 停止当前朗读并清空等待队列 |
 | `list_voice_profiles` | 列出声音方案 ID、名称、模式和当前状态 |
 | `apply_voice_profile` | 按 ID 切换声音方案 |
-| `set_auto_reading` | 开关当前 Harness 的最终回复自动朗读 |
+| `set_auto_reading` | 开关当前 Harness 的进度说明和最终回复自动朗读 |
 
 切换声音时只接受程序已经保存的声音方案 ID，避免模型自行提交任意本机文件路径。
 
@@ -59,7 +59,7 @@ codex mcp add agent_voice -- <python.exe> <agent_voice_mcp.py> --root <程序目
       failOnStartupError: false
 ```
 
-重启 DeepSeek Harness 后才能加载。安装成功后，浏览器半插件会在 `conversation.input.left` 槽位显示 **语音** 按钮；菜单通过 Harness 原生 `remote.commands.execute` 执行已注册的 `/agent-voice ui <JSON>` 控制命令，再调用本机 MCP。结果直接显示在菜单中，不修改聊天草稿、不发送给模型。声音方案可在菜单内下拉选择并直接应用。安装器同时刷新实际 profile 内的 client.js 并校验内容。菜单默认继承 Harness 的明暗主题、文字和配色，并使用实色底层避免透字。安装失败不会删除备份，也不代表自动朗读连接器失效。
+重启 DeepSeek Harness 后才能加载。安装成功后，浏览器半插件会在 `conversation.input.left` 槽位显示 **语音** 按钮；菜单通过 Harness 原生 `remote.commands.execute` 执行已注册的 `/agent-voice ui <JSON>` 控制命令，再调用本机 MCP。结果直接显示在菜单中，不修改聊天草稿、不发送给模型。声音方案可在菜单内下拉选择并直接应用。安装器同时刷新实际 profile 内的 client.js 并校验内容。入口仅显示图标和文字，无边框、透明背景；展开菜单继承 Harness 的明暗主题、文字和配色，并使用实色底层避免透字。安装失败不会删除备份，也不代表自动朗读连接器失效。
 
 DeepSeek 回复连接器同时向原生人工命令注册表注册 `/agent-voice`。它供支持原生人工命令分发的版本使用。部分桌面版会把手动提交的斜杠文本交给模型，因此日常控制请使用“语音”按钮；按钮直接调用命令服务，不向聊天输入框提交文本：
 

@@ -1,7 +1,8 @@
 import { send, startHeartbeat, mcpControl } from './connector.mjs';
 import { writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 export const name = 'agent-voice-public';
-export const inject = ['commands'];
+export const inject = [];
 
 function commandHelp() {
   return ['🎙 Agent Voice 控制台', 'status  状态', 'start  开启服务', 'stop  关闭服务',
@@ -39,32 +40,47 @@ export async function runVoiceCommand(rawInput = '') {
   } catch (error) { return {kind:'error', text:'语音控制失败：' + error.message}; }
 }
 
+// Only committed visible assistant text: never reasoning, tools, attempts or
+// compaction replacements. Serial delivery preserves step order before turn/end.
+export function createReplyReader(deliver = event => send('deepseek', event)) {
+  let delivery = Promise.resolve();
+  const seen = new Set();
+  const read = (session, event) => {
+    if (session?.header?.origin === 'subagent' || session?.header?.parentSession || session?.header?.delegationDepth > 0) return;
+    if (event.type !== 'assistant/message' || (event.surfaceOp && event.surfaceOp !== 'append')) return;
+    const data = event.data ?? event;
+    const content = data.message?.content ?? data.content ?? data.text;
+    const text = typeof content === 'string' ? content : Array.isArray(content)
+      ? content.filter(p => p.type === 'text' || p.type === 'output_text').map(p => p.text).join('\n') : '';
+    if (!text.trim()) return;
+    const turn = data.turn ?? event.turnId ?? '';
+    const messageId = String(event.seq ?? `${turn}:${data.step ?? ''}:${createHash('sha256').update(text).digest('hex')}`);
+    const key = `${session.id}:${messageId}`;
+    if (seen.has(key)) return delivery;
+    seen.add(key);if(seen.size > 512)seen.delete(seen.values().next().value);
+    delivery = delivery.then(() => deliver({type:'assistant/message',session_id:session.id,turn,messageId,text})).catch(() => {});
+    return delivery;
+  };
+  read.flush = () => delivery;
+  return read;
+}
+
 export function apply(ctx) {
   const stopHeartbeat = startHeartbeat('deepseek');
-  const pending = new Map();
-  const command = ctx.commands.register({
-    definitionId: 'agent-voice.control', name: 'agent-voice',
-    description: '控制语音服务、停止朗读或切换声音', input: {hint: 'status | start | stop | quiet | profiles | profile <ID> | auto on/off'},
-    handler: ({rawInput}) => runVoiceCommand(rawInput),
+  // Headless verification can run without the interactive command service.
+  // Its reply reader must remain active even when that service is absent.
+  let command;
+  ctx.inject(['commands'], scope => {
+    command = scope.commands.register({
+      definitionId: 'agent-voice.control', name: 'agent-voice',
+      description: '控制语音服务、停止朗读或切换声音', input: {hint: 'status | start | stop | quiet | profiles | profile <ID> | auto on/off'},
+      handler: ({rawInput}) => runVoiceCommand(rawInput),
+    });
+    void writeFile(new URL('../data/logs/deepseek-control.json',import.meta.url),JSON.stringify({time:new Date().toISOString(),stage:'command-registered'})).catch(()=>{});
   });
-  void writeFile(new URL('../data/logs/deepseek-control.json',import.meta.url),JSON.stringify({time:new Date().toISOString(),stage:'command-registered'})).catch(()=>{});
-  ctx.on('session/event', (session, event) => {
-    if (session?.header?.origin === 'subagent' || session?.header?.parentSession || session?.header?.delegationDepth > 0) return;
-    const data = event.data ?? event;
-    const turn = data.turn ?? event.turnId ?? '';
-    const key = `${session.id}:${turn}`;
-    if (event.type === 'assistant/message') {
-      const content = data.message?.content ?? data.content ?? data.text;
-      const text = typeof content === 'string' ? content : Array.isArray(content)
-        ? content.filter(p => p.type === 'text' || p.type === 'output_text').map(p => p.text).join('\n') : '';
-      if (text) pending.set(key, text);
-      while (pending.size > 256) pending.delete(pending.keys().next().value);
-    }
-    if (event.type === 'turn/end') {
-      const text = pending.get(key); pending.delete(key);
-      if (text) void send('deepseek', { type: 'turn/end', session_id: session.id, turn, text });
-    }
-  });
-  ctx.on('dispose', () => { if(typeof command === 'function') command(); else command?.dispose?.(); stopHeartbeat(); pending.clear(); });
+  const reader = createReplyReader();
+  ctx.on('session/event', reader);
+  ctx.on('session/flush', reader.flush);
+  ctx.on('dispose', () => { if(typeof command === 'function') command(); else command?.dispose?.(); stopHeartbeat(); });
 }
 export default { name, inject, apply };

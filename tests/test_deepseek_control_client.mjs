@@ -20,6 +20,8 @@ context.window.window=context.window;context.globalThis=context;
 vm.runInNewContext(fs.readFileSync(new URL('../integrations/deepseek-control-client.js',import.meta.url),'utf8'),context);
 assert.match(style.textContent,/background-color:var\(--av-surface\)/,'menu has an opaque backing');
 assert.match(style.textContent,/body\[data-ds-dark-theme\]/,'theme follows host dark-mode setting');
+assert.match(style.textContent,/\.avc-trigger\{[^}]*border:0;[^}]*background:transparent/,'entry has no frame or background');
+assert.match(style.textContent,/\.avc-trigger:hover[^}]*background:transparent/,'entry stays transparent when hovered or open');
 assert.ok(!style.textContent.includes('old cached css'),'existing stylesheet is refreshed');
 assert.deepEqual(Array.from(exported.inject),['slots','remote','remote.commands']);
 const calls=[];

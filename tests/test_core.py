@@ -180,13 +180,29 @@ class CoreTests(unittest.TestCase):
     def test_audio_path_traversal_rejected(self):
         with self.assertRaises(urllib.error.HTTPError) as err:self.request('/audio/../../data/settings.json')
         self.assertEqual(err.exception.code,400)
-    def test_codex_final_only_reader(self):
+    def test_codex_progress_arrives_before_task_complete_and_final_is_not_repeated(self):
         captured=[];tail=CodexTail(lambda s,e:captured.append(e),lambda:True,root=self.root)
         path=self.root/'rollout.jsonl'
+        tail.consume(path,{'type':'event_msg','payload':{'type':'task_started','turn_id':'a'}})
         tail.consume(path,{'type':'response_item','payload':{'type':'message','role':'assistant','phase':'commentary','content':[{'type':'output_text','text':'进度'}]}})
+        self.assertEqual(len(captured),1);self.assertEqual(captured[0]['type'],'agent-message-complete')
+        self.assertEqual(captured[0]['last-assistant-message'],'进度')
         tail.consume(path,{'type':'response_item','payload':{'type':'message','role':'assistant','phase':'final_answer','content':[{'type':'output_text','text':'完成啦'}]}})
         tail.consume(path,{'type':'event_msg','payload':{'type':'task_complete','turn_id':'a'}})
-        self.assertEqual(len(captured),1);self.assertEqual(captured[0]['last-assistant-message'],'完成啦')
+        self.assertEqual(len(captured),2);self.assertEqual(captured[1]['last-assistant-message'],'完成啦')
+        tail.consume(path,{'type':'event_msg','payload':{'type':'task_started','turn_id':'b'}})
+        tail.consume(path,{'type':'response_item','payload':{'type':'message','role':'assistant','phase':'commentary','content':[{'type':'output_text','text':'只有这一句'}]}})
+        tail.consume(path,{'type':'event_msg','payload':{'type':'task_complete','turn_id':'b','last_agent_message':'只有这一句'}})
+        self.assertEqual(len(captured),3)
+        self.assertNotEqual(normalize('codex',captured[0])['eventId'],normalize('codex',captured[2])['eventId'])
+    def test_progress_messages_in_same_turn_are_distinct_and_duplicate_delivery_is_ignored(self):
+        self.store.update({'harness':{'deepseek':True}})
+        first={'type':'assistant/message','session_id':'s','turn':1,'messageId':'20','text':'开始检查。'}
+        second={**first,'messageId':'24','text':'已经检查完毕。'}
+        one=self.request('/api/harness/deepseek',first);two=self.request('/api/harness/deepseek',second)
+        self.assertNotEqual(one['jobId'],two['jobId'])
+        self.assertTrue(self.request('/api/harness/deepseek',first)['duplicate'])
+        self.wait(two['jobId']);self.assertEqual([c[0] for c in self.actor.calls],['开始检查。','已经检查完毕。'])
     def test_codex_subagent_replies_are_not_spoken(self):
         captured=[];tail=CodexTail(lambda s,e:captured.append(e),lambda:True,root=self.root);path=self.root/'child.jsonl'
         tail.consume(path,{'type':'session_meta','payload':{'source':{'subagent':{'thread_spawn':{'parent_thread_id':'parent'}}}}})

@@ -51,7 +51,7 @@ class Server(ThreadingHTTPServer):
         if not self.store.get()["harness"].get(source):
             return {"ok":True,"skipped":True,"reason":"该 Harness 未启用"}
         message=normalize(source,event)
-        if not message:return {"ok":True,"skipped":True,"reason":"不是最终助手正文"}
+        if not message:return {"ok":True,"skipped":True,"reason":"不是可朗读的助手正文"}
         self.presence.receipt(source)
         try:
             result=self.jobs.submit(message["text"],source,True,message["eventId"])

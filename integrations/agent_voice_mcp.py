@@ -22,7 +22,7 @@ TOOLS = [
     {"name":"stop_speech","description":"立即停止当前朗读并清空尚未播放的语音队列。","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
     {"name":"list_voice_profiles","description":"列出已保存的声音方案及当前使用的声音。","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":True,"destructiveHint":False,"idempotentHint":True}},
     {"name":"apply_voice_profile","description":"按声音方案 ID 切换当前声音配置。","inputSchema":{"type":"object","properties":{"profile_id":{"type":"string","description":"list_voice_profiles 返回的声音方案 ID"}},"required":["profile_id"],"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
-    {"name":"set_auto_reading","description":"启用或关闭当前 Harness 最终回复的自动朗读。","inputSchema":{"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"],"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
+    {"name":"set_auto_reading","description":"启用或关闭当前 Harness 进度说明和最终回复的自动朗读。","inputSchema":{"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"],"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
 ]
 
 class AgentVoice:

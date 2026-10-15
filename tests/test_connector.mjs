@@ -39,13 +39,14 @@ try {
   await unlink(settings); await rmdir(data); await rmdir(root);
 }
 
-const { default: hostPlugin, apply, inject, runVoiceCommand } = await import('../integrations/deepseek-plugin.mjs');
+const { default: hostPlugin, apply, inject, createReplyReader, runVoiceCommand } = await import('../integrations/deepseek-plugin.mjs');
 assert.equal(hostPlugin.apply, apply);
 assert.equal(hostPlugin.inject, inject);
-assert.deepEqual(inject, ['commands']);
+assert.deepEqual(inject, []);
 let registered, disposed;
 const listeners = new Map();
 const fake = {
+  inject(dependencies,callback) { assert.deepEqual(dependencies,['commands']);callback(this); },
   commands: { register(definition) { registered = definition; return {dispose(){disposed = true;}}; } },
   on(name, callback) { listeners.set(name, callback); },
 };
@@ -57,4 +58,27 @@ assert.match(registered.input.hint, /profile/);
 const help = await runVoiceCommand('help');
 assert.equal(help.kind, 'success'); assert.match(help.text, /Agent Voice/); assert.match(help.text, /停止当前朗读/);
 listeners.get('dispose')(); assert.equal(disposed, true);
+const headlessListeners=new Map();
+apply({inject(){},on(name,callback){headlessListeners.set(name,callback);}});
+assert.equal(typeof headlessListeners.get('session/event'),'function','reply reader loads without commands');
+headlessListeners.get('dispose')();
 console.log(JSON.stringify({ok:true, checks:['DeepSeek unique /agent-voice registered in composer','command help is local','command registration disposed']}));
+
+const spoken=[];let releaseFirst;
+const firstDelivered=new Promise(resolve=>{releaseFirst=resolve;});
+const read=createReplyReader(async event=>{spoken.push(event);if(spoken.length===1)await firstDelivered;});
+const session={id:'main',header:{}};
+const message=(seq,text)=>({type:'assistant/message',seq,surfaceOp:'append',data:{turn:1,step:seq,message:{content:[{type:'reasoning',text:'内部推理'},{type:'text',text}]}}});
+const early=read(session,message(10,'我先检查设置。'));
+await Promise.resolve();assert.equal(spoken.length,1,'progress sent before turn end');
+const later=read(session,message(20,'检查完成。'));
+await Promise.resolve();assert.equal(spoken.length,1,'second message waits for first delivery');
+releaseFirst();await later;await early;
+await read(session,message(20,'检查完成。'));
+await read(session,{type:'turn/end',data:{turn:1}});
+await read(session,{...message(30,'压缩后的旧历史'),surfaceOp:{op:'replace'}});
+await read({id:'child',header:{origin:'subagent'}},message(40,'子任务内部文字'));
+await read(session,{type:'tool/result',data:{text:'工具输出'}});
+assert.deepEqual(spoken.map(e=>e.text),['我先检查设置。','检查完成。']);
+assert.deepEqual(spoken.map(e=>e.messageId),['10','20']);
+console.log(JSON.stringify({ok:true,checks:['read progress before turn end','ordered delivery','no final replay','no reasoning, tool or compaction text','no subagent speech']}));
