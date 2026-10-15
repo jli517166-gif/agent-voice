@@ -9,18 +9,23 @@ window.__ModuleLoader__.load({
     const h = React.createElement;
 
     const css = [
-      ".avc-root{position:relative;display:inline-flex;align-items:center;flex:none}",
-      ".avc-trigger{height:30px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(22,199,217,.42);border-radius:9px;background:rgba(22,199,217,.10);color:var(--dsw-alias-label-primary);cursor:pointer;font-size:12px;font-weight:600}",
-      ".avc-trigger:hover,.avc-trigger[aria-expanded=true]{background:rgba(22,199,217,.18);border-color:#16c7d9}",
-      ".avc-trigger:focus-visible{outline:2px solid #16c7d9;outline-offset:2px}",
-      ".avc-icon{width:16px;height:16px;display:block}",
-      ".avc-menu{position:absolute;left:0;bottom:calc(100% + 8px);z-index:60;width:224px;padding:8px;border:1px solid var(--dsw-alias-border-inverted);border-radius:12px;background:var(--dsw-specific-menu);box-shadow:var(--dsw-shadow-lv3);color:var(--dsw-alias-label-primary)}",
-      ".avc-title{padding:3px 7px 7px;font-size:12px;font-weight:700;color:#16c7d9}",
-      ".avc-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}",
-      ".avc-action{min-height:34px;padding:6px 8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-primary);cursor:pointer;text-align:left;font-size:12px}",
-      ".avc-action:hover{background:var(--dsw-alias-interactive-bg-hover)}",
-      ".avc-action:focus-visible{outline:2px solid #16c7d9;outline-offset:-2px}",
-      ".avc-hint{padding:8px 7px 2px;color:var(--dsw-alias-label-tertiary);font-size:11px;line-height:16px}"
+      ".avc-root,.avc-root *{box-sizing:border-box}",
+      ".avc-root{position:relative;display:inline-flex;align-items:center;flex:none;font-family:inherit}",
+      ".avc-trigger{appearance:none;height:32px;padding:0 11px;display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(25,199,242,.72);border-radius:10px;outline:0;box-shadow:none;background:#08243a;color:#eaf6ff;cursor:pointer;font:600 12px/1 inherit;transition:background .15s ease,border-color .15s ease,transform .15s ease}",
+      ".avc-trigger:hover,.avc-trigger[aria-expanded=true]{background:#0b314b;border-color:#19c7f2;transform:translateY(-1px)}",
+      ".avc-trigger:focus-visible{border-color:#78e7ff;box-shadow:0 0 0 2px rgba(25,199,242,.22)}",
+      ".avc-icon{width:17px;height:17px;display:block;flex:none}",
+      ".avc-menu{position:absolute;left:0;bottom:calc(100% + 10px);z-index:60;width:250px;padding:12px;border:1px solid rgba(25,199,242,.62);border-radius:15px;outline:0;background:linear-gradient(155deg,#071827,#0a263b);box-shadow:0 16px 44px rgba(0,0,0,.42);color:#eaf6ff;overflow:hidden}",
+      ".avc-head{display:flex;align-items:center;justify-content:space-between;padding:1px 2px 10px;border-bottom:1px solid rgba(25,199,242,.18)}",
+      ".avc-title{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:750;letter-spacing:.2px;color:#fff}",
+      ".avc-state{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:#9fc4d5}",
+      ".avc-state:before{content:'';width:6px;height:6px;border-radius:50%;background:#19c7f2;box-shadow:0 0 8px rgba(25,199,242,.75)}",
+      ".avc-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding-top:10px}",
+      ".avc-action{appearance:none;min-height:36px;padding:7px 9px;border:1px solid rgba(25,199,242,.20);border-radius:9px;outline:0;box-shadow:none;background:rgba(255,255,255,.035);color:#eaf6ff;cursor:pointer;text-align:center;font:500 12px/1.2 inherit;transition:background .15s ease,border-color .15s ease}",
+      ".avc-action:first-child,.avc-action:nth-child(2){border-color:rgba(25,199,242,.52);background:rgba(25,199,242,.11)}",
+      ".avc-action:hover{background:rgba(25,199,242,.17);border-color:#19c7f2}",
+      ".avc-action:focus-visible{border-color:#78e7ff;box-shadow:inset 0 0 0 1px #78e7ff}",
+      ".avc-hint{margin-top:10px;padding:8px 9px;border-radius:8px;background:rgba(0,0,0,.18);color:#91b6c8;font-size:10.5px;line-height:15px;text-align:center}"
     ].join("");
     const styleId = "agent-voice-control.css";
     if (typeof document !== "undefined" && !document.querySelector(`style[data-plugin-css="${styleId}"]`)) {
@@ -62,7 +67,7 @@ window.__ModuleLoader__.load({
       return h("div", {className:"avc-root", ref:root},
         h("button", {type:"button", className:"avc-trigger", title:"Agent Voice 控制", "aria-label":"打开 Agent Voice 控制", "aria-expanded":open, onMouseDown:e=>e.preventDefault(), onClick:()=>setOpen(!open)}, h(VoiceWaveIcon), h("span", null, "语音")),
         open && h("div", {className:"avc-menu", role:"menu", "aria-label":"Agent Voice 控制"},
-          h("div", {className:"avc-title"}, "Agent Voice"),
+          h("div", {className:"avc-head"}, h("div", {className:"avc-title"}, h(VoiceWaveIcon), "语音控制"), h("span", {className:"avc-state"}, "本机 MCP")),
           h("div", {className:"avc-grid"}, actions.map(([command,label]) => h("button", {key:command, type:"button", className:"avc-action", role:"menuitem", onMouseDown:e=>e.preventDefault(), onClick:()=>run(command)}, label))),
           h("div", {className:"avc-hint"}, "点击后直接执行 MCP 控制，不发送给模型。")
         )
