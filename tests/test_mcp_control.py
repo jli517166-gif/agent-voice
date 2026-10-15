@@ -8,7 +8,7 @@ from unittest.mock import patch,Mock
 import importlib.util
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"service"))
-from state import Store
+from state import Store,defaults
 
 class McpControlTests(unittest.TestCase):
     def mcp_module(self):
@@ -33,6 +33,22 @@ class McpControlTests(unittest.TestCase):
         for text in ('',None,' '*3,'x'*4001,123):
             with self.assertRaises(ValueError):voice.call('read_text',{'text':text})
         voice.start.assert_not_called()
+
+    def test_local_profile_match_and_apply_ignore_dormant_rvc_parameters(self):
+        module=self.mcp_module();voice=module.AgentVoice('.','codex')
+        saved=defaults()['voice']
+        saved.update(engine='piper',synthesisMode='base',piperModel='piper/model.onnx')
+        current=dict(saved,model='my-rvc.pth',pitch=4,formant=.5,index='my.index')
+        cfg={'voice':current,'profiles':[{'id':'piper','name':'Piper','voice':saved}],'harness':{'codex':True}}
+        voice.settings=Mock(return_value=cfg);voice.running=Mock(return_value={'ready':True});voice.request=Mock(return_value={'ok':True})
+        self.assertTrue(voice.call('list_voice_profiles',{})['profiles'][0]['active'])
+        self.assertEqual(voice.public_status({'ready':True})['currentProfile']['id'],'piper')
+        voice.call('apply_voice_profile',{'profile_id':'piper'})
+        patch_value=voice.request.call_args.args[1]['voice']
+        self.assertEqual(patch_value['engine'],'piper');self.assertEqual(patch_value['piperModel'],'piper/model.onnx')
+        self.assertNotIn('pitch',patch_value);self.assertNotIn('model',patch_value);self.assertNotIn('index',patch_value)
+        current['speed']=1.2;self.assertFalse(voice.call('list_voice_profiles',{})['profiles'][0]['active'])
+        self.assertFalse(module.same_voice(dict(saved,synthesisMode='rvc',pitch=4),dict(saved,synthesisMode='rvc',pitch=0)))
 
     def test_language_commands_preserve_voice_and_target_host(self):
         module=self.mcp_module();voice=module.AgentVoice('.','codex')

@@ -8,7 +8,7 @@
 ## 主要功能
 
 - 本地 TTS 直接输出，默认使用 CosyVoice 3。
-- 可切换 Windows 系统 TTS（`sapi`）进行直接输出或配合 RVC，保存为独立声音方案；系统声音不提供克隆音色。目前只适配 CosyVoice 和 SAPI，其他 TTS 需要开发适配，不能只选择安装目录。
+- 可安装 Piper（`piper`）并选择 ONNX 模型进行直接输出或配合 RVC，模型位置与 CosyVoice 分开，语速及模型可保存到声音方案。也支持 Windows 系统 TTS（`sapi`）。目前适配 CosyVoice、Piper 和 SAPI，其他 TTS 需要开发适配，不能只选择安装目录。
 - 可选 RVC `.pth` 与 `.index`，支持音调、声线粗细和相关高级参数。
 - 导入、导出轻量、参考完整、高级训练和高级完整四种 `.cosyvoice.ttsmodel`。
 - 本地 TTS 引擎统一放在 `tts-engines`，按引擎 ID、模型类型、源码、Python 依赖和模型 SHA-256 指纹自动匹配。

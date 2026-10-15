@@ -30,6 +30,7 @@ def hidden_process():
 class Pipeline:
     def __init__(self,store):
         self.store=store; self.rvc=None; self.rvc_key=None; self.tts=None; self.tts_key=None
+        self.piper=None; self.piper_key=None
         self.loaded=False; self.gpu=None; self.playing=False; self.play_lock=threading.RLock();self.prepare_lock=threading.RLock()
 
     def prepare(self,voice,check):
@@ -45,6 +46,8 @@ class Pipeline:
         self.gpu=torch.cuda.get_device_name(0)
         voice=effective_voice(voice)
         data=self.store.get(); paths=copy.deepcopy(data["engines"])
+        if voice['engine']!='piper' and self.piper:
+            self.piper.close();self.piper=None;self.piper_key=None
         paths['cosyModel']=voice.get('baseModel') or paths['cosyModel']
         home=self.store.resolve(paths['rvcHome'])
         if voice.get('synthesisMode','rvc')=='base' and self.rvc is not None:
@@ -102,6 +105,17 @@ class Pipeline:
             self.tts.ensure_ready()
         elif self.tts:
             self.tts.close(); self.tts=None; self.tts_key=None
+        if voice['engine']=='piper':
+            from piper_client import PiperClient, model_config
+            model=self.store.resolve(voice.get('piperModel') or paths['piperModel'])
+            companion=model_config(model)
+            python=self.store.resolve(paths['pythonPiper'])
+            key=(str(python),str(model),model.stat().st_mtime_ns,companion.stat().st_mtime_ns)
+            if self.piper_key!=key:
+                if self.piper:self.piper.close()
+                self.piper=PiperClient(python,model,self.store.root/'data/logs/piper-worker.log',hidden_process())
+                self.piper_key=key
+            self.piper.ensure_ready(check)
         check(); self.loaded=True
         return cfg
 
@@ -112,6 +126,8 @@ class Pipeline:
         try:
             if voice["engine"]=="cosyvoice":
                 self.tts.synthesize(text,base,voice['style'],(voice["speed"]-1)*100)
+            elif voice['engine']=='piper':
+                self.piper.synthesize(text,base,voice['speed'],check)
             else:
                 import tempfile
                 with tempfile.TemporaryDirectory() as temp:
@@ -180,3 +196,4 @@ class Pipeline:
     def close(self):
         self.stop()
         if self.tts: self.tts.close()
+        if self.piper: self.piper.close()

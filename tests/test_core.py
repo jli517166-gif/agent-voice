@@ -80,6 +80,19 @@ class CoreTests(unittest.TestCase):
             job['play']=False;self.assertEqual(self.server.status()['playback']['state'],'idle')
             job['play']=True;jobs.generation+=1;self.assertEqual(self.server.status()['playback']['state'],'idle')
             jobs.current=None
+    def test_piper_config_isolated_from_unused_cosyvoice_reference(self):
+        model=self.root/'piper.onnx';model.write_bytes(b'protocol-test-only')
+        Path(str(model)+'.json').write_text(json.dumps({'audio':{'sample_rate':22050},'phoneme_id_map':{'a':[1]}}))
+        self.request('/api/config',{'engines':{'pythonPiper':sys.executable},'voice':{'engine':'piper','piperModel':str(model),'reference':'missing-unused-cosyvoice.wav'}})
+        cfg=self.store.get();self.assertEqual(cfg['voice']['engine'],'piper')
+        self.assertFalse(self.store.missing())
+        self.assertEqual(cfg['engines']['cosyModel'],defaults()['engines']['cosyModel'])
+    def test_invalid_piper_model_does_not_replace_current_voice(self):
+        before=self.store.get()['voice']
+        with self.assertRaises(urllib.error.HTTPError) as caught:
+            self.request('/api/config',{'voice':{'engine':'piper','piperModel':'missing.onnx'}})
+        self.assertEqual(caught.exception.code,400)
+        self.assertEqual(self.store.get()['voice'],before)
     def test_sanitizer_retains_body_skips_code_links_and_paths(self):
         self.assertEqual(sanitize('工作好久啦，起来动一动、喝口水吧～'),'工作好久啦，起来动一动、喝口水吧～')
         self.assertEqual(sanitize('```py\nprint(1)\n``` https://example.com E:\\secret\\x.pth'),'')

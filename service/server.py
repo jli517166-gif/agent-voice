@@ -176,7 +176,11 @@ class Handler(BaseHTTPRequestHandler):
                         if voice['engine']=='cosyvoice' and voice['baseModel']:
                             from tts_bundle import model_ready
                             model_ready(self.server.store.resolve(voice['baseModel']))
+                        if voice['engine']=='piper':
+                            from piper_client import model_config
+                            model_config(self.server.store.resolve(voice.get('piperModel') or self.server.store.get()['engines']['piperModel']))
                         for key,suffix in (("model",".pth"),("index",".index"),("reference",None)):
+                            if key=='reference' and voice['engine']!='cosyvoice':continue
                             if key in ('model','index') and voice['synthesisMode']=='base':continue
                             if voice[key]:
                                 file=self.server.store.resolve(voice[key])

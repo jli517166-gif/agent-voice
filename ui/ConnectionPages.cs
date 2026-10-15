@@ -15,11 +15,17 @@ namespace AgentVoice {
         Label verificationHint,airiIndicator;
         bool pendingAiriVerification;
         void UpdateVoiceControls(){
+            string engine=engineChoice==null?"cosyvoice":Convert.ToString(engineChoice.SelectedItem);
+            foreach(var control in cosyOnlyControls)control.Visible=engine=="cosyvoice";
+            foreach(var control in piperOnlyControls)control.Visible=engine=="piper";
+            if(engineDetails!=null)engineDetails.Text=engine=="piper"?"Piper 使用独立 ONNX 模型，不读取 CosyVoice 参考录音；支持语速、直接输出和 RVC 二次变声。":engine=="sapi"?"Windows 系统 TTS 使用系统安装的声音，不读取克隆音色包或参考录音。":"CosyVoice 使用本地模型和参考声音进行音色克隆。";
+            foreach(var button in new[]{exportConfigurationButton,exportFullConfigurationButton,exportTrainedButton,exportTrainedFullButton})if(button!=null)button.Enabled=engine=="cosyvoice";
+            if(packageEngineHint!=null)packageEngineHint.Text=engine=="cosyvoice"?"当前选择 CosyVoice，可导出下面四种音色包。":"当前选择 "+engine+"，请用“声音方案”保存参数；下面的导出仅适用于 CosyVoice。导入 CosyVoice 音色包仍可切换回该引擎。";
             bool rvc=synthesisChoice==null||synthesisChoice.SelectedIndex==1;
             pitch.Enabled=rvc;formant.Enabled=rvc&&(processingChoice==null||processingChoice.SelectedIndex!=1);
             bool advanced=checks.ContainsKey("advancedEnabled")&&checks["advancedEnabled"].Checked;
             foreach(string key in new[]{"protect","indexRate","rmsMix","volume","leadingSilence"})if(numbers.ContainsKey(key))numbers[key].Enabled=advanced;
-            if(f0Choice!=null)f0Choice.Enabled=advanced;if(fields.ContainsKey("instruction"))fields["instruction"].Enabled=advanced;
+            if(f0Choice!=null)f0Choice.Enabled=advanced;if(fields.ContainsKey("instruction"))fields["instruction"].Enabled=advanced&&engine=="cosyvoice";
             if(voiceHint!=null)voiceHint.Text=!rvc?"本地 TTS 直接输出：RVC 模型、音调、声线粗细与索引均不参与生成。":processingChoice!=null&&processingChoice.SelectedIndex==1?"认可版兼容：保留原离线处理，声线粗细已禁用。":"标准 RVC：音调与声线粗细影响第二次变声。输出模式在设置中。";
             if(rvcModeStatus!=null)rvcModeStatus.Text=Config.voice.synthesisMode=="rvc"?"● 当前已启用 RVC＋本地 TTS，生成内容会经过二次变声。":"○ 当前为本地 TTS 直出，下面的 RVC 参数处于备用状态。";
         }

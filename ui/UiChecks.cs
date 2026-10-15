@@ -94,6 +94,13 @@ namespace AgentVoice {
             string repeatedPackage=Path.Combine(directory,"小挽昼-轻量.cosyvoice.ttsmodel.cosyvoice.ttsmodel");
             if(PackageDisplayName("小挽昼-轻量.cosyvoice.ttsmodel.cosyvoice.ttsmodel")!="小挽昼"||NormalizePackagePath(repeatedPackage)!=Path.Combine(Path.GetFullPath(directory),"小挽昼-轻量.cosyvoice.ttsmodel"))errors.Add("音色包导出文件名未去除重复类型或后缀");
             if(FindButton(pages["engine"],"打开引擎目录")==null)errors.Add("本地 TTS 引擎专用目录入口缺失");
+            ShowPage("home");string oldEngine=Convert.ToString(engineChoice.SelectedItem),oldPiper=piperModelPath.Text,oldCosy=baseModelPath.Text;
+            engineChoice.SelectedItem="piper";piperModelPath.Text="tts-engines/piper/models/test.onnx";baseModelPath.Text="cosyvoice-preserved";
+            if(!piperOnlyControls.All(c=>c.Visible)||cosyOnlyControls.Any(c=>c.Visible)||ReadVoice().piperModel!=piperModelPath.Text||!engineDetails.Text.Contains("不读取 CosyVoice")||exportConfigurationButton.Enabled||!importConfigurationButton.Enabled)errors.Add("Piper 首页未隔离模型、参考条件或 CosyVoice 导出入口");
+            var piperSaved=MergeLocal(new VoiceConfig(),ReadVoice());engineChoice.SelectedItem="cosyvoice";
+            if(piperOnlyControls.Any(c=>c.Visible)||!cosyOnlyControls.All(c=>c.Visible)||baseModelPath.Text!="cosyvoice-preserved"||MergeLocal(new VoiceConfig(),piperSaved).piperModel!=piperSaved.piperModel)errors.Add("跨引擎切换丢失模型路径或没有切换专用控件");
+            engineChoice.SelectedItem=oldEngine;piperModelPath.Text=oldPiper;baseModelPath.Text=oldCosy;
+            if(!fields.ContainsKey("pythonPiper")||!fields.ContainsKey("piperModel")||FindButton(pages["home"],"选择 Piper 模型")==null)errors.Add("Piper 独立环境和模型选择入口缺失");
             if(FindButton(pages["profiles"],"刷新目录")!=null||FindButton(pages["profiles"],"保存组合声音")!=null)errors.Add("RVC 页面仍保留重复模型列表或组合保存入口");
             if(FindButton(pages["voices"],"打开方案目录")==null)errors.Add("声音方案储存位置入口缺失");
             if(!fields.ContainsKey("loadingAnimation")||FindButton(pages["appearance"],"使用默认动画")==null)errors.Add("自定义等待动画入口缺失");

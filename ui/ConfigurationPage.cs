@@ -9,10 +9,12 @@ namespace AgentVoice {
     public sealed partial class MainForm {
         Button exportConfigurationButton,exportFullConfigurationButton,exportTrainedButton,exportTrainedFullButton,importConfigurationButton;
         TextBox modelPackageName;
+        Label packageEngineHint;
         string configurationTestPath;
         Dictionary<string,object> lastTransfer;
         void BuildConfiguration(){
             var card=SettingsCard("configuration","音色包");
+            packageEngineHint=Hint("CosyVoice 音色包导出适用于 CosyVoice 引擎。");Add(card,packageEngineHint);
             Add(card,Hint("轻量包：参考音频和参数；目标电脑必须已有完全一致的基础模型。参考完整包：额外携带当前基础模型，适合离线迁移。"));
             Add(card,Hint("高级训练包：只携带训练后变化的权重，体积较小，导入时需要匹配的基础模型。高级完整包：携带完整训练模型，不要求目标电脑已有基础模型。四种包都不包含 Python、RVC、外观或连接密钥。"));
             Add(card,Hint("音色名称"));modelPackageName=Input();modelPackageName.Text="我的声音";Add(card,modelPackageName);

@@ -23,13 +23,14 @@ namespace AgentVoice {
     public sealed class VoiceConfig {
         public string model="", index="", f0Method="rmvpe", engine="cosyvoice", style="chat", reference="", referenceText="", instruction="";
         public string processing="standard", assetScope="public";
-        public string synthesisMode="base", baseModel="";
+        public string synthesisMode="base", baseModel="", piperModel="";
         public bool advancedEnabled=false;
         public double pitch=0, formant=0, indexRate=0, rmsMix=1, speed=1, leadingSilence=.35, volume=1, protect=.33;
         public VoiceConfig Clone() { return Json.Copy(this); }
     }
     public sealed class Engines {
         public string pythonRvc="tts-engines/cosyvoice/runtime/tools/python.exe", rvcHome="engines/rvc", pythonTts="tts-engines/cosyvoice/runtime/tools/python.exe", cosyRepo="tts-engines/cosyvoice/source", cosyModel="tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B";
+        public string pythonPiper="tts-engines/piper/runtime/Scripts/python.exe", piperModel="tts-engines/piper/models/zh_CN-huayan-medium.onnx";
     }
     public sealed class Appearance {
         public string accent="#19C7F2", backgroundColor="#05101D", textColor="#EAF6FF", background="", icon="", loadingAnimation="";

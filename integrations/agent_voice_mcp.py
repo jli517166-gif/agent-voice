@@ -25,6 +25,13 @@ TOOLS = [
     {"name":"apply_voice_profile","description":"按声音方案 ID 切换当前声音配置。","inputSchema":{"type":"object","properties":{"profile_id":{"type":"string","description":"list_voice_profiles 返回的声音方案 ID"}},"required":["profile_id"],"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
     {"name":"set_auto_reading","description":"启用或关闭当前 Harness 进度说明和最终回复的自动朗读。","inputSchema":{"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"],"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
 ]
+LOCAL_VOICE_FIELDS = ('engine','baseModel','piperModel','reference','referenceText','instruction','style','speed','leadingSilence','volume','advancedEnabled','assetScope')
+
+def same_voice(current,saved):
+    if current.get('synthesisMode')=='base' and saved.get('synthesisMode')=='base':
+        return all(current.get(key,'')==saved.get(key,'') for key in LOCAL_VOICE_FIELDS)
+    return current==saved
+
 class AgentVoice:
     def __init__(self,root,host):
         self.root=Path(root).resolve();self.host=host
@@ -85,7 +92,7 @@ class AgentVoice:
 
     def public_status(self,health):
         cfg=self.settings();profiles=cfg.get("profiles",[]);current=cfg.get("voice",{})
-        match=next((item for item in profiles if item.get("voice")==current),None)
+        match=next((item for item in profiles if same_voice(current,item.get("voice",{}))),None)
         return {"running":True,"ready":health.get("ready"),"busy":health.get("busy"),"queued":health.get("queued"),
             "playback":health.get("playback",{"state":"unknown"}),
             "currentProfile":{"id":match.get("id"),"name":match.get("name")} if match else None,
@@ -113,12 +120,16 @@ class AgentVoice:
             return self.request("/stop",{})
         if name=="list_voice_profiles":
             cfg=self.settings();current=cfg.get("voice",{})
-            return {"profiles":[{"id":item["id"],"name":item["name"],"mode":item.get("voice",{}).get("synthesisMode"),"active":item.get("voice")==current} for item in cfg.get("profiles",[])]}
+            return {"profiles":[{"id":item["id"],"name":item["name"],"mode":item.get("voice",{}).get("synthesisMode"),"active":same_voice(current,item.get("voice",{}))} for item in cfg.get("profiles",[])]}
         if name=="apply_voice_profile":
             ident=args.get("profile_id");cfg=self.settings();item=next((p for p in cfg.get("profiles",[]) if p.get("id")==ident),None)
             if item is None:raise ValueError("声音方案不存在，请先调用 list_voice_profiles")
             if not self.running():raise ValueError("请先启动语音服务，再切换声音方案")
-            self.request("/api/config",{"voice":item["voice"]},timeout=30)
+            saved=item['voice']
+            # Match desktop local-profile semantics: keep dormant RVC settings.
+            patch={key:saved[key] for key in LOCAL_VOICE_FIELDS if key in saved} if saved.get('synthesisMode')=='base' else dict(saved)
+            if saved.get('synthesisMode')=='base':patch['synthesisMode']='base'
+            self.request("/api/config",{"voice":patch},timeout=30)
             return {"ok":True,"profile":{"id":item["id"],"name":item["name"]}}
         if name=="set_auto_reading":
             if not isinstance(args.get("enabled"),bool):raise ValueError("enabled 必须是布尔值")

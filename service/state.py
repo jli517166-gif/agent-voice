@@ -16,10 +16,12 @@ def defaults():
                  "speed":1, "style":"chat", "reference":"", "referenceText":"",
                  "instruction":"", "leadingSilence":0.35, "volume":1,
                  "processing":"standard", "protect":0.33, "assetScope":"public",
-                 "synthesisMode":"base", "baseModel":"", "advancedEnabled":False},
+                 "synthesisMode":"base", "baseModel":"", "piperModel":"", "advancedEnabled":False},
         "engines":{"pythonRvc":"tts-engines/cosyvoice/runtime/tools/python.exe", "rvcHome":"engines/rvc",
                    "pythonTts":"tts-engines/cosyvoice/runtime/tools/python.exe", "cosyRepo":"tts-engines/cosyvoice/source",
-                   "cosyModel":"tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B"},
+                   "cosyModel":"tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B",
+                   "pythonPiper":"tts-engines/piper/runtime/Scripts/python.exe",
+                   "piperModel":"tts-engines/piper/models/zh_CN-huayan-medium.onnx"},
         "appearance":{"accent":"#19C7F2", "backgroundColor":"#05101D", "textColor":"#EAF6FF",
                       "background":"", "icon":"", "loadingAnimation":""},
         "cleanup":{"maxAgeMinutes":30, "keepLatest":3, "maxTotalMb":200, "intervalSeconds":900},
@@ -45,7 +47,7 @@ def number(value, low, high, name):
         raise ValueError(name + "超出范围")
 
 def validate_voice(voice):
-    for key in ("model", "index", "engine", "reference", "referenceText", "instruction", "style", "f0Method", "processing", "assetScope", "synthesisMode", "baseModel"):
+    for key in ("model", "index", "engine", "reference", "referenceText", "instruction", "style", "f0Method", "processing", "assetScope", "synthesisMode", "baseModel", "piperModel"):
         if not isinstance(voice[key], str) or len(voice[key]) > 8000:
             raise ValueError("声音配置字段错误：" + key)
     for key, low, high in (("pitch",-16,16),("formant",-2,2),("indexRate",0,1),
@@ -53,7 +55,7 @@ def validate_voice(voice):
         number(voice[key],low,high,key)
     if voice["f0Method"] not in ("rmvpe", "harvest", "crepe", "pm"):
         raise ValueError("不支持的基频算法")
-    if voice["engine"] not in ("cosyvoice", "sapi"):
+    if voice["engine"] not in ("cosyvoice", "sapi", "piper"):
         raise ValueError("该本地 TTS 引擎尚未适配")
     if voice["synthesisMode"] not in ("rvc", "base") or not isinstance(voice["advancedEnabled"],bool):
         raise ValueError("音频输出模式或高级声音开关无效")
@@ -180,4 +182,10 @@ class Store:
                 missing.append("公共参考录音")
             if not voice["referenceText"].strip():
                 missing.append("参考录音对应台词")
+        if voice["engine"] == "piper":
+            if not data['engines']['pythonPiper'] or not self.resolve(data['engines']['pythonPiper']).is_file():
+                missing.append('Piper Python 运行时')
+            model=voice.get('piperModel') or data['engines']['piperModel']
+            if not model or not self.resolve(model).is_file():missing.append('Piper ONNX 模型')
+            elif not Path(str(self.resolve(model))+'.json').is_file():missing.append('Piper 同名 ONNX JSON 配置')
         return missing

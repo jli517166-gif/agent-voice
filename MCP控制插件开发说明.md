@@ -93,6 +93,8 @@ DeepSeek 回复连接器同时向原生人工命令注册表注册 `/agent-voice
 
 每一行应得到对应 JSON-RPC 响应，且标准输出中不能混入日志。
 
+本地 TTS 声音方案按 TTS 字段判断是否正在使用，备用 RVC 模型和音调不参与匹配；通过 MCP 应用本地方案也保留备用 RVC 参数，与桌面端保持一致。组合方案仍应用完整的 TTS＋RVC 参数。Piper 模型位置保存在独立的 `voice.piperModel`，不复用 CosyVoice 的 `baseModel`；MCP 的工具名和调用方式不随引擎改变。
+
 ## 二次开发规则
 
 - 新工具应使用小而明确的参数结构，并设置 `additionalProperties: false`。
