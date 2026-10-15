@@ -17,14 +17,12 @@ class McpControlTests(unittest.TestCase):
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         return module
 
-    def test_reading_tool_uses_exact_text_and_never_starts_on_open(self):
+    def test_reading_tool_uses_exact_text(self):
         module=self.mcp_module()
         with tempfile.TemporaryDirectory() as temporary:
             voice=module.AgentVoice(temporary,'codex');voice.running=Mock(return_value=None)
             voice.start=Mock();voice.request=Mock(return_value={'ok':True,'jobId':'job'})
             voice.settings=Mock(return_value={'harness':{'codex':True}})
-            result=voice.call('open_voice_player',{'text':'只读这一段。'})
-            self.assertEqual(result['text'],'只读这一段。');voice.start.assert_not_called();voice.request.assert_not_called()
             result=voice.call('read_text',{'text':'工作好久啦，起来动一动、喝口水吧～'})
             voice.start.assert_called_once()
             voice.request.assert_called_once_with('/speak',{'text':'工作好久啦，起来动一动、喝口水吧～','source':'mcp-read-aloud','play':True},timeout=30)
@@ -35,6 +33,19 @@ class McpControlTests(unittest.TestCase):
         for text in ('',None,' '*3,'x'*4001,123):
             with self.assertRaises(ValueError):voice.call('read_text',{'text':text})
         voice.start.assert_not_called()
+
+    def test_language_commands_preserve_voice_and_target_host(self):
+        module=self.mcp_module();voice=module.AgentVoice('.','codex')
+        saved={'voice':{'pitch':2},'harness':{'codex':True,'deepseek':True},'profiles':[{'id':'one','name':'声音一','voice':{'pitch':5}}]}
+        voice.settings=Mock(return_value=saved);voice.running=Mock(return_value={'ready':True})
+        voice.request=Mock(return_value={'ok':True})
+        voice.call('stop_speech',{});voice.request.assert_called_with('/stop',{})
+        voice.call('apply_voice_profile',{'profile_id':'one'});voice.request.assert_called_with('/api/config',{'voice':{'pitch':5}},timeout=30)
+        voice.call('set_auto_reading',{'enabled':False})
+        self.assertEqual(voice.request.call_args_list[-2].args,('/api/config',{'harness':{'codex':False,'deepseek':True}}))
+        voice.request.assert_called_with('/api/connections/reload',{})
+        self.assertEqual(saved['voice'],{'pitch':2});self.assertTrue(saved['harness']['codex'])
+        with self.assertRaises(ValueError):voice.call('apply_voice_profile',{'profile_id':'missing'})
 
     def test_deepseek_mcp_install_refreshes_actual_composer_bundle(self):
         from tools import install_mcp
@@ -85,16 +96,10 @@ class McpControlTests(unittest.TestCase):
             self.assertIn("stop_speech",[tool["name"] for tool in listing])
             result=request(3,"tools/call",{"name":"list_voice_profiles","arguments":{}})["result"]["structuredContent"]
             self.assertEqual(result["profiles"][0]["id"],"voice-one")
-            panel=next(tool for tool in listing if tool['name']=='open_voice_player')
-            uri=panel['_meta']['ui']['resourceUri']
-            resources=request(4,'resources/list')['result']['resources']
-            self.assertEqual(resources[0]['uri'],uri)
-            resource=request(5,'resources/read',{'uri':uri})['result']['contents'][0]
-            self.assertEqual(resource['mimeType'],'text/html;profile=mcp-app')
-            self.assertIn('ui/initialize',resource['text']);self.assertNotIn(store.get()['token'],resource['text'])
-            self.assertIn('error',request(6,'resources/read',{'uri':'file:///data/settings.json'}))
-            observation=json.loads((root/'data/logs/mcp-ui-client-codex.json').read_text(encoding='utf-8'))
-            self.assertEqual(observation['declaration'],'not-declared');self.assertFalse(observation['renderVerified'])
+            self.assertNotIn('open_voice_player',[tool['name'] for tool in listing])
+            self.assertTrue(all('_meta' not in tool for tool in listing))
+            self.assertNotIn('resources',initialized['result']['capabilities'])
+            self.assertIn('error',request(4,'resources/read',{'uri':'ui://agent-voice/player.html'}))
             process.stdin.close();process.wait(timeout=5);process.stdout.close();process.stderr.close()
 
     def test_old_unverified_harness_switches_are_migrated_out(self):

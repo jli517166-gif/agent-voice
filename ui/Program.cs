@@ -15,8 +15,6 @@ namespace AgentVoice {
             SetProcessDPIAware();Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);
             string root=AppPaths.CanonicalDirectory(AppDomain.CurrentDomain.BaseDirectory);
             var store=new SettingsStore(root);
-            if(args.Contains("--floatingtest"))return FloatingChecks.Run(args.Length>1?args[1]:Path.Combine(root,"acceptance","floating"));
-            if(args.Contains("--floatinglivetest"))return FloatingChecks.Live(store,args.Length>1?args[1]:Path.Combine(root,"acceptance","floating-live"));
             if(args.Contains("--selftest"))return UiChecks.Run(store,args);
             if(args.Contains("--scrolltest"))return ScrollChecks.Run(store,args);
             if(args.Contains("--flowtest"))return UiChecks.Flow(store,args);

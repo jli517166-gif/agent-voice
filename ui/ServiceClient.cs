@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace AgentVoice {
-    public sealed class ServiceClient:IFloatingVoiceService {
+    public sealed class ServiceClient {
         public readonly SettingsStore Store;
         public Process Owned;
         public ServiceClient(SettingsStore store){Store=store;}

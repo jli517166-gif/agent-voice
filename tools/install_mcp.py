@@ -67,7 +67,7 @@ def install_codex(store,python,server):
         if (backup/"config.toml").is_file():shutil.copy2(backup/"config.toml",config)
         raise
     listing=run([codex,"mcp","get",SERVER_NAME])
-    return {"ok":True,"source":"codex","message":"Codex MCP 与语音控制技能已安装。重载插件或新建会话后选择语音控制，输入‘打开朗读面板’测试插件界面；若客户端只显示文字，请继续通过技能调用。内置朗读按钮尚未接管，安装成功不等于界面验证通过。","verification":listing,"chatEntry":plugin.get("installedPath"),"backup":str(backup)}
+    return {"ok":True,"source":"codex","message":"Codex MCP 语言控制已安装。重载插件或新建会话后选择语音控制，可发送：查看语音状态、开启语音服务、停止朗读、切换声音方案。没有自定义浮窗或朗读面板，也未接管内置朗读。","verification":listing,"chatEntry":plugin.get("installedPath"),"backup":str(backup)}
 
 def find_deepseek(store):
     registry=store.root/"data/harness-installations.json"
