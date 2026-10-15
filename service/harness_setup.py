@@ -74,7 +74,8 @@ def configure(source,root,location,user_home=None):
     def wrapper(path,body):
         if path.exists():
             old=path.read_text(encoding='utf-8-sig')
-            if old!=body and not (old.startswith('export ') and 'integrations/' in old):raise ValueError('已有同名文件，请检查后更换：'+str(path))
+            owned=(old.startswith('export ') and 'integrations/' in old) or 'dsh-agent-voice-public' in old or 'dsh-agent-voice-control' in old
+            if old!=body and not owned:raise ValueError('已有同名文件，请检查后更换：'+str(path))
         save(path,body)
     reload=True;legacy_disabled=False;record={'directory':str(location),'files':[]}
     if source=='codex':
@@ -93,7 +94,12 @@ def configure(source,root,location,user_home=None):
         for profile in profiles:
             plugin=profile/'node_modules/dsh-agent-voice-public'
             wrapper(plugin/'index.mjs','export { default, apply, inject, name } from '+json.dumps((store.root/'integrations/deepseek-plugin.mjs').as_uri())+';\n')
-            wrapper(plugin/'package.json',json.dumps({'name':'dsh-agent-voice-public','version':'0.1.0','type':'module','main':'index.mjs'},indent=2)+'\n')
+            wrapper(plugin/'client.js',(store.root/'integrations/deepseek-control-client.js').read_text(encoding='utf-8-sig'))
+            manifest={'name':'dsh-agent-voice-public','version':'0.2.0','type':'module','main':'index.mjs',
+                'exports':{'.':'./index.mjs','./client':'./client.js','./package.json':'./package.json'},
+                'dsh':{'client':{'inject':['@deepseek-ai/dsh-client-runtime'],'platform':'web'}},
+                'peerDependencies':{'react':'^18.2.0','@deepseek-ai/dsh-client-runtime':'*'}}
+            wrapper(plugin/'package.json',json.dumps(manifest,ensure_ascii=False,indent=2)+'\n')
             patch=profile/'cordis.patch.yml';entries=yaml.safe_load(patch.read_text(encoding='utf-8-sig')) if patch.exists() else []
             if entries is None:entries=[]
             if not isinstance(entries,list):raise ValueError('该 DeepSeek 配置格式尚未适配，原配置未改动：'+str(patch))

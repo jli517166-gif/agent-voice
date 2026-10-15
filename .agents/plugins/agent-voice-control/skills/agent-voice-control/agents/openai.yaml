@@ -1,5 +1,5 @@
 interface:
-  display_name: "Agent Voice 控制台"
+  display_name: "语音控制"
   short_description: "在聊天栏控制语音、朗读与声音方案"
   icon_small: "./assets/voice-bell.png"
   icon_large: "./assets/voice-bell.png"

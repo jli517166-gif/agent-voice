@@ -8,6 +8,7 @@ from harness_setup import configure,detect
 class SetupTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.base=Path(self.temp.name);self.root=self.base/'voice';Store(self.root)
+        integrations=self.root/'integrations';integrations.mkdir();(integrations/'deepseek-control-client.js').write_text('window.__agentVoiceControl=true;',encoding='utf8')
         self.home=self.base/'home';self.home.mkdir();self.install=self.base/'installed';self.install.mkdir()
     def tearDown(self):self.temp.cleanup()
     def test_codex_records_actual_sessions_directory(self):
@@ -23,6 +24,9 @@ class SetupTests(unittest.TestCase):
         entries=yaml.safe_load(path.read_text());self.assertEqual(entries[0]['config']['model'],'keep')
         inserted=[p for e in entries for p in e.get('insert',[]) if p['name']=='dsh-agent-voice-public']
         self.assertEqual(len(inserted),1);self.assertTrue((profile/'node_modules/dsh-agent-voice-public/index.mjs').is_file())
+        self.assertTrue((profile/'node_modules/dsh-agent-voice-public/client.js').is_file())
+        manifest=json.loads((profile/'node_modules/dsh-agent-voice-public/package.json').read_text())
+        self.assertEqual(manifest['exports']['./client'],'./client.js');self.assertEqual(manifest['dsh']['client']['platform'],'web')
         self.assertTrue((headless/'node_modules/dsh-agent-voice-public/index.mjs').is_file())
         self.assertEqual(len([p for e in yaml.safe_load((headless/'cordis.patch.yml').read_text()) for p in e.get('insert',[]) if p['name']=='dsh-agent-voice-public']),1)
         headless_entries=yaml.safe_load((headless/'cordis.patch.yml').read_text());self.assertEqual(next(e for e in headless_entries if e.get('id')=='agent-default-model')['config']['provider'],'deepseek-account')

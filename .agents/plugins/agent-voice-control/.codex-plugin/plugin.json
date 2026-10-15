@@ -1,12 +1,12 @@
 {
   "name": "agent-voice-control",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Control the local Agent Voice service from Codex.",
   "skills": "./skills/",
   "requires_local_executor": true,
   "interface": {
-    "displayName": "Agent Voice 控制台",
-    "shortDescription": "在聊天栏控制语音、朗读与声音方案",
+    "displayName": "语音控制",
+    "shortDescription": "启停服务、停止朗读或切换声音",
     "brandColor": "#0B9FD8",
     "composerIcon": "./assets/voice-bell.png"
   }

@@ -46,7 +46,7 @@ namespace AgentVoice {
         async Task InstallHarnessMcp(string source){
             BusyStatus("正在为 "+(source=="codex"?"Codex":"DeepSeek Harness")+" 安装聊天栏快捷控制……");
             var result=Json.Object(await Service.RunTool("install_mcp.py","--source "+source+" --root "+ServiceClient.Quote(Store.Root)));
-            string message=Json.Text(result,"message"),usage=source=="codex"?"重启 Codex 后，在聊天栏选择 Agent Voice 控制台，或输入 $agent-voice-control。":"重启 DeepSeek Harness 后，在聊天栏输入 /voice 查看控制菜单。";Status(message);MessageBox.Show(this,message+"\r\n\r\n"+usage+"\r\n底层工具名为 agent_voice。","聊天控制安装完成",MessageBoxButtons.OK,MessageBoxIcon.Information);
+            string message=Json.Text(result,"message"),usage=source=="codex"?"重启 Codex 后，点击聊天栏里的“语音控制”按钮；也可输入 $agent-voice-control。":"重启 DeepSeek Harness 后，点击聊天栏里的“语音”按钮；也可输入 /voice。";Status(message);MessageBox.Show(this,message+"\r\n\r\n"+usage+"\r\n底层工具名为 agent_voice。","聊天控制安装完成",MessageBoxButtons.OK,MessageBoxIcon.Information);
         }
         async Task WaitForHarnessVerification(string source,string challenge){
             for(int i=0;i<240;i++){

@@ -28,7 +28,7 @@
 codex mcp add agent_voice -- <python.exe> <agent_voice_mcp.py> --root <程序目录> --host codex
 ```
 
-安装器还会注册程序内 `.agents/plugins` 的本地市场并安装 `agent-voice-control` 插件。重启 Codex 后，聊天栏会显示 **Agent Voice 控制台** 技能入口，也可以输入 `$agent-voice-control`。该技能只负责把自然语言控制意图映射到 `agent_voice` MCP；已有会话不保证重新加载入口或工具。
+安装器还会注册程序内 `.agents/plugins` 的本地市场并安装 `agent-voice-control` 插件。重启 Codex 后，聊天栏会显示 **语音控制** 入口按钮，也可以输入 `$agent-voice-control`。该技能只负责把自然语言控制意图映射到 `agent_voice` MCP；已有会话不保证重新加载入口或工具。
 
 安装后运行 `codex mcp get agent_voice` 或 `codex mcp list` 检查底层配置。运行 `codex plugin list` 可以检查聊天栏插件。
 
@@ -59,7 +59,7 @@ codex mcp add agent_voice -- <python.exe> <agent_voice_mcp.py> --root <程序目
       failOnStartupError: false
 ```
 
-重启 DeepSeek Harness 后才能加载。安装失败不会删除备份，也不代表自动朗读连接器失效。
+重启 DeepSeek Harness 后才能加载。安装成功后，浏览器半插件会在 `conversation.input.left` 槽位显示 **语音** 按钮；点击菜单项会提交对应的本地 `/voice` 人工命令，直接执行 MCP 控制，不会作为普通消息发送给模型。安装失败不会删除备份，也不代表自动朗读连接器失效。
 
 DeepSeek 回复连接器同时向原生人工命令注册表注册 `/voice`。它由聊天输入框自己的斜杠菜单发现，命令直接执行，不会作为普通消息发送给模型：
 

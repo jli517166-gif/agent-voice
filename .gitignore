@@ -27,6 +27,7 @@ data/
 acceptance/
 release-evidence/
 release-manifest.json
+design/12ui-home/
 *.log
 *.tmp
 __pycache__/

@@ -20,7 +20,7 @@ def defaults():
         "engines":{"pythonRvc":"tts-engines/cosyvoice/runtime/tools/python.exe", "rvcHome":"engines/rvc",
                    "pythonTts":"tts-engines/cosyvoice/runtime/tools/python.exe", "cosyRepo":"tts-engines/cosyvoice/source",
                    "cosyModel":"tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B"},
-        "appearance":{"accent":"#0B9FD8", "backgroundColor":"#F7FBFE", "textColor":"#101820",
+        "appearance":{"accent":"#19C7F2", "backgroundColor":"#05101D", "textColor":"#EAF6FF",
                       "background":"", "icon":"", "loadingAnimation":""},
         "cleanup":{"maxAgeMinutes":30, "keepLatest":3, "maxTotalMb":200, "intervalSeconds":900},
         "harness":{source:source == "codex" for source in SOURCES},
