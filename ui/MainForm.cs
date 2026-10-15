@@ -27,6 +27,9 @@ namespace AgentVoice {
         ScenePanel shell,content;
         Label footer,connection,voiceHint,harnessSummary,outputModeStatus,rvcModeStatus,pageTitle,statusSystem,statusEngine,statusVoice,statusOutput;
         NotifyIcon tray;
+        CodexFloatingController floating;
+        ToolStripMenuItem floatingToggle;
+        CheckBox floatingSetting;
         readonly ToolTip tips=new ToolTip{AutomaticDelay=350,AutoPopDelay=10000,ReshowDelay=100,ShowAlways=true};
         readonly Timer poll=new Timer{Interval=1800};
         bool polling,operation,exiting;
@@ -71,9 +74,16 @@ namespace AgentVoice {
             content=new ScenePanel{Host=this,Dock=DockStyle.Fill,ComposeChildren=true};workspace.Controls.Add(content,0,2);
             footer=new Label{Dock=DockStyle.Fill,AutoEllipsis=false,Font=new Font(Font.FontFamily,9.5F,FontStyle.Bold),Text=Config.voice.assetScope=="private"?"状态：已载入认可版，私有声音资源单独保存。":"状态：请选择本地 TTS 模型包与参考条件。",TextAlign=ContentAlignment.MiddleLeft,Padding=new Padding(14,5,14,5),AccessibleName="操作状态提示"};workspace.Controls.Add(footer,0,3);
             BuildProfiles();BuildHome();BuildSettings();EnsureProfileFolders();BindVoice();BindSettings();ApplyTheme();ShowPage("home");
-            if(!testing){tray=new NotifyIcon{Text="agent语音",Icon=SystemIcons.Application,Visible=true};var menu=new ContextMenuStrip();menu.Items.Add("打开程序",null,(s,e)=>{Show();WindowState=FormWindowState.Normal;Activate();});menu.Items.Add("停止朗读",null,async(s,e)=>await StopSpeech());menu.Items.Add("退出",null,async(s,e)=>{exiting=true;try{if(await Service.Running())await Service.Stop();}catch(Exception x){Status(x.Message);}Close();});tray.ContextMenuStrip=menu;tray.DoubleClick+=(s,e)=>{Show();Activate();};
+            if(!testing){tray=new NotifyIcon{Text="agent语音",Icon=SystemIcons.Application,Visible=true};var menu=new ContextMenuStrip();menu.Items.Add("打开程序",null,(s,e)=>OpenMainFromFloating());menu.Items.Add("停止朗读",null,async(s,e)=>await StopSpeech());
+                floating=new CodexFloatingController(Store,Service,async(cfg,voice)=>{if(IsDisposed)return;Config=cfg;if(voice)BindVoice();else checks["codex"].Checked=cfg.harness["codex"];await Poll();},OpenMainFromFloating);
+                floatingToggle=new ToolStripMenuItem("Codex 悬浮入口"){Checked=floating.Enabled,CheckOnClick=true};floatingToggle.CheckedChanged+=(s,e)=>SetFloatingEnabled(floatingToggle.Checked);menu.Items.Add(floatingToggle);menu.Items.Add("重置悬浮入口位置",null,(s,e)=>floating.ResetPosition());floating.EnabledChanged+=enabled=>{floatingToggle.Checked=enabled;if(floatingSetting!=null)floatingSetting.Checked=enabled;};
+                menu.Items.Add("打开语音悬浮面板",null,(s,e)=>OpenFloatingPanel());
+                menu.Items.Add("退出",null,async(s,e)=>{exiting=true;try{if(await Service.Running())await Service.Stop();}catch(Exception x){Status(x.Message);}Close();});tray.ContextMenuStrip=menu;tray.DoubleClick+=(s,e)=>OpenMainFromFloating();
                 ApplyIcon();poll.Tick+=async(s,e)=>await Poll();poll.Start();Shown+=async(s,e)=>await Poll();}
         }
+        void OpenMainFromFloating(){Show();WindowState=FormWindowState.Normal;Activate();}
+        void OpenFloatingPanel(){if(floating==null)return;floating.Refresh();if(!floating.HasTarget){StatusError("请先打开 Codex 桌面程序。");return;}SetFloatingEnabled(true);Hide();floating.OpenPanel();}
+        void SetFloatingEnabled(bool enabled){if(floating==null||floating.Enabled==enabled)return;try{floating.SetEnabled(enabled);Status(enabled?"Codex 悬浮入口已开启；Codex 位于前台时显示，可拖动调整位置。":"Codex 悬浮入口已隐藏；可从托盘或连接设置重新开启。");}catch(Exception error){StatusError(error.Message);}}
         Label SideLabel(string text){return new Label{Text=text.ToUpperInvariant(),AutoSize=false,Width=180,Height=28,TextAlign=ContentAlignment.BottomLeft,Font=new Font(Font.FontFamily,8.5F,FontStyle.Bold),Margin=new Padding(4,8,0,2)};}
         Label TopStatus(string text){return new Label{Text=text,AutoSize=false,Dock=DockStyle.Fill,TextAlign=ContentAlignment.MiddleCenter,Font=new Font(Font.FontFamily,9F,FontStyle.Bold),Margin=new Padding(4,0,4,0),Padding=new Padding(6,0,6,0),BorderStyle=BorderStyle.FixedSingle};}
         void AddNav(FlowLayoutPanel navigation,string text,string id,string note,bool important){var button=EntryBtn(text,note,()=>ShowPage(id));button.Tag=important?"nav-primary":"nav";button.Name="nav_"+id;button.AutoSize=false;button.Width=180;button.Height=42;button.TextAlign=ContentAlignment.MiddleLeft;button.Padding=new Padding(12,0,0,0);button.Margin=new Padding(0,2,0,2);navigationButtons[id]=button;navigation.Controls.Add(button);}
@@ -216,7 +226,7 @@ namespace AgentVoice {
         void EnsureProfileFolders(){foreach(var profile in Config.profiles)WriteProfileFolder(profile);}
         void ArchiveProfileFolder(SavedVoice profile){string folder=ProfileFolder(profile);if(!Directory.Exists(folder))return;string deletedRoot=Path.Combine(ProfileDirectory(),".deleted");Directory.CreateDirectory(deletedRoot);string target=Path.Combine(deletedRoot,Path.GetFileName(folder)+"-"+DateTime.Now.ToString("yyyyMMddHHmmss"));Directory.Move(folder,target);}
         protected override bool ProcessCmdKey(ref Message msg,Keys key){if(key==Keys.Escape){ShowPage("home");return true;}return base.ProcessCmdKey(ref msg,key);}
-        protected override void OnFormClosing(FormClosingEventArgs e){if(!exiting&&tray!=null){e.Cancel=true;Hide();return;}poll.Stop();tips.Dispose();if(tray!=null){tray.Visible=false;tray.Dispose();}if(background!=null)background.Dispose();if(scaledBackground!=null)scaledBackground.Dispose();if(defaultBackdrop!=null)defaultBackdrop.Dispose();base.OnFormClosing(e);}
+        protected override void OnFormClosing(FormClosingEventArgs e){if(!exiting&&tray!=null){e.Cancel=true;Hide();return;}poll.Stop();if(floating!=null)floating.Dispose();tips.Dispose();if(tray!=null){tray.Visible=false;tray.Dispose();}if(background!=null)background.Dispose();if(scaledBackground!=null)scaledBackground.Dispose();if(defaultBackdrop!=null)defaultBackdrop.Dispose();base.OnFormClosing(e);}
         string DefaultMascotPath(){return Path.Combine(Store.Root,".agents","plugins","agent-voice-control","assets","voice-core.png");}
         public void PaintScene(Graphics g,Control control){
             Bitmap scene=background==null?DefaultScene():null;
