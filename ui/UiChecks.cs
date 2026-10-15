@@ -1,4 +1,5 @@
-﻿using System;
+using Button = AgentVoice.AnimeButton;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -64,6 +65,17 @@ namespace AgentVoice {
         static Button FindButton(Control root,string text){foreach(Control child in root.Controls){var button=child as Button;if(button!=null&&button.Text==text)return button;var nested=FindButton(child,text);if(nested!=null)return nested;}return null;}
         public object Verify(string directory){
             Directory.CreateDirectory(directory);var errors=new List<string>();int before=CountControls(this);
+            int buttonEdgeChecks=0;
+            using(var card=new ScenePanel{Host=this,Card=true})using(var sample=new AnimeButton{Parent=card,BackColor=CardColor,BorderColor=Accent,BorderSize=1,AutoSize=false}){
+                foreach(var size in new[]{new Size(180,42),new Size(225,53),new Size(270,63)}){
+                    sample.Size=size;using(var bitmap=new Bitmap(size.Width,size.Height)){
+                        sample.DrawToBitmap(bitmap,new Rectangle(Point.Empty,size));
+                        foreach(var point in new[]{Point.Empty,new Point(size.Width-1,0),new Point(0,size.Height-1),new Point(size.Width-1,size.Height-1)}){if(bitmap.GetPixel(point.X,point.Y).ToArgb()!=CardColor.ToArgb())errors.Add("按钮圆角外存在残留像素："+size);buttonEdgeChecks++;}
+                        if(sample.Region!=null)errors.Add("按钮仍使用窗口区域裁切");
+                        bitmap.Save(Path.Combine(directory,"button-outline-"+size.Width+".png"));
+                    }
+                }
+            }
             int tooltipChecks=0;foreach(string text in new[]{"首页","RVC 变声","声音方案","音色包","基础训练","高级训练","设置"}){var entry=FindButton(this,text);if(entry==null||string.IsNullOrWhiteSpace(tips.GetToolTip(entry))||string.IsNullOrWhiteSpace(entry.AccessibleDescription))errors.Add("入口缺少悬浮注释："+text);else tooltipChecks++;}
             if(!navigationButtons.ContainsKey("connections")||navigationButtons["connections"].Text!="连接设备")errors.Add("重要的连接设备入口未固定在主导航");
             if(Convert.ToString(serviceToggle.Tag)!="primary"||Convert.ToString(generate.Tag)!="primary"||Convert.ToString(saveVoiceButton.Tag)!="primary")errors.Add("首页主要操作没有视觉强调");
@@ -106,7 +118,8 @@ namespace AgentVoice {
             ShowPage("profiles");ShowPage("settings");backButton.PerformClick();if(page!="profiles")errors.Add("跨入口导航历史未正确返回");
             ShowPage("home");ShowPage("settings");backButton.PerformClick();if(page!="home"||pageHistory.Count!=0)errors.Add("首页未重置旧导航历史");
             synthesisChoice.SelectedIndex=0;checks["advancedEnabled"].Checked=false;baseModelPath.Text="engines/test-base";var mode=ReadVoice();if(mode.synthesisMode!="base"||mode.advancedEnabled||mode.baseModel!="engines/test-base"||pitch.Enabled||formant.Enabled||numbers["indexRate"].Enabled)errors.Add("输出模式或高级旁路控件未正确绑定");synthesisChoice.SelectedIndex=1;checks["advancedEnabled"].Checked=true;baseModelPath.Text="";
-            foreach(var size in new[]{new Size(900,620),new Size(1080,750)}){ClientSize=size;foreach(string id in pages.Keys){ShowPage(id);Application.DoEvents();CheckFlowLayout(pages[id],errors);}}ClientSize=new Size(1080,750);
+            connection.Text="服务：已开启\r\n输出：本地播放\r\n声音：私有";
+            foreach(var size in new[]{new Size(900,620),new Size(1080,750)}){ClientSize=size;foreach(string id in pages.Keys){ShowPage(id);Application.DoEvents();CheckFlowLayout(pages[id],errors);}var measured=TextRenderer.MeasureText(connection.Text,connection.Font,new Size(connection.ClientSize.Width,0),TextFormatFlags.WordBreak|TextFormatFlags.NoPadding);if(measured.Height>connection.ClientSize.Height)errors.Add("当前状态文字超出容器高度："+size);}ClientSize=new Size(1080,750);
             foreach(string id in pages.Keys){ShowPage(id);Application.DoEvents();using(var bitmap=new Bitmap(Width,Height)){DrawToBitmap(bitmap,new Rectangle(0,0,Width,Height));bitmap.Save(Path.Combine(directory,id+".png"));}}
             for(int i=0;i<120;i++){ShowPage(pages.Keys.ElementAt(i%pages.Count));Application.DoEvents();}
             if(CountControls(this)!=before)errors.Add("页面切换改变了控件数量");
@@ -115,7 +128,7 @@ namespace AgentVoice {
             var current=Json.Copy(Config);current.profiles.Add(new SavedVoice{name="自检",voice=clone});string temp=Path.Combine(directory,"config-test");var fixture=new SettingsStore(temp);fixture.Write(current);var read=fixture.Read();if(Json.Encode(read)!=Json.Encode(current))errors.Add("配置重开不一致");
             var record=read.profiles.Last();read.profiles.Remove(record);fixture.Write(read);if(fixture.Read().profiles.Any(p=>p.id==record.id))errors.Add("删除未持久化");read.profiles.Add(record);fixture.Write(read);if(fixture.Read().profiles.Last().voice.formant!=.65)errors.Add("撤销未恢复参数");
             foreach(var container in pages.Values)foreach(Control stack in container.Controls)foreach(Control card in stack.Controls)if(card is ScenePanel && card.Width<300)errors.Add("卡片宽度异常");
-            ShowPage("home");if(pageTitle.Text!="首页"||navigationButtons["home"].BackColor!=Accent)errors.Add("页面标题或主导航选中状态不正确");return new{ok=errors.Count==0,pages=pages.Count,switches=120,controls=before,backNavigationChecks=5,harnessStateChecks=4,tooltipChecks=tooltipChecks,newFeatureChecks=16,errors=errors};
+            ShowPage("home");if(pageTitle.Text!="首页"||navigationButtons["home"].BackColor!=Accent)errors.Add("页面标题或主导航选中状态不正确");return new{ok=errors.Count==0,pages=pages.Count,switches=120,controls=before,backNavigationChecks=5,harnessStateChecks=4,tooltipChecks=tooltipChecks,newFeatureChecks=16,buttonEdgeChecks=buttonEdgeChecks,errors=errors};
         }
         static int CountControls(Control control){return 1+control.Controls.Cast<Control>().Sum(c=>CountControls(c));}
         static void CheckFlowLayout(Control root,List<string> errors){

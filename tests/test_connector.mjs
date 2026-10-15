@@ -39,7 +39,10 @@ try {
   await unlink(settings); await rmdir(data); await rmdir(root);
 }
 
-const { apply, runVoiceCommand } = await import('../integrations/deepseek-plugin.mjs');
+const { default: hostPlugin, apply, inject, runVoiceCommand } = await import('../integrations/deepseek-plugin.mjs');
+assert.equal(hostPlugin.apply, apply);
+assert.equal(hostPlugin.inject, inject);
+assert.deepEqual(inject, ['commands']);
 let registered, disposed;
 const listeners = new Map();
 const fake = {
@@ -47,10 +50,11 @@ const fake = {
   on(name, callback) { listeners.set(name, callback); },
 };
 apply(fake);
-assert.equal(registered.name, 'voice');
+assert.equal((await runVoiceCommand('ui {"tool":"execute_shell"}')).kind,'error');
+assert.equal(registered.name, 'agent-voice');
 assert.equal(registered.definitionId, 'agent-voice.control');
 assert.match(registered.input.hint, /profile/);
 const help = await runVoiceCommand('help');
 assert.equal(help.kind, 'success'); assert.match(help.text, /Agent Voice/); assert.match(help.text, /停止当前朗读/);
 listeners.get('dispose')(); assert.equal(disposed, true);
-console.log(JSON.stringify({ok:true, checks:['DeepSeek /voice registered in composer','command help is local','command registration disposed']}));
+console.log(JSON.stringify({ok:true, checks:['DeepSeek unique /agent-voice registered in composer','command help is local','command registration disposed']}));

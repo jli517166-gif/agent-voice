@@ -67,7 +67,7 @@ def install_codex(store,python,server):
         if (backup/"config.toml").is_file():shutil.copy2(backup/"config.toml",config)
         raise
     listing=run([codex,"mcp","get",SERVER_NAME])
-    return {"ok":True,"source":"codex","message":"Codex MCP 与聊天栏控制入口已安装；本地控制工具已设为自动批准。","verification":listing,"chatEntry":plugin.get("installedPath"),"backup":str(backup)}
+    return {"ok":True,"source":"codex","message":"Codex MCP 与语音控制技能已安装。重载插件或新建会话后，在聊天栏技能选择器中选择语音控制，或输入 $agent-voice-control。常驻自定义按钮取决于客户端支持。","verification":listing,"chatEntry":plugin.get("installedPath"),"backup":str(backup)}
 
 def find_deepseek(store):
     registry=store.root/"data/harness-installations.json"
@@ -83,6 +83,11 @@ def find_deepseek(store):
 def install_deepseek(store,python,server):
     import yaml
     cli,profile=find_deepseek(store);version=run([cli,"--version"]).splitlines()[-1].strip()
+    # The composer UI lives in a separate browser bundle. Installing only the
+    # MCP transport leaves the old client.js active even after a full restart.
+    from harness_setup import configure
+    registry=json.loads((store.root/"data/harness-installations.json").read_text(encoding="utf-8-sig"))
+    connector=configure("deepseek",store.root,registry["deepseek"]["directory"])
     package="@deepseek-ai/dsh-mcp-client@"+version
     # Pin the first-party MCP client to the same version as the Harness runtime.
     run([cli,"plugin","--profile","desktop","add",package],timeout=300)
@@ -96,7 +101,11 @@ def install_deepseek(store,python,server):
     entries=[entry for entry in entries if not (isinstance(entry,dict) and set(entry)=={"insert"} and not entry["insert"])]
     entries.append({"insert":[{"id":"agent-voice-mcp","name":"@deepseek-ai/dsh-mcp-client","config":{"serverName":SERVER_NAME,"transport":"stdio","command":str(python),"args":[str(server),"--root",str(store.root),"--host","deepseek"],"cwd":str(store.root),"failOnStartupError":False}}]})
     temp=patch.with_name(patch.name+".agent-voice.tmp");temp.write_text(yaml.safe_dump(entries,allow_unicode=True,sort_keys=False),encoding="utf-8");os.replace(temp,patch)
-    return {"ok":True,"source":"deepseek","message":"DeepSeek Harness MCP 快捷控制已安装；原 Cordis 配置已备份。","profile":str(profile),"backup":str(backup)}
+    import hashlib
+    client=profile/"node_modules/dsh-agent-voice-public/client.js"
+    expected=store.root/"integrations/deepseek-control-client.js"
+    if not client.is_file() or client.read_text(encoding="utf-8-sig")!=expected.read_text(encoding="utf-8-sig"):raise ValueError("聊天栏前端更新校验失败，请重新安装快捷控制")
+    return {"ok":True,"source":"deepseek","message":"DeepSeek Harness MCP 与聊天栏界面已更新并校验，请重启 Harness。","profile":str(profile),"backup":str(backup),"clientSha256":hashlib.sha256(client.read_bytes()).hexdigest(),"connector":connector}
 
 def install(source,root):
     store=Store(root);cfg=store.get();python=store.resolve(cfg["engines"]["pythonRvc"]);server=store.root/"integrations/agent_voice_mcp.py"

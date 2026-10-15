@@ -1,3 +1,4 @@
+using Button = AgentVoice.AnimeButton;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -42,7 +43,7 @@ namespace AgentVoice {
             foreach(var item in new[]{new[]{"codex","Codex"},new[]{"deepseek","DeepSeek Harness"}}){string source=item[0],name=item[1];var check=new CheckBox{Text="启用",AutoSize=true,Height=30,Margin=new Padding(0,5,10,5)};checks[source]=check;Add(intro,Row(Hint(name),check,HarnessIndicator(source,name)));}
             Add(intro,Row(AsyncBtn("保存开关",async()=>{var next=Json.Copy(Config);foreach(var key in Config.harness.Keys)next.harness[key]=checks[key].Checked;await Persist(next,new {harness=next.harness});await Poll();})));
             Add(intro,Hint("只有“指定 Harness 返回本次随机短句，并完成实际语音播放”才变绿和播放礼炮。监听就绪、文件已安装、心跳在线、近期收到普通回复都不算验证通过。"));
-            var mcp=Card(stack,"聊天栏快捷控制");Add(mcp,Hint("安装后，Codex 和 DeepSeek Harness 的聊天输入栏都会显示“语音”入口按钮。点击即可启停服务、停止朗读、查看或切换声音；仍可使用 $agent-voice-control 和 /voice。底层由 MCP 执行。"));
+            var mcp=Card(stack,"聊天栏快捷控制");Add(mcp,Hint("DeepSeek 安装后在聊天栏显示“语音”按钮，使用独有的 /agent-voice 命令。Codex 使用聊天栏技能选择器中的“语音控制”或 $agent-voice-control；常驻自定义按钮需要客户端提供扩展支持。两者均通过 MCP 控制服务、朗读和声音方案。"));
             Add(mcp,Row(Primary(AsyncBtn("安装到 Codex",async()=>await InstallHarnessMcp("codex"))),Primary(AsyncBtn("安装到 DeepSeek",async()=>await InstallHarnessMcp("deepseek")))));
             var developer=Card(stack,"其他 Harness · 二次开发");Add(developer,Hint("未真机验证的 Harness 不进入正式支持列表。开发者可以按适配器契约接入最终回复，并复用相同的随机挑战、播放回执和 MCP 工具。"));
             Add(developer,Row(EntryBtn("打开 Harness 二次开发指南","新增识别器、连接器、验证命令和测试。",()=>ServiceClient.Open(Store.Resolve("Harness二次开发指南.md"))),EntryBtn("打开 MCP 开发说明","复用或扩展本地 MCP 控制服务。",()=>ServiceClient.Open(Store.Resolve("MCP控制插件开发说明.md")))));

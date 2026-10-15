@@ -67,8 +67,9 @@ class AgentVoice:
             # after this short-lived MCP process exits.
             def ps_quote(value):return "'"+str(value).replace("'","''")+"'"
             line=subprocess.list2cmdline(command)
-            script=("$r=Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments "
-                    "@{CommandLine="+ps_quote(line)+";CurrentDirectory="+ps_quote(self.root)+"};"
+            script=("$startup=New-CimInstance -ClassName Win32_ProcessStartup -ClientOnly -Property @{ShowWindow=[uint16]0};"
+                    "$r=Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments "
+                    "@{CommandLine="+ps_quote(line)+";CurrentDirectory="+ps_quote(self.root)+";ProcessStartupInformation=$startup};"
                     "if($r.ReturnValue -ne 0){exit [int]$r.ReturnValue}")
             encoded=base64.b64encode(script.encode("utf-16le")).decode("ascii")
             completed=subprocess.run(["powershell.exe","-NoLogo","-NoProfile","-NonInteractive","-EncodedCommand",encoded],

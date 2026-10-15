@@ -28,7 +28,7 @@
 codex mcp add agent_voice -- <python.exe> <agent_voice_mcp.py> --root <程序目录> --host codex
 ```
 
-安装器还会注册程序内 `.agents/plugins` 的本地市场并安装 `agent-voice-control` 插件。重启 Codex 后，聊天栏会显示 **语音控制** 入口按钮，也可以输入 `$agent-voice-control`。该技能只负责把自然语言控制意图映射到 `agent_voice` MCP；已有会话不保证重新加载入口或工具。
+安装器还会注册程序内 `.agents/plugins` 的本地市场并安装 `agent-voice-control` 插件。重载插件或新建会话后，可在聊天栏技能选择器中选择 **语音控制**，或输入 `$agent-voice-control`。`composerIcon` 是原生入口图标元数据，并非自定义常驻按钮 API；当前不承诺安装后自动出现和 DeepSeek 相同的常驻控制菜单。该技能只负责把自然语言控制意图映射到 `agent_voice` MCP；已有会话不保证重新加载入口或工具。
 
 安装后运行 `codex mcp get agent_voice` 或 `codex mcp list` 检查底层配置。运行 `codex plugin list` 可以检查聊天栏插件。
 
@@ -59,22 +59,22 @@ codex mcp add agent_voice -- <python.exe> <agent_voice_mcp.py> --root <程序目
       failOnStartupError: false
 ```
 
-重启 DeepSeek Harness 后才能加载。安装成功后，浏览器半插件会在 `conversation.input.left` 槽位显示 **语音** 按钮；点击菜单项会提交对应的本地 `/voice` 人工命令，直接执行 MCP 控制，不会作为普通消息发送给模型。安装失败不会删除备份，也不代表自动朗读连接器失效。
+重启 DeepSeek Harness 后才能加载。安装成功后，浏览器半插件会在 `conversation.input.left` 槽位显示 **语音** 按钮；菜单通过 Harness 原生 `remote.commands.execute` 执行已注册的 `/agent-voice ui <JSON>` 控制命令，再调用本机 MCP。结果直接显示在菜单中，不修改聊天草稿、不发送给模型。声音方案可在菜单内下拉选择并直接应用。安装器同时刷新实际 profile 内的 client.js 并校验内容。菜单默认继承 Harness 的明暗主题、文字和配色，并使用实色底层避免透字。安装失败不会删除备份，也不代表自动朗读连接器失效。
 
-DeepSeek 回复连接器同时向原生人工命令注册表注册 `/voice`。它由聊天输入框自己的斜杠菜单发现，命令直接执行，不会作为普通消息发送给模型：
+DeepSeek 回复连接器同时向原生人工命令注册表注册 `/agent-voice`。它供支持原生人工命令分发的版本使用。部分桌面版会把手动提交的斜杠文本交给模型，因此日常控制请使用“语音”按钮；按钮直接调用命令服务，不向聊天输入框提交文本：
 
 ```text
-/voice status
-/voice start
-/voice stop
-/voice quiet
-/voice profiles
-/voice profile <方案 ID>
-/voice auto on
-/voice auto off
+/agent-voice status
+/agent-voice start
+/agent-voice stop
+/agent-voice quiet
+/agent-voice profiles
+/agent-voice profile <方案 ID>
+/agent-voice auto on
+/agent-voice auto off
 ```
 
-`/voice help` 会在聊天区显示简短控制面板。命令执行仍通过 `agent_voice_mcp.py`，因此和模型主动调用 MCP 使用同一套参数校验及错误返回。
+`/agent-voice help` 会在聊天区显示简短控制面板。命令执行仍通过 `agent_voice_mcp.py`，因此和模型主动调用 MCP 使用同一套参数校验及错误返回。
 
 ## 手动协议测试
 

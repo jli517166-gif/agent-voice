@@ -1,12 +1,21 @@
 import { send, startHeartbeat, mcpControl } from './connector.mjs';
+import { writeFile } from 'node:fs/promises';
 export const name = 'agent-voice-public';
-export const inject = ['sessions', 'commands'];
+export const inject = ['commands'];
 
 function commandHelp() {
   return ['🎙 Agent Voice 控制台', 'status  状态', 'start  开启服务', 'stop  关闭服务',
     'quiet  停止当前朗读', 'profiles  声音方案', 'profile <ID>  切换声音', 'auto on|off  自动朗读'].join('\n');
 }
 export async function runVoiceCommand(rawInput = '') {
+  if(rawInput.trim().startsWith('ui ')){
+    try{
+      const payload=JSON.parse(rawInput.trim().slice(3));
+      const allowed=new Set(['voice_service_status','start_voice_service','stop_voice_service','stop_speech','list_voice_profiles','apply_voice_profile','set_auto_reading']);
+      if(!allowed.has(payload.tool))throw new Error('未知语音控制操作');
+      return {kind:'success',text:JSON.stringify(await mcpControl('deepseek',payload.tool,payload.args??{}))};
+    }catch(error){return {kind:'error',text:error.message};}
+  }
   const [action = 'status', ...values] = rawInput.trim().split(/\s+/).filter(Boolean);
   const normalized = action.toLowerCase();
   let tool = 'voice_service_status', args = {};
@@ -16,10 +25,10 @@ export async function runVoiceCommand(rawInput = '') {
   else if (normalized === 'quiet' || normalized === 'mute') tool = 'stop_speech';
   else if (normalized === 'profiles') tool = 'list_voice_profiles';
   else if (normalized === 'profile') {
-    if (!values[0]) return {kind:'error', text:'请填写声音方案 ID。先输入 /voice profiles 查看。'};
+    if (!values[0]) return {kind:'error', text:'请填写声音方案 ID。先输入 /agent-voice profiles 查看。'};
     tool = 'apply_voice_profile'; args = {profile_id:values.join(' ')};
   } else if (normalized === 'auto') {
-    if (!['on','off'].includes((values[0] || '').toLowerCase())) return {kind:'error', text:'用法：/voice auto on 或 /voice auto off'};
+    if (!['on','off'].includes((values[0] || '').toLowerCase())) return {kind:'error', text:'用法：/agent-voice auto on 或 /agent-voice auto off'};
     tool = 'set_auto_reading'; args = {enabled:values[0].toLowerCase() === 'on'};
   } else if (normalized !== 'status') return {kind:'error', text:'未知操作。\n' + commandHelp()};
   try {
@@ -34,10 +43,11 @@ export function apply(ctx) {
   const stopHeartbeat = startHeartbeat('deepseek');
   const pending = new Map();
   const command = ctx.commands.register({
-    definitionId: 'agent-voice.control', name: 'voice',
+    definitionId: 'agent-voice.control', name: 'agent-voice',
     description: '控制语音服务、停止朗读或切换声音', input: {hint: 'status | start | stop | quiet | profiles | profile <ID> | auto on/off'},
     handler: ({rawInput}) => runVoiceCommand(rawInput),
   });
+  void writeFile(new URL('../data/logs/deepseek-control.json',import.meta.url),JSON.stringify({time:new Date().toISOString(),stage:'command-registered'})).catch(()=>{});
   ctx.on('session/event', (session, event) => {
     if (session?.header?.origin === 'subagent' || session?.header?.parentSession || session?.header?.delegationDepth > 0) return;
     const data = event.data ?? event;
@@ -55,6 +65,6 @@ export function apply(ctx) {
       if (text) void send('deepseek', { type: 'turn/end', session_id: session.id, turn, text });
     }
   });
-  ctx.on('dispose', () => { command?.dispose?.(); stopHeartbeat(); pending.clear(); });
+  ctx.on('dispose', () => { if(typeof command === 'function') command(); else command?.dispose?.(); stopHeartbeat(); pending.clear(); });
 }
-export default apply;
+export default { name, inject, apply };

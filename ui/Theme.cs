@@ -6,19 +6,62 @@ using System.IO;
 using System.Windows.Forms;
 
 namespace AgentVoice {
-    public sealed class AnimeButton:Button {
+    public sealed class AnimeButton:Control {
         bool hovering,pressed;
-        public AnimeButton(){FlatStyle=FlatStyle.Flat;FlatAppearance.BorderSize=0;UseVisualStyleBackColor=false;SetStyle(ControlStyles.UserPaint|ControlStyles.OptimizedDoubleBuffer|ControlStyles.AllPaintingInWmPaint|ControlStyles.ResizeRedraw|ControlStyles.SupportsTransparentBackColor,true);}
-        protected override void OnSizeChanged(EventArgs e){base.OnSizeChanged(e);if(Width<3||Height<3)return;using(var shape=Shapes.Rounded(new RectangleF(0,0,Width,Height),Math.Min(15,Math.Max(7,Height/2F)))){var previous=Region;Region=new Region(shape);if(previous!=null)previous.Dispose();}}
+        Bitmap surface;
+        string surfaceKey;
+        public int BorderSize {get;set;}
+        public Color BorderColor {get;set;}
+        public ContentAlignment TextAlign {get;set;}
+        public AnimeButton(){BorderColor=Color.Teal;TextAlign=ContentAlignment.MiddleCenter;TabStop=true;AccessibleRole=AccessibleRole.PushButton;SetStyle(ControlStyles.UserPaint|ControlStyles.OptimizedDoubleBuffer|ControlStyles.AllPaintingInWmPaint|ControlStyles.ResizeRedraw|ControlStyles.Selectable|ControlStyles.StandardClick,true);}
+        public override Size GetPreferredSize(Size proposedSize){Size text=TextRenderer.MeasureText(Text,Font);return new Size(Math.Max(MinimumSize.Width,text.Width+Padding.Horizontal+12),Math.Max(MinimumSize.Height,text.Height+Padding.Vertical+16));}
+        public void PerformClick(){if(Enabled)OnClick(EventArgs.Empty);}
+        protected override AccessibleObject CreateAccessibilityInstance(){return new ButtonAccessibleObject(this);}
+        sealed class ButtonAccessibleObject:ControlAccessibleObject {readonly AnimeButton owner;public ButtonAccessibleObject(AnimeButton value):base(value){owner=value;}public override string DefaultAction{get{return "按下";}}public override void DoDefaultAction(){owner.PerformClick();}}
+        protected override void Dispose(bool disposing){if(disposing&&surface!=null){surface.Dispose();surface=null;}base.Dispose(disposing);}
+        protected override bool IsInputKey(Keys keyData){return (keyData&Keys.KeyCode)==Keys.Space||(keyData&Keys.KeyCode)==Keys.Enter||base.IsInputKey(keyData);}
+        protected override void OnKeyDown(KeyEventArgs e){if(e.KeyCode==Keys.Space){pressed=true;Invalidate();e.Handled=true;}else if(e.KeyCode==Keys.Enter){PerformClick();e.Handled=true;}base.OnKeyDown(e);}
+        protected override void OnKeyUp(KeyEventArgs e){if(e.KeyCode==Keys.Space&&pressed){pressed=false;Invalidate();PerformClick();e.Handled=true;}base.OnKeyUp(e);}
+        // Keep a rectangular child window. A native rounded Region leaves stale
+        // edge pixels when the parent scrolls or the window is scaled by Windows.
+        protected override void OnPaintBackground(PaintEventArgs e){
+            MainForm host=FindForm() as MainForm;
+            for(Control ancestor=Parent;ancestor!=null;ancestor=ancestor.Parent){var card=ancestor as ScenePanel;if(card!=null&&card.Card&&card.Host!=null){e.Graphics.Clear(card.Host.CardColor);return;}}
+            if(host!=null)host.PaintScene(e.Graphics,this);else e.Graphics.Clear(Parent==null?SystemColors.Control:Parent.BackColor);
+        }
         protected override void OnMouseEnter(EventArgs e){hovering=true;Invalidate();base.OnMouseEnter(e);}
         protected override void OnMouseLeave(EventArgs e){hovering=false;pressed=false;Invalidate();base.OnMouseLeave(e);}
-        protected override void OnMouseDown(MouseEventArgs e){pressed=true;Invalidate();base.OnMouseDown(e);}
+        protected override void OnMouseDown(MouseEventArgs e){if(e.Button==MouseButtons.Left){Focus();pressed=true;}Invalidate();base.OnMouseDown(e);}
         protected override void OnMouseUp(MouseEventArgs e){pressed=false;Invalidate();base.OnMouseUp(e);}
+        protected override void OnGotFocus(EventArgs e){base.OnGotFocus(e);Invalidate();}
+        protected override void OnLostFocus(EventArgs e){base.OnLostFocus(e);Invalidate();}
         static Color Shift(Color color,int amount){return Color.FromArgb(color.A,Math.Max(0,Math.Min(255,color.R+amount)),Math.Max(0,Math.Min(255,color.G+amount)),Math.Max(0,Math.Min(255,color.B+amount)));}
+        static Bitmap RenderSurface(Size size,Color fill,Color stroke,int border){
+            const int scale=3;
+            using(var large=new Bitmap(size.Width*scale,size.Height*scale,PixelFormat.Format32bppPArgb)){
+                using(var g=Graphics.FromImage(large)){
+                    g.Clear(Color.Transparent);g.ScaleTransform(scale,scale);g.SmoothingMode=SmoothingMode.AntiAlias;g.PixelOffsetMode=PixelOffsetMode.None;
+                    float inset=Math.Max(.5F,border/2F);var rect=new RectangleF(inset,inset,size.Width-inset*2,size.Height-inset*2);
+                    using(var shape=Shapes.Rounded(rect,Math.Min(12,Math.Max(6,size.Height/2F-inset)))){
+                        using(var brush=new SolidBrush(fill))g.FillPath(brush,shape);
+                        if(border>0)using(var pen=new Pen(stroke,border)){pen.Alignment=PenAlignment.Center;g.DrawPath(pen,shape);}
+                    }
+                }
+                var result=new Bitmap(size.Width,size.Height,PixelFormat.Format32bppPArgb);
+                using(var g=Graphics.FromImage(result))using(var attributes=new ImageAttributes()){
+                    g.CompositingMode=CompositingMode.SourceCopy;g.InterpolationMode=InterpolationMode.HighQualityBicubic;g.PixelOffsetMode=PixelOffsetMode.HighQuality;attributes.SetWrapMode(WrapMode.TileFlipXY);
+                    g.DrawImage(large,new Rectangle(Point.Empty,size),0,0,large.Width,large.Height,GraphicsUnit.Pixel,attributes);
+                }
+                return result;
+            }
+        }
         protected override void OnPaint(PaintEventArgs e){
-            e.Graphics.SmoothingMode=SmoothingMode.AntiAlias;e.Graphics.PixelOffsetMode=PixelOffsetMode.HighQuality;e.Graphics.CompositingQuality=CompositingQuality.HighQuality;var rect=new RectangleF(.6F,.6F,Width-1.2F,Height-1.2F);if(rect.Width<2||rect.Height<2)return;
-            Color top=hovering?Shift(BackColor,BackColor.GetBrightness()<.55F?16:-7):BackColor,bottom=Shift(top,BackColor.GetBrightness()<.55F?-8:5);if(pressed){top=Shift(top,-10);bottom=Shift(bottom,-10);}
-            using(var shape=Shapes.Rounded(rect,Math.Min(15,Math.Max(7,Height/2F))))using(var fill=new LinearGradientBrush(rect,top,bottom,90F)){e.Graphics.FillPath(fill,shape);int border=Focused?Math.Max(2,FlatAppearance.BorderSize):FlatAppearance.BorderSize;if(border>0)using(var pen=new Pen(Focused?Shift(FlatAppearance.BorderColor,22):FlatAppearance.BorderColor,border)){pen.Alignment=PenAlignment.Inset;e.Graphics.DrawPath(pen,shape);}}
+            if(Width<4||Height<4)return;
+            Color fill=hovering?Shift(BackColor,BackColor.GetBrightness()<.55F?12:-7):BackColor;if(pressed)fill=Shift(fill,-10);
+            int border=Focused&&ShowFocusCues?Math.Max(2,BorderSize):BorderSize;Color stroke=BorderColor;
+            string key=Width+":"+Height+":"+fill.ToArgb()+":"+stroke.ToArgb()+":"+border;
+            if(surface==null||surfaceKey!=key){if(surface!=null)surface.Dispose();surface=RenderSurface(Size,fill,stroke,border);surfaceKey=key;}
+            e.Graphics.DrawImageUnscaled(surface,Point.Empty);
             var textRect=new Rectangle(Padding.Left,0,Math.Max(1,Width-Padding.Horizontal),Height);TextRenderer.DrawText(e.Graphics,Text,Font,textRect,Enabled?ForeColor:SystemColors.GrayText,TextFormatFlags.VerticalCenter|(TextAlign==ContentAlignment.MiddleLeft?TextFormatFlags.Left:TextFormatFlags.HorizontalCenter)|TextFormatFlags.EndEllipsis);
         }
     }
@@ -37,7 +80,7 @@ namespace AgentVoice {
             Invalidate(true);
         }
         protected override void OnPaintBackground(PaintEventArgs e){if(Host==null){base.OnPaintBackground(e);return;}Host.PaintScene(e.Graphics,this);}
-        protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);if(Card&&Host!=null){e.Graphics.SmoothingMode=SmoothingMode.AntiAlias;var rect=new Rectangle(1,1,Width-3,Height-3);using(var path=Shapes.Rounded(rect,18)){Color surface=Color.FromArgb(Host.HasBackground?228:250,Host.CardColor);using(var fill=new LinearGradientBrush(rect,surface,Shift(surface,Host.BackColor.GetBrightness()<.4F?5:-3),90F))e.Graphics.FillPath(fill,path);using(var pen=new Pen(Color.FromArgb(118,Host.Accent),1.2F))e.Graphics.DrawPath(pen,path);}}}
+        protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);if(Card&&Host!=null){e.Graphics.SmoothingMode=SmoothingMode.AntiAlias;var rect=new Rectangle(1,1,Width-3,Height-3);using(var path=Shapes.Rounded(rect,18)){using(var fill=new SolidBrush(Host.CardColor))e.Graphics.FillPath(fill,path);using(var pen=new Pen(Color.FromArgb(118,Host.Accent),1.2F))e.Graphics.DrawPath(pen,path);}}}
         static Color Shift(Color color,int amount){return Color.FromArgb(color.A,Math.Max(0,Math.Min(255,color.R+amount)),Math.Max(0,Math.Min(255,color.G+amount)),Math.Max(0,Math.Min(255,color.B+amount)));}
     }
     public sealed class BufferedTable:TableLayoutPanel {
