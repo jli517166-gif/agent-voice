@@ -2,7 +2,7 @@ import copy,json,shutil,socket,sys,tempfile,unittest,wave,zipfile
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'service'))
 from state import Store,atomic_json
-from tts_bundle import export_model,import_model,REQUIRED
+from tts_bundle import export_model,import_model,REQUIRED,runtime_compatibility
 
 
 class TtsBundleTests(unittest.TestCase):
@@ -144,6 +144,27 @@ class TtsBundleTests(unittest.TestCase):
         export_model(self.root,package,package_mode='trained',trained_model_dir=trained)
         bad=self.rewrite(package,lambda m,f:m['baseModel'].update(deltaFiles=['../outside.pt']))
         self.rejected(bad)
+
+
+class RuntimeCompatibilityTests(unittest.TestCase):
+    def test_torch_family_upgrade_is_allowed_with_warning(self):
+        expected={'python':'3.10.11','packages':{'torch':'2.3.1+cu121','torchaudio':'2.3.1+cu121','numpy':'1.26.4'}}
+        actual={'python':'3.10.11','packages':{'torch':'2.7.1+cu128','torchaudio':'2.7.1+cu128','torchvision':'0.22.1+cu128','numpy':'1.26.4'}}
+        ok,warnings,errors=runtime_compatibility(expected,actual)
+        self.assertTrue(ok);self.assertEqual(errors,[])
+        self.assertTrue(any('torch' in item for item in warnings));self.assertTrue(any('torchvision' in item for item in warnings))
+    def test_python_minor_mismatch_is_rejected(self):
+        ok,warnings,errors=runtime_compatibility({'python':'3.10.11','packages':{}},{'python':'3.11.9','packages':{}})
+        self.assertFalse(ok);self.assertTrue(any('Python' in item for item in errors))
+    def test_non_torch_package_mismatch_is_rejected(self):
+        ok,warnings,errors=runtime_compatibility({'python':'3.10.11','packages':{'numpy':'1.26.4'}},{'python':'3.10.11','packages':{'numpy':'2.0.0'}})
+        self.assertFalse(ok);self.assertTrue(any('numpy' in item for item in errors))
+    def test_missing_torch_is_rejected(self):
+        ok,warnings,errors=runtime_compatibility({'python':'3.10.11','packages':{'torch':'2.3.1+cu121'}},{'python':'3.10.11','packages':{}})
+        self.assertFalse(ok);self.assertTrue(any('torch' in item for item in errors))
+    def test_new_torchvision_only_is_allowed(self):
+        ok,warnings,errors=runtime_compatibility({'python':'3.10.11','packages':{'torch':'2.7.1+cu128'}},{'python':'3.10.11','packages':{'torch':'2.7.1+cu128','torchvision':'0.22.1+cu128'}})
+        self.assertTrue(ok);self.assertEqual(errors,[]);self.assertTrue(warnings)
 
 
 if __name__=='__main__':unittest.main()

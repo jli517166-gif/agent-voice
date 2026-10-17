@@ -108,6 +108,44 @@ class EnvironmentRepairTests(unittest.TestCase):
   profile=CATALOG['cuda128Compatibility']
   self.assertEqual(profile['torchIndex'],'https://download.pytorch.org/whl/cu128')
   self.assertEqual(profile['torch'],['torch==2.7.1','torchaudio==2.7.1'])
+ def test_compatibility_runtime_includes_torchvision_and_mirrors(self):
+  profile=CATALOG['cuda128Compatibility']
+  self.assertEqual(profile['torchvision'],'torchvision==0.22.1')
+  self.assertGreaterEqual(profile['timeoutSeconds'],3600)
+  self.assertTrue(any('pytorch-wheels' in link for link in profile['torchFindLinks']))
+  self.assertIn('https://pypi.org/simple',CATALOG['pipIndexes'])
+  self.assertGreaterEqual(len(CATALOG['pipIndexes']),2)
+ def test_local_wheels_match_pinned_versions(self):
+  with tempfile.TemporaryDirectory() as temp:
+   helper=Repair(temp);directory=helper.work/'wheels';directory.mkdir(parents=True)
+   names=['torch-2.7.1+cu128-cp310-cp310-win_amd64.whl','torchaudio-2.7.1+cu128-cp310-cp310-win_amd64.whl','torchvision-0.22.1+cu128-cp310-cp310-win_amd64.whl']
+   for name in names:(directory/name).write_bytes(b'x')
+   selected=helper.local_wheels(['torch==2.7.1','torchaudio==2.7.1','torchvision==0.22.1'])
+   self.assertEqual({path.name for path in selected},set(names))
+   self.assertEqual(helper.local_wheels(['torch==2.6.0']),[])
+ def test_pip_falls_back_to_next_index(self):
+  with tempfile.TemporaryDirectory() as temp:
+   helper=Repair(temp);helper.download=Mock(return_value=Path(temp).resolve()/'pip.whl');calls=[]
+   def run(command,timeout=1800):
+    calls.append(command)
+    if 'https://first.invalid/simple' in command:raise RuntimeError('boom')
+   helper.run=run
+   with patch.dict(CATALOG,{'pipIndexes':['https://first.invalid/simple','https://second.invalid/simple']}):
+    helper.pip(Path(temp).resolve()/'python.exe',['Pillow==12.3.0'])
+   self.assertTrue(any('https://second.invalid/simple' in command for command in calls))
+ def test_compat_install_replaces_shadow_torchvision(self):
+  with tempfile.TemporaryDirectory() as temp:
+   root=Path(temp).resolve();helper=Repair(root)
+   runtime=root/'tts-engines'/'gpt-sovits'/'runtime';python=runtime/'Scripts'/'python.exe';python.parent.mkdir(parents=True);python.write_bytes(b'')
+   shadow=runtime/'gpu-packages';(shadow/'torchvision').mkdir(parents=True);(shadow/'torchvision-0.21.0+cu124.dist-info').mkdir()
+   calls=[]
+   helper.pip=lambda py,requirements,**kwargs:calls.append((list(requirements),kwargs))
+   helper.verify_compat_runtime=Mock()
+   helper.install_compat_torch(python)
+   flattened=[item for requirement,_ in calls for item in requirement]
+   self.assertIn('torchvision==0.22.1',flattened)
+   self.assertFalse((shadow/'torchvision').exists())
+   self.assertTrue(any(kwargs.get('target')==shadow for _,kwargs in calls))
  def test_unsupported_gpu_runtime_is_repaired_and_synthesized_again(self):
   with tempfile.TemporaryDirectory() as temp:
    helper=Repair(temp);failed=[{'id':'cosyvoice/cosyvoice3','ok':False,'error':'no kernel image is available'}];passed=[{'id':'cosyvoice/cosyvoice3','ok':True}]

@@ -28,7 +28,8 @@ GPT_MODEL_SUFFIXES = MODEL_SUFFIXES | {'.pth','.ckpt'}
 PACKAGE_MODES = ('lightweight','full','trained','trained-full')
 MAX_BYTES = 64 * 1024**3
 SOURCE_SUFFIXES = {'.py','.yaml','.yml','.json','.toml','.txt','.md'}
-RUNTIME_PACKAGES = ('torch','torchaudio','numpy','hyperpyyaml','onnxruntime-gpu','onnxruntime','transformers','diffusers','soundfile','librosa')
+RUNTIME_PACKAGES = ('torch','torchaudio','torchvision','numpy','hyperpyyaml','onnxruntime-gpu','onnxruntime','transformers','diffusers','soundfile','librosa')
+TORCH_RUNTIME_PACKAGES = {'torch','torchaudio','torchvision'}
 
 
 def gpt_sources(directory, variant):
@@ -168,6 +169,38 @@ def runtime_descriptor(store=None, engine='cosyvoice'):
 
 def runtime_fingerprint(store=None, engine='cosyvoice'):
     return hashlib.sha256(json.dumps(runtime_descriptor(store,engine),sort_keys=True,separators=(',',':')).encode()).hexdigest()
+
+
+def runtime_compatibility(expected, actual):
+    """Allow a torch/CUDA upgrade without hiding an incompatible Python or package set.
+
+    A voice package records the runtime that exported it.  Moving to a newer GPU
+    can require a newer CUDA build of torch, torchaudio and torchvision; the
+    reference audio and weights still work.  Only the torch family may differ,
+    and each of those packages must still be installed.
+    """
+    errors=[]; warnings=[]
+
+    def line(value):
+        return '.'.join(str(value or '').split('.')[:2])
+
+    expected_python=line(expected.get('python'))
+    actual_python=line(actual.get('python'))
+    if expected_python and actual_python and expected_python!=actual_python:
+        errors.append('Python: 包内 %s / 本机 %s'%(expected.get('python'),actual.get('python')))
+        return False,warnings,errors
+    expected_packages=expected.get('packages') or {}
+    actual_packages=actual.get('packages') or {}
+    for name in sorted(set(expected_packages)|set(actual_packages)):
+        wanted=expected_packages.get(name)
+        have=actual_packages.get(name)
+        if wanted==have:continue
+        message='%s: 包内 %s / 本机 %s'%(name,wanted or '未安装',have or '未安装')
+        if name in TORCH_RUNTIME_PACKAGES and have:
+            warnings.append(message)
+        else:
+            errors.append(message)
+    return (not errors),warnings,errors
 
 
 def engine_model_root(store, engine):
@@ -390,12 +423,16 @@ def import_model(root, source):
             policy=manifest.get('compatibility',{}).get('sourcePolicy','legacy-bytes')
             if engine['sourceFingerprint']!='legacy-unverified' and source_fingerprint(store,engine['id'],policy)!=engine['sourceFingerprint']:
                 raise ValueError('本机 TTS 引擎源码版本与音色包不一致，请安装匹配版本后重试')
+            warnings=[]
             if engine['runtimeFingerprint']!='legacy-unverified' and runtime_fingerprint(store,engine['id'])!=engine['runtimeFingerprint']:
                 expected=manifest.get('compatibility',{}).get('runtime',{})
                 actual=runtime_descriptor(store,engine['id'])
-                differences=['Python: 包内 %s / 本机 %s'%(expected.get('python','未知'),actual['python'])] if expected.get('python')!=actual['python'] else []
-                differences += ['%s: 包内 %s / 本机 %s'%(k,expected.get('packages',{}).get(k,'未安装'),actual['packages'].get(k,'未安装')) for k in sorted(set(expected.get('packages',{}))|set(actual['packages'])) if expected.get('packages',{}).get(k)!=actual['packages'].get(k)]
-                raise ValueError('TTS 运行环境不匹配；'+ '；'.join(differences)+'。请安装原环境，或在原环境中重新导出；不会静默替换依赖。')
+                allowed,changed,errors=runtime_compatibility(expected,actual)
+                if not allowed:
+                    raise ValueError('TTS 运行环境不匹配；'+ '；'.join(errors)+'。请安装原环境，或在原环境中重新导出；不会静默替换依赖。')
+                if not changed:
+                    raise ValueError('TTS 运行环境指纹与清单不一致；请重新导出音色包，不会按未知差异放行。')
+                warnings=['运行时已升级，音色包按兼容模式导入：'+'；'.join(changed)]
             model_directory=matching_model(store,engine['id'],engine['modelType'],model_records,engine['modelFingerprint'])
             if model_directory is None and manifest['packageMode']=='lightweight':
                 raise ValueError('轻量音色包需要完全一致的本地 TTS 基础模型。请把对应模型安装到 tts-engines/'+engine['id']+'/models 后重试；要求指纹：'+engine['modelFingerprint'])
@@ -445,7 +482,9 @@ def import_model(root, source):
                 if not old.is_file() or digest(old)!=reference_record['sha256']:raise ValueError('已导入的同一音色包参考损坏，请先备份并检查目录：'+str(voice_final))
             else:os.replace(voice_stage,voice_final);created_voice=True
             store.update({'voice':proposed})
-        return {'ok':True,'name':display_name,'engine':engine['id'],'modelType':engine['modelType'],'packageMode':manifest['packageMode'],'modelFingerprint':engine['modelFingerprint'],'assetCount':len(records),'modelDirectory':str(model_directory),'packageDirectory':str(voice_parent),'referenceReused':reused_voice,'backup':str(backup),'voice':proposed}
+        result={'ok':True,'name':display_name,'engine':engine['id'],'modelType':engine['modelType'],'packageMode':manifest['packageMode'],'modelFingerprint':engine['modelFingerprint'],'assetCount':len(records),'modelDirectory':str(model_directory),'packageDirectory':str(voice_parent),'referenceReused':reused_voice,'backup':str(backup),'voice':proposed}
+        if warnings:result['warnings']=warnings
+        return result
     except Exception:
         if created_voice:remove_owned(voice_final,voice_parent)
         if created_model:remove_owned(model_final,engine_model_root(store,engine['id']))

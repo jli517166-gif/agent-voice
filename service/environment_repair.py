@@ -101,18 +101,52 @@ class Repair:
             if p.returncode:return {'missing':list(modules),'error':p.stderr[-1200:]}
             result=json.loads(p.stdout.strip().splitlines()[-1]);return {'missing':[k for k,v in result.items() if v is not True],'details':result}
         except (ValueError,OSError,subprocess.TimeoutExpired) as exc:return {'missing':list(modules),'error':str(exc)}
-    def pip(self,python,requirements,index=None):
+    def local_wheels(self,requirements):
+        """Use operator-provided wheels before any network source."""
+        directory=self.work/'wheels'
+        if not directory.is_dir():return []
+        available=list(directory.glob('*.whl'));selected=[]
+        for requirement in requirements:
+            name,_,version=requirement.partition('==')
+            canonical=name.lower().replace('_','-')
+            matches=[]
+            for wheel in available:
+                parts=wheel.stem.lower().replace('_','-').split('-')
+                if len(parts)<2 or parts[0]!=canonical:continue
+                if version and not parts[1].startswith(version):continue
+                matches.append(wheel)
+            if not matches:return []
+            selected.append(max(matches,key=lambda path:path.stat().st_size))
+        return selected
+    def pip(self,python,requirements,index=None,target=None,find_links=None,no_deps=False,timeout=1800):
         python=inside(self.root,python)
         if not requirements:return
         asset=CATALOG['pip'];wheel=self.download(asset['url'],'pip-24.3.1.whl',asset['sha256'])
         # The wheel is run directly, so a broken/missing pip does not block repair.
         code="import sys;sys.path.insert(0,"+repr(str(wheel))+");from pip._internal.cli.main import main;raise SystemExit(main())"
-        command=[python,'-I','-X','utf8','-c',code,'install','--disable-pip-version-check','--no-user','--prefer-binary','--cache-dir',str(self.work/'pip-cache'),'--index-url',index or 'https://pypi.org/simple',*requirements]
-        # A distribution can still have metadata while its actual module is
-        # missing/corrupt. Repair the failed roots, then resolve missing deps.
-        # Do not force-upgrade otherwise healthy transitive dependencies.
-        self.run(command[:-len(requirements)]+['--force-reinstall','--no-deps',*requirements])
-        self.run(command)
+        base=[python,'-I','-X','utf8','-c',code,'install','--disable-pip-version-check','--no-user','--prefer-binary','--cache-dir',str(self.work/'pip-cache')]
+        if target:base+=['--target',str(inside(self.root,target))]
+        sources=[]
+        if find_links:
+            sources=[(link,None) for link in find_links]
+        else:
+            candidates=[index] if index else list(CATALOG.get('pipIndexes') or ['https://pypi.org/simple'])
+            sources=[(None,candidate) for candidate in candidates]
+        failure=None
+        for link,candidate in sources:
+            command=list(base)
+            if link:command+=['--find-links',link,'--no-index']
+            else:command+=['--index-url',candidate]
+            try:
+                # A distribution can still have metadata while its actual module is
+                # missing/corrupt. Repair the failed roots, then resolve missing deps.
+                # Do not force-upgrade otherwise healthy transitive dependencies.
+                self.run(command+['--force-reinstall','--no-deps',*requirements],timeout=timeout)
+                if not no_deps and not target:self.run(command+[*requirements],timeout=timeout)
+                return
+            except RuntimeError as exc:
+                failure=exc;self.progress('依赖源不可用，尝试下一个：'+str(link or candidate))
+        raise RuntimeError('依赖安装失败：'+str(failure))
     def system(self):
         """Collect actionable host facts without depending on the TTS runtime."""
         result={'windows':sys.platform=='win32','architecture':platform.machine(),'pythonBits':__import__('struct').calcsize('P')*8}
@@ -171,10 +205,50 @@ class Repair:
                 if pipeline and pipeline.adapter:pipeline.adapter.close()
         return results
     def install_compat_torch(self,python):
-        profile=CATALOG.get('cuda128Compatibility')
-        if not profile:raise RuntimeError('没有可用的显卡兼容运行时配置')
-        self.progress('正在安装新显卡兼容的 CUDA 12.8 推理运行时')
-        self.pip(python,profile['torch'],profile['torchIndex'])
+        profile=CATALOG.get('cuda128Compatibility') or {}
+        requirements=list(profile.get('torch') or [])
+        if not requirements:raise RuntimeError('没有可用的显卡兼容运行时配置')
+        timeout=int(profile.get('timeoutSeconds',14400))
+        runtime_root=Path(python).resolve().parent.parent
+        shadow=runtime_root/'gpu-packages'
+        torchvision=profile.get('torchvision')
+        # A bundled GPT environment keeps torchvision in gpu-packages and that
+        # directory precedes site-packages. Install the matching torchvision
+        # whenever the engine imports it, or torch 2.7 sees torchvision 0.21
+        # and transformers fails with "torchvision::nms does not exist".
+        needs_torchvision=bool((shadow/'torchvision').is_dir()) or 'gpt-sovits' in str(python).lower()
+        if needs_torchvision and torchvision:requirements.append(torchvision)
+        local=self.local_wheels(requirements)
+        self.progress('正在安装新显卡兼容的 CUDA 12.8 推理运行时'+('（使用本地安装包）' if local else ''))
+        if local:
+            self.pip(python,[str(path) for path in local],no_deps=True,timeout=timeout)
+        else:
+            links=list(profile.get('torchFindLinks') or [])
+            if links:self.pip(python,requirements,find_links=links,no_deps=True,timeout=timeout)
+            else:self.pip(python,requirements,index=profile.get('torchIndex'),no_deps=True,timeout=timeout)
+        if (shadow/'torchvision').is_dir() and torchvision:
+            backup=shadow/('torchvision-backup-'+uuid.uuid4().hex[:8]);backup.mkdir()
+            os.replace(shadow/'torchvision',backup/'torchvision')
+            for item in list(shadow.glob('torchvision-*.dist-info')):
+                os.replace(item,backup/item.name)
+            selected=[path for path in local if path.name.lower().startswith('torchvision-')]
+            if selected:self.pip(python,[str(path) for path in selected],target=shadow,no_deps=True,timeout=timeout)
+            elif links:self.pip(python,[torchvision],find_links=links,target=shadow,no_deps=True,timeout=timeout)
+            else:self.pip(python,[torchvision],index=profile.get('torchIndex'),target=shadow,no_deps=True,timeout=timeout)
+        self.verify_compat_runtime(python,requirements)
+    def verify_compat_runtime(self,python,requirements):
+        names=[requirement.partition('==')[0] for requirement in requirements]
+        code="import json\nresult={}\nfor name in "+repr(names)+":\n try:\n  module=__import__(name)\n  result[name]=getattr(module,'__version__','')\n except Exception as exc:result[name]='ERROR: '+str(exc)\nprint(json.dumps(result))"
+        from pipeline import hidden_process
+        run=subprocess.run([str(python),'-I','-X','utf8','-c',code],capture_output=True,text=True,encoding='utf-8',timeout=180,env=self.env(),**hidden_process())
+        if run.returncode:raise RuntimeError('兼容运行时安装后无法启动：'+run.stderr[-800:])
+        versions=json.loads(run.stdout.strip().splitlines()[-1])
+        problems=[name+'='+value for name,value in versions.items() if str(value).startswith('ERROR')]
+        for requirement in requirements:
+            name,_,wanted=requirement.partition('==')
+            actual=str(versions.get(name,''))
+            if wanted and not actual.startswith(wanted):problems.append(name+': 期望 '+wanted+'，实际 '+actual)
+        if problems:raise RuntimeError('兼容运行时校验失败：'+'；'.join(problems))
     def source(self,engine,destination):
         data=CATALOG[engine];archive=self.download('https://codeload.github.com/'+data['repo']+'/zip/'+data['commit'],engine+'-'+data['commit']+'.zip')
         stage=inside(self.root,destination.with_name('.source-stage-'+uuid.uuid4().hex))
@@ -265,7 +339,7 @@ class Repair:
                 result['ok']=all(c['ok'] for c in result['runtimeChecks']) and bool(result['runtimeChecks'])
             if result['ok'] and result['selected']:
                 result['synthesisChecks']=self.smoke(result['selected'])
-                unsupported=[x for x in result['synthesisChecks'] if not x['ok'] and ('no kernel image' in x.get('error','').lower() or 'not compatible with the current pytorch' in x.get('error','').lower())]
+                unsupported=[x for x in result['synthesisChecks'] if not x['ok'] and any(marker in x.get('error','').lower() for marker in ('no kernel image','not compatible with the current pytorch','torchvision::nms','operator torchvision'))]
                 if unsupported:
                     # Blackwell-class cards can pass torch.cuda.is_available()
                     # while older bundled kernels still fail at first inference.

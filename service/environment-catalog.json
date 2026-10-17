@@ -98,11 +98,22 @@
     "url": "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/ffmpeg.exe",
     "sha256": "b6a4d917a444790f4c06ada640c1c0c95aecde2f8953ed8d0dfb19352500bfcd"
   },
+  "pipIndexes": [
+    "https://pypi.org/simple",
+    "https://pypi.tuna.tsinghua.edu.cn/simple",
+    "https://mirrors.aliyun.com/pypi/simple/"
+  ],
   "cuda128Compatibility": {
     "torchIndex": "https://download.pytorch.org/whl/cu128",
+    "torchFindLinks": [
+      "https://mirror.sjtu.edu.cn/pytorch-wheels/cu128/",
+      "https://mirrors.aliyun.com/pytorch-wheels/cu128/"
+    ],
     "torch": [
       "torch==2.7.1",
       "torchaudio==2.7.1"
-    ]
+    ],
+    "torchvision": "torchvision==0.22.1",
+    "timeoutSeconds": 14400
   }
 }
