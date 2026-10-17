@@ -9,6 +9,8 @@
 - `audio_limits.py`：统一音频与任务等待上限；长文正文最多 4000 字，异常长句分段限制 220 字，正常完整句子优先。
 - `environment_repair.py`、`environment-catalog.json`：软件内环境检查、固定版本下载与修复，禁止改写外部 Python 或覆盖训练权重。
 - `voice_profiles.py`、`tts_bundle.py`：声音方案与带引擎标记的音色包；轻量包指纹不匹配必须拒绝，不能静默换模型。
+- `assets/bundled-voice.json`：便携发行时由打包工具生成的公共默认音色清单；Python 与桌面端仅在无用户设置时读取。清单不能指定密钥、外观、Harness 或 AIRI，也不能引用程序外的声音文件。
+- `tools/package_portable.py`：从新构建、指定引擎环境与单个公共音色生成独立暂存；发布清单、私有资产检查、ZIP CRC 与 SHA-256 必须通过。不得用复制整个日常安装目录替代此流程。
 - `integrations/`：Codex MCP、DeepSeek 连接器和 AIRI 桥接；界面成功提示必须依赖真实回执。
 - `tools/train_cosy_lora.py`：可复现的小显存 CosyVoice3 注意力 LoRA 微调；合并后使用普通 llm.pt，无需修改推理器。
 
@@ -37,5 +39,7 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 ## 发布边界
 
 Git 仓库不上传 Python、TTS 源码副本、模型、用户录音、配置密钥、缓存和试听音频。真实测试证据存本机 `acceptance/`，可公开的统计与限制写 `docs/`。CI 运行无 GPU 的回归和 Windows 界面编译；GPU 推理、声卡、Harness 和 AIRI 真机验收仍需本机完成。
+
+完整便携发行的可复现命令、默认声音、移动目录测试与清理边界见《[便携发布流程](docs/便携发布流程.md)》。源码仓库与发行 ZIP 的资源范围不同，不得因源码仓库没有模型而误删本机模型。
 
 自动回归也应在英文 Windows 上运行。业务日志不能因控制台编码或日志管道断开使生成失败；临时目录需先规范化，兼容 Windows 8.3 短路径与实际长路径。新增此类问题的针对性回归，避免只在开发电脑上通过。

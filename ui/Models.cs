@@ -73,7 +73,22 @@ namespace AgentVoice {
         public SettingsStore(string root) {Root=AppPaths.CanonicalDirectory(root);FilePath=Path.Combine(Root,"data","settings.json");}
         public string Resolve(string path) {return string.IsNullOrEmpty(path)?"":Path.GetFullPath(Path.IsPathRooted(path)?path:Path.Combine(Root,path));}
         public string Portable(string path) {string absolute=Resolve(path),prefix=Root.TrimEnd('\\')+"\\";return absolute.StartsWith(prefix,StringComparison.OrdinalIgnoreCase)?absolute.Substring(prefix.Length).Replace('\\','/'):absolute;}
-        public Settings Read() {var settings=File.Exists(FilePath)?Json.Decode<Settings>(File.ReadAllText(FilePath,Encoding.UTF8)):new Settings();var supported=new Dictionary<string,bool>();supported["codex"]=settings.harness.ContainsKey("codex")&&settings.harness["codex"];supported["deepseek"]=settings.harness.ContainsKey("deepseek")&&settings.harness["deepseek"];settings.harness=supported;
+        Settings FirstRunSettings(){
+            var settings=new Settings();string path=Path.Combine(Root,"assets","bundled-voice.json");if(!File.Exists(path))return settings;
+            var preset=Json.Object(File.ReadAllText(path,Encoding.UTF8));
+            if(preset.Count!=3||!preset.ContainsKey("version")||Convert.ToInt32(preset["version"])!=1||!preset.ContainsKey("name")||!preset.ContainsKey("voice"))throw new InvalidDataException("内置音色清单格式无效");
+            string name=Json.Text(preset,"name");if(string.IsNullOrWhiteSpace(name)||name.Length>100)throw new InvalidDataException("内置音色名称无效");
+            var raw=preset["voice"] as Dictionary<string,object>;var fields=Json.Object(Json.Encode(new VoiceConfig()));
+            if(raw==null||raw.Count!=fields.Count||raw.Keys.Any(key=>!fields.ContainsKey(key)))throw new InvalidDataException("内置音色字段无效");
+            var voice=Json.Decode<VoiceConfig>(Json.Encode(raw));
+            if(voice.engine!="cosyvoice"||voice.assetScope!="public"||!string.IsNullOrEmpty(voice.gptModel))throw new InvalidDataException("内置音色必须使用公共 CosyVoice 资源");
+            foreach(var item in new[]{new[]{voice.baseModel,"tts-engines/cosyvoice/models/"},new[]{voice.reference,"voices/"}}){
+                string value=item[0];if(string.IsNullOrEmpty(value)||!value.StartsWith(item[1],StringComparison.Ordinal)||value.Contains("\\")||value.Split('/').Contains("..")||!Resolve(value).StartsWith(Root+"\\",StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("内置音色资源必须位于软件专用目录内");
+            }
+            if(voice.speed<.7||voice.speed>1.3||double.IsNaN(voice.speed)||voice.volume<0||voice.volume>1.5||double.IsNaN(voice.volume)||voice.leadingSilence<.2||voice.leadingSilence>1||double.IsNaN(voice.leadingSilence)||string.IsNullOrWhiteSpace(voice.referenceText))throw new InvalidDataException("内置音色参数无效");
+            settings.voice=voice;settings.engines.cosyModel=voice.baseModel;settings.profiles.Add(new SavedVoice{id="builtin-default",name=name,voice=voice.Clone()});return settings;
+        }
+        public Settings Read() {var settings=File.Exists(FilePath)?Json.Decode<Settings>(File.ReadAllText(FilePath,Encoding.UTF8)):FirstRunSettings();var supported=new Dictionary<string,bool>();supported["codex"]=settings.harness.ContainsKey("codex")&&settings.harness["codex"];supported["deepseek"]=settings.harness.ContainsKey("deepseek")&&settings.harness["deepseek"];settings.harness=supported;
             if(settings.version<4){string backup=Path.Combine(Root,"data","migrations","settings-before-stability.json");Directory.CreateDirectory(Path.GetDirectoryName(backup));if(File.Exists(FilePath)&&!File.Exists(backup))File.Copy(FilePath,backup);var raw=Json.Object(File.ReadAllText(FilePath,Encoding.UTF8));object pathObject;if(raw.TryGetValue("engines",out pathObject)){var paths=pathObject as Dictionary<string,object>;if(paths!=null&&!paths.ContainsKey("pythonService")&&paths.ContainsKey("pythonRvc"))settings.engines.pythonService=Convert.ToString(paths["pythonRvc"]);}settings.version=4;}
             if(settings.engines.pythonService.Replace('\\','/').EndsWith("tts-engines/cosyvoice/runtime/tools/python.exe",StringComparison.OrdinalIgnoreCase))settings.engines.pythonService="runtime/core/python.exe";
             settings.profiles.RemoveAll(p=>!new[]{"cosyvoice","gpt-sovits"}.Contains(p.voice.engine));if(!new[]{"cosyvoice","gpt-sovits"}.Contains(settings.voice.engine))settings.voice.engine="cosyvoice";
