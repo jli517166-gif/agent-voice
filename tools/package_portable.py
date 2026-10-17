@@ -1,4 +1,4 @@
-"""Build a clean portable release from explicit code, runtimes and one public voice.
+﻿"""Build a clean portable release from explicit code, runtimes and one public voice.
 
 Never copies installation data/settings, custom appearance or voice collections.
 Archive membership is audited; validation data created in staging is excluded.
@@ -103,7 +103,7 @@ def archive(root,output,accepted):
         bad=archive.testzip()
         if bad:raise ValueError('归档 CRC 校验失败：'+bad)
     os.replace(partial,output)
-    result.update(archive=str(output),archiveBytes=output.stat().st_size,archiveSha256=digest(output),codeCommit=json.loads((root/'release-info.json').read_text('utf-8'))['commit'],defaultVoice='Fairy')
+    result.update(archive=str(output),archiveBytes=output.stat().st_size,archiveSha256=digest(output),codeCommit=json.loads((root/'release-info.json').read_text('utf-8-sig'))['commit'],defaultVoice='Fairy')
     output.with_suffix('.audit.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),'utf-8')
     print(json.dumps({k:v for k,v in result.items() if k!='files'},ensure_ascii=False),flush=True)
     return result
