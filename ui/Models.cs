@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Linq;
 using System.Web.Script.Serialization;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
@@ -21,16 +22,16 @@ namespace AgentVoice {
         }
     }
     public sealed class VoiceConfig {
-        public string model="", index="", f0Method="rmvpe", engine="cosyvoice", style="chat", reference="", referenceText="", instruction="";
-        public string processing="standard", assetScope="public";
-        public string synthesisMode="base", baseModel="", piperModel="";
+        public string engine="cosyvoice",style="chat",reference="",referenceText="",instruction="",assetScope="public";
+        public string baseModel="",gptModel="",gptVariant="v5turbo";
         public bool advancedEnabled=false;
-        public double pitch=0, formant=0, indexRate=0, rmsMix=1, speed=1, leadingSilence=.35, volume=1, protect=.33;
+        public double speed=1,leadingSilence=.35,volume=1;
         public VoiceConfig Clone() { return Json.Copy(this); }
     }
     public sealed class Engines {
-        public string pythonRvc="tts-engines/cosyvoice/runtime/tools/python.exe", rvcHome="engines/rvc", pythonTts="tts-engines/cosyvoice/runtime/tools/python.exe", cosyRepo="tts-engines/cosyvoice/source", cosyModel="tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B";
-        public string pythonPiper="tts-engines/piper/runtime/Scripts/python.exe", piperModel="tts-engines/piper/models/zh_CN-huayan-medium.onnx";
+        public string pythonService="runtime/core/python.exe",pythonTts="tts-engines/cosyvoice/runtime/tools/python.exe",cosyRepo="tts-engines/cosyvoice/source",cosyModel="tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B";
+        public string pythonGpt="tts-engines/gpt-sovits/runtime/Scripts/python.exe",gptRepo="tts-engines/gpt-sovits/source",gptModel="tts-engines/gpt-sovits/models/GPT-SoVITS";
+        public string ffmpeg="tools/ffmpeg.exe";
     }
     public sealed class Appearance {
         public string accent="#19C7F2", backgroundColor="#05101D", textColor="#EAF6FF", background="", icon="", loadingAnimation="";
@@ -45,10 +46,10 @@ namespace AgentVoice {
     public sealed class SavedVoice {
         public string id=Guid.NewGuid().ToString("N"), name="";
         public VoiceConfig voice=new VoiceConfig();
-        public override string ToString() { return (voice.synthesisMode=="base"?"本地 TTS · ":"RVC＋本地 TTS · ")+name; }
+        public override string ToString() { return voice.engine+" · "+name; }
     }
     public sealed class Settings {
-        public int version=1, port=8820;
+        public int version=4, port=8820;
         public string token=Guid.NewGuid().ToString("N");
         public VoiceConfig voice=new VoiceConfig();
         public Engines engines=new Engines();
@@ -56,7 +57,6 @@ namespace AgentVoice {
         public Cleanup cleanup=new Cleanup();
         public AiriConfig airi=new AiriConfig();
         public Dictionary<string,bool> harness=new Dictionary<string,bool>{{"codex",true},{"deepseek",false}};
-        public List<string> modelRoots=new List<string>{"models"};
         public List<string> phrases=new List<string>{"工作好久啦，起来动一动、喝口水吧～"};
         public List<SavedVoice> profiles=new List<SavedVoice>();
     }
@@ -73,12 +73,18 @@ namespace AgentVoice {
         public SettingsStore(string root) {Root=AppPaths.CanonicalDirectory(root);FilePath=Path.Combine(Root,"data","settings.json");}
         public string Resolve(string path) {return string.IsNullOrEmpty(path)?"":Path.GetFullPath(Path.IsPathRooted(path)?path:Path.Combine(Root,path));}
         public string Portable(string path) {string absolute=Resolve(path),prefix=Root.TrimEnd('\\')+"\\";return absolute.StartsWith(prefix,StringComparison.OrdinalIgnoreCase)?absolute.Substring(prefix.Length).Replace('\\','/'):absolute;}
-        public Settings Read() {var settings=File.Exists(FilePath)?Json.Decode<Settings>(File.ReadAllText(FilePath,Encoding.UTF8)):new Settings();var supported=new Dictionary<string,bool>();supported["codex"]=settings.harness.ContainsKey("codex")&&settings.harness["codex"];supported["deepseek"]=settings.harness.ContainsKey("deepseek")&&settings.harness["deepseek"];settings.harness=supported;return settings;}
+        public Settings Read() {var settings=File.Exists(FilePath)?Json.Decode<Settings>(File.ReadAllText(FilePath,Encoding.UTF8)):new Settings();var supported=new Dictionary<string,bool>();supported["codex"]=settings.harness.ContainsKey("codex")&&settings.harness["codex"];supported["deepseek"]=settings.harness.ContainsKey("deepseek")&&settings.harness["deepseek"];settings.harness=supported;
+            if(settings.version<4){string backup=Path.Combine(Root,"data","migrations","settings-before-stability.json");Directory.CreateDirectory(Path.GetDirectoryName(backup));if(File.Exists(FilePath)&&!File.Exists(backup))File.Copy(FilePath,backup);var raw=Json.Object(File.ReadAllText(FilePath,Encoding.UTF8));object pathObject;if(raw.TryGetValue("engines",out pathObject)){var paths=pathObject as Dictionary<string,object>;if(paths!=null&&!paths.ContainsKey("pythonService")&&paths.ContainsKey("pythonRvc"))settings.engines.pythonService=Convert.ToString(paths["pythonRvc"]);}settings.version=4;}
+            if(settings.engines.pythonService.Replace('\\','/').EndsWith("tts-engines/cosyvoice/runtime/tools/python.exe",StringComparison.OrdinalIgnoreCase))settings.engines.pythonService="runtime/core/python.exe";
+            settings.profiles.RemoveAll(p=>!new[]{"cosyvoice","gpt-sovits"}.Contains(p.voice.engine));if(!new[]{"cosyvoice","gpt-sovits"}.Contains(settings.voice.engine))settings.voice.engine="cosyvoice";
+            return settings;}
         public void Write(Settings settings) {
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath));
+            using(var guard=new FileStream(Path.Combine(Root,"data","engine-operation.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.ReadWrite)){
+            try{guard.Lock(0,1);}catch(IOException error){throw new InvalidOperationException("服务或音色包操作仍在运行，请稍后重试；未覆盖配置。",error);}
             string temp=FilePath+"."+Guid.NewGuid().ToString("N")+".tmp";
             try {File.WriteAllText(temp,Json.Encode(settings),new UTF8Encoding(false));if(File.Exists(FilePath))File.Replace(temp,FilePath,null);else File.Move(temp,FilePath);}
-            finally {if(File.Exists(temp))File.Delete(temp);}
+            finally {if(File.Exists(temp))File.Delete(temp);guard.Unlock(0,1);}}
         }
     }
 }

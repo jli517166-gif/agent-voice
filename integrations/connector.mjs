@@ -42,17 +42,17 @@ export async function send(source, event, root = appRoot) {
 
 export async function mcpControl(source, tool, args = {}, root = appRoot) {
   const cfg = JSON.parse(await readFile(path.join(root, 'data/settings.json'), 'utf8'));
-  const pythonValue = cfg.engines?.pythonRvc;
+  const pythonValue = cfg.engines?.pythonService;
   if (!pythonValue) throw new Error('尚未配置本地 TTS Python 环境');
   const python = path.isAbsolute(pythonValue) ? pythonValue : path.join(root, pythonValue);
   const server = path.join(root, 'integrations', 'agent_voice_mcp.py');
   return await new Promise((resolve, reject) => {
-    const child = spawn(python, ['-X', 'utf8', server, '--root', root, '--host', source], {
+    const child = spawn(python, ['-I', '-X', 'utf8', server, '--root', root, '--host', source], {
       cwd: root, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
     });
     let output = '', errors = '', settled = false;
     const finish = (error, value) => { if (settled) return; settled = true; clearTimeout(timer); child.kill(); error ? reject(error) : resolve(value); };
-    const timer = setTimeout(() => finish(new Error('语音控制超时，请检查桌面端服务状态')), 20000);
+    const timer = setTimeout(() => finish(new Error('语音控制超时，请检查桌面端服务状态')), 45000);
     child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8');
     child.stdout.on('data', chunk => {
       output += chunk;

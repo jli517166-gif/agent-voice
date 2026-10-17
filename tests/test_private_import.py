@@ -26,7 +26,7 @@ class IsolationTests(unittest.TestCase):
             self.assertFalse(result['packageReady']);self.assertEqual(len(result['errors']),3);self.assertEqual(result['files'],[])
     def test_accepted_settings_and_profile_survive_reopening(self):
         with tempfile.TemporaryDirectory() as temp:
-            store=Store(temp);voice=defaults()['voice'];voice.update(processing='accepted',assetScope='private',protect=.33,style='gentle')
+            store=Store(temp);voice=defaults()['voice'];voice.update(assetScope='private',style='gentle',gptVariant='v5turbo')
             store.update({'voice':voice,'profiles':[{'id':'accepted','name':'私有测试','voice':voice}]})
             self.assertEqual(Store(temp).get()['profiles'][0]['voice'],voice)
             before=store.path.read_bytes()
@@ -35,10 +35,10 @@ class IsolationTests(unittest.TestCase):
     def test_old_saved_profile_is_upgraded_with_processing_defaults(self):
         with tempfile.TemporaryDirectory() as temp:
             store=Store(temp);config=store.get();old=dict(config['voice'])
-            for key in ('processing','assetScope','protect'):old.pop(key)
+            for key in ('assetScope','gptVariant'):old.pop(key)
             config['profiles']=[{'id':'old','name':'旧配置','voice':old}];atomic_json(store.path,config)
             reopened=Store(temp).get()['profiles'][0]['voice']
-            self.assertEqual(reopened['processing'],'standard');self.assertEqual(reopened['assetScope'],'public')
+            self.assertEqual(reopened['gptVariant'],'v5turbo');self.assertEqual(reopened['assetScope'],'public')
     def test_connector_exports_preserve_existing_configuration_and_are_idempotent(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)/'app';project=Path(temp)/'project';project.mkdir();Store(root)

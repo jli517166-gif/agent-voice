@@ -1,4 +1,4 @@
-﻿import copy
+import copy
 import io
 import json
 from pathlib import Path
@@ -44,8 +44,8 @@ class CoreTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name);self.store=Store(self.root)
         with socket.socket() as sock:sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
         self.store.data['port']=port
-        model=self.root/'fixture.pth';model.write_bytes(b'test-only')
-        self.store.update({'voice':{'model':'fixture.pth','engine':'sapi','synthesisMode':'rvc','advancedEnabled':True},'engines':{'pythonRvc':str(sys.executable),'rvcHome':str(self.root)}})
+        model=self.root/'fixture.wav';model.write_bytes(b'test-only')
+        self.store.update({'voice':{'engine':'cosyvoice','reference':'fixture.wav','referenceText':'测试参考','advancedEnabled':True},'engines':{'pythonService':str(sys.executable),'pythonTts':str(sys.executable),'cosyRepo':str(self.root),'cosyModel':str(self.root)}})
         self.actor=FakePipeline();self.server=Server(self.store,self.actor)
         self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
         self.base='http://127.0.0.1:'+str(port);self.token=self.store.get()['token']
@@ -66,8 +66,8 @@ class CoreTests(unittest.TestCase):
             time.sleep(.01)
         self.fail('job did not finish')
     def test_initial_public_config_contains_no_private_voice(self):
-        cfg=defaults();self.assertEqual(cfg['voice']['model'],'');self.assertEqual(cfg['voice']['reference'],'');self.assertEqual(cfg['harness'],{'codex':True,'deepseek':False})
-        self.assertEqual(cfg['voice']['synthesisMode'],'base');self.assertFalse(cfg['voice']['advancedEnabled'])
+        cfg=defaults();self.assertEqual(cfg['voice']['baseModel'],'');self.assertEqual(cfg['voice']['reference'],'');self.assertEqual(cfg['harness'],{'codex':True,'deepseek':False})
+        self.assertNotIn('synthesisMode',cfg['voice']);self.assertFalse(cfg['voice']['advancedEnabled'])
     def test_playback_status_ignores_synthesis_only_and_cancelled_epoch(self):
         jobs=self.server.jobs
         with jobs.lock:
@@ -80,19 +80,6 @@ class CoreTests(unittest.TestCase):
             job['play']=False;self.assertEqual(self.server.status()['playback']['state'],'idle')
             job['play']=True;jobs.generation+=1;self.assertEqual(self.server.status()['playback']['state'],'idle')
             jobs.current=None
-    def test_piper_config_isolated_from_unused_cosyvoice_reference(self):
-        model=self.root/'piper.onnx';model.write_bytes(b'protocol-test-only')
-        Path(str(model)+'.json').write_text(json.dumps({'audio':{'sample_rate':22050},'phoneme_id_map':{'a':[1]}}))
-        self.request('/api/config',{'engines':{'pythonPiper':sys.executable},'voice':{'engine':'piper','piperModel':str(model),'reference':'missing-unused-cosyvoice.wav'}})
-        cfg=self.store.get();self.assertEqual(cfg['voice']['engine'],'piper')
-        self.assertFalse(self.store.missing())
-        self.assertEqual(cfg['engines']['cosyModel'],defaults()['engines']['cosyModel'])
-    def test_invalid_piper_model_does_not_replace_current_voice(self):
-        before=self.store.get()['voice']
-        with self.assertRaises(urllib.error.HTTPError) as caught:
-            self.request('/api/config',{'voice':{'engine':'piper','piperModel':'missing.onnx'}})
-        self.assertEqual(caught.exception.code,400)
-        self.assertEqual(self.store.get()['voice'],before)
     def test_sanitizer_retains_body_skips_code_links_and_paths(self):
         self.assertEqual(sanitize('工作好久啦，起来动一动、喝口水吧～'),'工作好久啦，起来动一动、喝口水吧～')
         self.assertEqual(sanitize('```py\nprint(1)\n``` https://example.com E:\\secret\\x.pth'),'')
@@ -106,19 +93,19 @@ class CoreTests(unittest.TestCase):
         paragraph='第一句。\n第二句。';self.assertEqual(playback_chunks(paragraph),['第一句。\n','第二句。']);self.assertEqual(''.join(playback_chunks(paragraph)),paragraph)
     def test_config_failure_does_not_overwrite_original(self):
         before=self.store.path.read_bytes()
-        with self.assertRaises(ValueError):self.store.update({'voice':{'formant':float('nan')}})
+        with self.assertRaises(ValueError):self.store.update({'voice':{'volume':float('nan')}})
         self.assertEqual(before,self.store.path.read_bytes())
     def test_corrupt_storage_never_resets(self):
         self.store.path.write_text('{broken',encoding='utf-8')
         with self.assertRaises(ValueError):Store(self.root)
         self.assertEqual(self.store.path.read_text(),'{broken')
     def test_full_profile_save_restore_delete_reopen(self):
-        original=self.store.get()['voice'];original.update(pitch=4,formant=.7,speed=1.12,instruction='温柔地说')
+        original=self.store.get()['voice'];original.update(gptVariant='v5turbo',speed=1.12,instruction='温柔地说')
         self.store.update({'profiles':[{'id':'one','name':'声音一','voice':original}]})
-        self.store.update({'voice':{'pitch':-2,'formant':-.8}})
+        self.store.update({'voice':{'gptVariant':'proplus'}})
         reopened=Store(self.root);reopened.update({'voice':reopened.get()['profiles'][0]['voice']})
         self.assertEqual(reopened.get()['voice'],original)
-        reopened.update({'profiles':[]});self.assertEqual(Store(self.root).get()['profiles'],[]);self.assertTrue((self.root/'fixture.pth').exists())
+        reopened.update({'profiles':[]});self.assertEqual(Store(self.root).get()['profiles'],[]);self.assertTrue((self.root/'fixture.wav').exists())
     def test_authentication_and_unknown_interfaces(self):
         with self.assertRaises(urllib.error.HTTPError) as err:self.request('/api/state',auth=False)
         self.assertEqual(err.exception.code,401)
@@ -158,9 +145,9 @@ class CoreTests(unittest.TestCase):
         self.assertTrue(self.request('/api/harness/deepseek',{'type':'turn/end','text':'不会念'})['skipped'])
     def test_serial_queue_and_snapshot_isolation(self):
         one=self.request('/speak',{'text':'第一句','play':True})
-        self.store.update({'voice':{'pitch':7}})
+        self.store.update({'voice':{'speed':1.2}})
         two=self.request('/speak',{'text':'第二句','play':True})
-        self.wait(one['jobId']);self.wait(two['jobId']);self.assertEqual([c[0] for c in self.actor.calls],['第一句','第二句']);self.assertEqual([c[1]['pitch'] for c in self.actor.calls],[0,7]);self.assertEqual(len(self.actor.plays),2)
+        self.wait(one['jobId']);self.wait(two['jobId']);self.assertEqual([c[0] for c in self.actor.calls],['第一句','第二句']);self.assertEqual([c[1]['speed'] for c in self.actor.calls],[1,1.2]);self.assertEqual(len(self.actor.plays),2)
     def test_long_spoken_reply_generates_and_plays_progressively(self):
         text='第一句生成完成后就应该开始播放。第二句继续生成，第三句也会完整保留，这样长回复不用全部生成完才出声。'
         item=self.request('/speak',{'text':text,'play':True});result=self.wait(item['jobId'])
@@ -177,7 +164,7 @@ class CoreTests(unittest.TestCase):
         one=self.request('/speak',{'text':'慢一点','play':True});two=self.request('/speak',{'text':'下一句','play':True});self.request('/stop',{})
         self.assertEqual(self.wait(one['jobId'])['state'],'cancelled');self.assertEqual(self.wait(two['jobId'])['state'],'cancelled');self.assertEqual(self.actor.plays,[])
     def test_play_last_reuses_original_audio(self):
-        first=self.request('/speak',{'text':'第一份音频','play':False});self.wait(first['jobId']);self.store.update({'voice':{'pitch':6}})
+        first=self.request('/speak',{'text':'第一份音频','play':False});self.wait(first['jobId']);self.store.update({'voice':{'speed':1.1}})
         play=self.request('/api/play',{'jobId':first['jobId']});self.assertEqual(self.wait(play['jobId'])['state'],'completed');self.assertEqual(len(self.actor.calls),1);self.assertEqual(len(self.actor.plays),1)
     def test_cleanup_keeps_active_delivery_and_pair(self):
         self.store.update({'airi':{'enabled':True,'output':'airi'}});self.request('/api/airi/poll',{'client':'desktop'})

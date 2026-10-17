@@ -5,6 +5,9 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
+using System.Net.NetworkInformation;
+using System.Linq;
 
 namespace AgentVoice {
     public sealed class ServiceClient {
@@ -23,26 +26,35 @@ namespace AgentVoice {
             });
         }
         public async Task<bool> Running() {
-            try {var status=await Request("/health",null,900);return Json.Text(status,"service")=="agent-voice-public";}
-            catch {return false;}
+            try {var status=await Request("/health",null,1500);string expected;using(var sha=SHA256.Create())expected=BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(Store.Root.ToLowerInvariant()))).Replace("-","").ToLowerInvariant().Substring(0,24);if(Json.Text(status,"service")!="agent-voice-public"||(status.ContainsKey("instanceId")&&Json.Text(status,"instanceId")!=expected))throw new InvalidOperationException("端口被另一安装目录的程序占用，请先关闭另一套语音服务。");if(!status.ContainsKey("instanceId"))await Request("/api/state",null,1500);return true;}
+            catch(WebException error){if(error.Status==WebExceptionStatus.ConnectFailure)return false;if(error.Status==WebExceptionStatus.Timeout){try{int port=Store.Read().port;if(!IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners().Any(p=>p.Port==port))return false;}catch(NetworkInformationException){}}throw new InvalidOperationException("语音服务暂时未响应，未按离线方式改写配置。请稍后重试或恢复服务。",error);}
         }
         public async Task Start() {
             if(await Running())return;
-            Settings cfg=Store.Read();string python=Store.Resolve(cfg.engines.pythonRvc);
+            Settings cfg=Store.Read();string python=Store.Resolve(cfg.engines.pythonService);
             if(!File.Exists(python))throw new InvalidOperationException("请在本地引擎设置中选择主服务 Python 运行时。");
             Directory.CreateDirectory(Path.Combine(Store.Root,"data","logs"));
-            var info=new ProcessStartInfo(python,"-X utf8 -u "+Quote(Path.Combine(Store.Root,"service","launcher.py"))+" --root "+Quote(Store.Root));
+            var info=new ProcessStartInfo(python,"-I -X utf8 -u "+Quote(Path.Combine(Store.Root,"service","launcher.py"))+" --root "+Quote(Store.Root));
             info.WorkingDirectory=Store.Root;info.UseShellExecute=false;info.CreateNoWindow=true;info.WindowStyle=ProcessWindowStyle.Hidden;
             info.EnvironmentVariables.Remove("PYTHONHOME");info.EnvironmentVariables.Remove("PYTHONPATH");
-            info.EnvironmentVariables["PYTHONDONTWRITEBYTECODE"]="1";info.EnvironmentVariables["PYTHONUTF8"]="1";
+            info.EnvironmentVariables["PYTHONDONTWRITEBYTECODE"]="1";info.EnvironmentVariables["PYTHONUTF8"]="1";info.EnvironmentVariables["PYTHONNOUSERSITE"]="1";
             Owned=Process.Start(info);
             for(int i=0;i<80;i++){await Task.Delay(150);if(Owned.HasExited)throw new InvalidOperationException("服务启动失败，请查看 data\\logs\\service.log。");if(await Running())return;}
             throw new InvalidOperationException("服务启动超时，请查看日志。");
         }
         public async Task Stop() {
             await Request("/api/shutdown",new {},3000);
-            for(int i=0;i<30;i++){await Task.Delay(100);if(!await Running())break;}
-            if(Owned!=null&&!Owned.HasExited){await Task.Run(()=>Owned.WaitForExit(3000));if(!Owned.HasExited)Owned.Kill();}
+            // After shutdown, the socket can remain bound during worker cleanup
+            // without accepting HTTP. Do not health-poll this intentional state.
+            if(Owned!=null&&!Owned.HasExited){await Task.Run(()=>Owned.WaitForExit(5000));if(!Owned.HasExited)await Task.Run(()=>{using(var kill=Process.Start(new ProcessStartInfo("taskkill.exe","/PID "+Owned.Id+" /T /F"){UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden,RedirectStandardOutput=true,RedirectStandardError=true})){var output=kill.StandardOutput.ReadToEndAsync();var error=kill.StandardError.ReadToEndAsync();kill.WaitForExit(5000);Task.WaitAll(output,error);}});}
+            // The listening socket closes before worker cleanup finishes. Wait for
+            // the service's file lock too, including a service started by MCP.
+            for(int i=0;i<100;i++){
+                try{using(var file=new FileStream(Path.Combine(Store.Root,"data","engine-operation.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.ReadWrite)){file.Lock(0,1);file.Unlock(0,1);}return;}
+                catch(IOException){}
+                await Task.Delay(100);
+            }
+            throw new InvalidOperationException("服务正在清理后台任务，请稍后再保存或导入配置。");
         }
         public static string Quote(string text) {
             var quoted=new StringBuilder("\"");int slashes=0;
@@ -57,13 +69,12 @@ namespace AgentVoice {
         public static void Open(string path) {Process.Start(new ProcessStartInfo(path){UseShellExecute=true});}
         public Task<string> RunTool(string tool,string arguments) {
             return Task.Run(()=> {
-                var cfg=Store.Read();string python=Store.Resolve(cfg.engines.pythonTts);
-                if(!File.Exists(python))python=Store.Resolve(cfg.engines.pythonRvc);
+                var cfg=Store.Read();string python=Store.Resolve(cfg.engines.pythonService);
                 if(!File.Exists(python))throw new InvalidOperationException("尚未选择 Python 运行时。");
-                var info=new ProcessStartInfo(python,"-X utf8 "+Quote(Path.Combine(Store.Root,"tools",tool))+" "+arguments);
+                var info=new ProcessStartInfo(python,"-I -X utf8 "+Quote(Path.Combine(Store.Root,"tools",tool))+" "+arguments);
                 info.WorkingDirectory=Store.Root;info.UseShellExecute=false;info.CreateNoWindow=true;info.WindowStyle=ProcessWindowStyle.Hidden;
                 info.RedirectStandardError=true;info.RedirectStandardOutput=true;info.StandardOutputEncoding=Encoding.UTF8;info.StandardErrorEncoding=Encoding.UTF8;
-                using(var process=Process.Start(info)){var output=process.StandardOutput.ReadToEndAsync();var error=process.StandardError.ReadToEndAsync();process.WaitForExit();Task.WaitAll(output,error);if(process.ExitCode!=0)throw new InvalidOperationException(error.Result);return output.Result;}
+                using(var process=Process.Start(info)){var output=process.StandardOutput.ReadToEndAsync();var error=process.StandardError.ReadToEndAsync();process.WaitForExit();Task.WaitAll(output,error);if(process.ExitCode!=0)throw new InvalidOperationException(String.IsNullOrWhiteSpace(error.Result)?output.Result:error.Result);return output.Result;}
             });
         }
     }

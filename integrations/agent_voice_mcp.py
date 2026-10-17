@@ -12,6 +12,7 @@ import subprocess
 import sys
 import time
 import base64
+import errno
 import urllib.error
 import urllib.request
 
@@ -25,12 +26,32 @@ TOOLS = [
     {"name":"apply_voice_profile","description":"按声音方案 ID 切换当前声音配置。","inputSchema":{"type":"object","properties":{"profile_id":{"type":"string","description":"list_voice_profiles 返回的声音方案 ID"}},"required":["profile_id"],"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
     {"name":"set_auto_reading","description":"启用或关闭当前 Harness 进度说明和最终回复的自动朗读。","inputSchema":{"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"],"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
 ]
-LOCAL_VOICE_FIELDS = ('engine','baseModel','piperModel','reference','referenceText','instruction','style','speed','leadingSilence','volume','advancedEnabled','assetScope')
+LOCAL_VOICE_FIELDS=('engine','baseModel','gptModel','gptVariant','reference','referenceText','instruction','style','speed','leadingSilence','volume','advancedEnabled','assetScope')
 
-def same_voice(current,saved):
-    if current.get('synthesisMode')=='base' and saved.get('synthesisMode')=='base':
-        return all(current.get(key,'')==saved.get(key,'') for key in LOCAL_VOICE_FIELDS)
-    return current==saved
+def local_listener(port):
+    """Windows may time out instead of refusing an unused loopback port.
+
+    Only a confirmed absence of a listener permits treating it as offline.
+    A listening but hung process remains an error, never an offline write.
+    """
+    if os.name!='nt':return None
+    import ctypes,socket,struct
+    size=ctypes.c_ulong(0);api=ctypes.windll.iphlpapi.GetTcpTable
+    if api(None,ctypes.byref(size),False)!=122:return None
+    buf=ctypes.create_string_buffer(size.value)
+    if api(buf,ctypes.byref(size),False)!=0:return None
+    data=buf.raw;count=struct.unpack_from('I',data)[0]
+    return any(state==2 and socket.ntohs(local_port&0xffff)==port for state,addr,local_port,remote,remote_port in (struct.unpack_from('IIIII',data,4+n*20) for n in range(count)))
+
+def same_voice(current,saved,root=None):
+    if not all(current.get(k,'')==saved.get(k,'') for k in LOCAL_VOICE_FIELDS if k!='reference'):return False
+    if current.get('reference')==saved.get('reference'):return True
+    if root is None:return False
+    import hashlib
+    try:
+        a=(Path(root)/current['reference']).resolve();b=(Path(root)/saved['reference']).resolve()
+        return a.stat().st_size==b.stat().st_size and hashlib.sha256(a.read_bytes()).digest()==hashlib.sha256(b.read_bytes()).digest()
+    except (OSError,KeyError):return False
 
 class AgentVoice:
     def __init__(self,root,host):
@@ -47,26 +68,40 @@ class AgentVoice:
         request=urllib.request.Request("http://127.0.0.1:%d%s"%(cfg["port"],path),data=body,
             headers={"Authorization":"Bearer "+cfg["token"],"Content-Type":"application/json; charset=utf-8"})
         try:
-            with urllib.request.urlopen(request,timeout=timeout) as response:return json.loads(response.read().decode("utf-8"))
+            with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request,timeout=timeout) as response:return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as error:
             try:message=json.loads(error.read().decode("utf-8"))["error"]["message"]
             except Exception:message=str(error)
             raise ValueError(message) from error
 
     def running(self):
-        try:return self.request("/health",timeout=1)
-        except (OSError,ValueError,urllib.error.URLError):return None
+        try:
+            value=self.request('/health',timeout=2)
+            import hashlib
+            expected=hashlib.sha256(str(self.root).lower().encode('utf-8')).hexdigest()[:24]
+            if value.get('service')!='agent-voice-public' or value.get('instanceId',expected)!=expected:raise RuntimeError('当前端口被另一套程序占用，请先关闭另一安装目录的语音服务')
+            if 'instanceId' not in value:self.request('/api/state',timeout=2)
+            return value
+        except urllib.error.URLError as exc:
+            reason=exc.reason
+            if isinstance(reason,ConnectionRefusedError) or getattr(reason,'winerror',None)==10061 or getattr(reason,'errno',None)==errno.ECONNREFUSED:return None
+            if local_listener(int(self.settings()['port'])) is False:return None
+            raise RuntimeError('语音服务未响应，未按服务已关闭处理；请稍后重试或检查日志') from exc
+        except (OSError,ValueError) as exc:
+            if isinstance(exc,ConnectionRefusedError) or getattr(exc,'winerror',None)==10061:return None
+            if local_listener(int(self.settings()['port'])) is False:return None
+            raise RuntimeError('无法确认语音服务状态，请检查端口、连接密钥和服务日志') from exc
 
     def start(self):
         current=self.running()
         if current:return {"ok":True,"alreadyRunning":True,"status":self.public_status(current)}
-        cfg=self.settings();value=cfg["engines"]["pythonRvc"]
+        cfg=self.settings();value=cfg["engines"]["pythonService"]
         python=(self.root/value).resolve() if not Path(value).is_absolute() else Path(value)
         launcher=self.root/"service/launcher.py"
         if not python.is_file():raise ValueError("主服务 Python 不存在："+str(python))
         environment=os.environ.copy();environment.pop("PYTHONHOME",None);environment.pop("PYTHONPATH",None)
         environment.update(PYTHONDONTWRITEBYTECODE="1",PYTHONUTF8="1")
-        command=[str(python),"-X","utf8","-u",str(launcher),"--root",str(self.root)]
+        command=[str(python),"-I","-X","utf8","-u",str(launcher),"--root",str(self.root)]
         if os.name=="nt":
             # Codex and some Electron Harnesses put MCP servers in a Windows
             # job object that kills every child when the stdio session ends.
@@ -92,8 +127,9 @@ class AgentVoice:
 
     def public_status(self,health):
         cfg=self.settings();profiles=cfg.get("profiles",[]);current=cfg.get("voice",{})
-        match=next((item for item in profiles if same_voice(current,item.get("voice",{}))),None)
-        return {"running":True,"ready":health.get("ready"),"busy":health.get("busy"),"queued":health.get("queued"),
+        match=next((item for item in profiles if same_voice(current,item.get("voice",{}),self.root)),None)
+        return {"running":True,"serviceState":health.get("serviceState"),"modelState":health.get("modelState"),"ready":health.get("ready"),"busy":health.get("busy"),"queued":health.get("queued"),
+            "engine":current.get('engine'),"variant":current.get('gptVariant') if current.get('engine')=='gpt-sovits' else None,
             "playback":health.get("playback",{"state":"unknown"}),
             "currentProfile":{"id":match.get("id"),"name":match.get("name")} if match else None,
             "autoReading":bool(cfg.get("harness",{}).get(self.host)),"host":self.host,"error":health.get("error")}
@@ -109,7 +145,7 @@ class AgentVoice:
         if name=="voice_service_status":
             health=self.running()
             if not health:
-                cfg=self.settings();return {"running":False,"host":self.host,"autoReading":bool(cfg.get("harness",{}).get(self.host))}
+                cfg=self.settings();voice=cfg.get('voice',{});return {"running":False,"host":self.host,"autoReading":bool(cfg.get("harness",{}).get(self.host)),"engine":voice.get('engine'),"variant":voice.get('gptVariant') if voice.get('engine')=='gpt-sovits' else None}
             return self.public_status(health)
         if name=="start_voice_service":return self.start()
         if name=="stop_voice_service":
@@ -120,16 +156,14 @@ class AgentVoice:
             return self.request("/stop",{})
         if name=="list_voice_profiles":
             cfg=self.settings();current=cfg.get("voice",{})
-            return {"profiles":[{"id":item["id"],"name":item["name"],"mode":item.get("voice",{}).get("synthesisMode"),"active":same_voice(current,item.get("voice",{}))} for item in cfg.get("profiles",[])]}
+            return {"profiles":[{"id":item["id"],"name":item["name"],"mode":"tts","engine":item.get("voice",{}).get("engine"),"variant":item.get('voice',{}).get('gptVariant') if item.get('voice',{}).get('engine')=='gpt-sovits' else None,"active":same_voice(current,item.get("voice",{}),self.root)} for item in cfg.get("profiles",[])]}
         if name=="apply_voice_profile":
             ident=args.get("profile_id");cfg=self.settings();item=next((p for p in cfg.get("profiles",[]) if p.get("id")==ident),None)
             if item is None:raise ValueError("声音方案不存在，请先调用 list_voice_profiles")
             if not self.running():raise ValueError("请先启动语音服务，再切换声音方案")
             saved=item['voice']
-            # Match desktop local-profile semantics: keep dormant RVC settings.
-            patch={key:saved[key] for key in LOCAL_VOICE_FIELDS if key in saved} if saved.get('synthesisMode')=='base' else dict(saved)
-            if saved.get('synthesisMode')=='base':patch['synthesisMode']='base'
-            self.request("/api/config",{"voice":patch},timeout=30)
+            patch={key:saved[key] for key in LOCAL_VOICE_FIELDS if key in saved}
+            self.request("/api/profiles/apply",{"id":ident},timeout=30)
             return {"ok":True,"profile":{"id":item["id"],"name":item["name"]}}
         if name=="set_auto_reading":
             if not isinstance(args.get("enabled"),bool):raise ValueError("enabled 必须是布尔值")
@@ -158,7 +192,7 @@ def main():
             if ident is None:continue
             if method=="initialize":
                 requested=message.get("params",{}).get("protocolVersion","2025-06-18")
-                response(ident,{"protocolVersion":requested,"capabilities":{"tools":{"listChanged":False}},"serverInfo":{"name":"agent-voice-control","version":"1.4.0"},"instructions":"通过语言命令控制本机 Agent Voice。执行用户明确要求的朗读、停止、服务启停和声音切换。朗读提交成功只代表进入队列，不代表播放完成。Codex 不提供自定义面板或浮窗，也没有接管内置朗读按钮。"})
+                response(ident,{"protocolVersion":requested,"capabilities":{"tools":{"listChanged":False}},"serverInfo":{"name":"agent-voice-control","version":"1.5.0"},"instructions":"通过语言命令控制本机 Agent Voice。执行用户明确要求的朗读、停止、服务启停和声音切换。朗读提交成功只代表进入队列，不代表播放完成。Codex 不提供自定义面板或浮窗，也没有接管内置朗读按钮。"})
             elif method=="ping":response(ident,{})
             elif method=="tools/list":response(ident,{"tools":TOOLS})
             elif method=="tools/call":

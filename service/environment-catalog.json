@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "python": {
+    "version": "3.11.9",
+    "url": "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip",
+    "sha256": "009d6bf7e3b2ddca3d784fa09f90fe54336d5b60f0e0f305c37f400bf83cfd3b"
+  },
+  "pip": {
+    "url": "https://files.pythonhosted.org/packages/ef/7d/500c9ad20238fcfcb4cb9243eede163594d7020ce87bd9610c9e02771876/pip-24.3.1-py3-none-any.whl",
+    "sha256": "3790624780082365f47549d032f3770eeb2b1e8bd1f7b2e02dace1afa361b4ed"
+  },
+  "core": {
+    "packages": {
+      "numpy": "numpy==1.26.4",
+      "soundfile": "soundfile==0.12.1",
+      "sounddevice": "sounddevice==0.5.6",
+      "soxr": "soxr==1.1.0",
+      "yaml": "PyYAML==6.0.3",
+      "PIL": "Pillow==12.3.0",
+      "packaging": "packaging==24.2"
+    }
+  },
+  "cosyvoice": {
+    "repo": "FunAudioLLM/CosyVoice",
+    "commit": "074ca6dc9e80a2f424f1f74b48bdd7d3fea531cc",
+    "matchaRepo": "shivammehta25/Matcha-TTS",
+    "matchaCommit": "bd4d90d93214b37f7a159cf205ae85762c2c10aa",
+    "modelRepo": "FunAudioLLM/Fun-CosyVoice3-0.5B-2512",
+    "torchIndex": "https://download.pytorch.org/whl/cu121",
+    "torch": [
+      "torch==2.3.1",
+      "torchaudio==2.3.1"
+    ],
+    "packages": {
+      "numpy": "numpy==1.26.4",
+      "librosa": "librosa==0.10.2",
+      "soundfile": "soundfile==0.12.1",
+      "transformers": "transformers==4.51.3",
+      "onnxruntime": "onnxruntime==1.18.0",
+      "hyperpyyaml": "HyperPyYAML==1.2.3",
+      "omegaconf": "omegaconf==2.3.0",
+      "diffusers": "diffusers==0.29.0",
+      "whisper": "openai-whisper==20231117",
+      "conformer": "conformer==0.3.2",
+      "lightning": "lightning==2.2.4",
+      "gdown": "gdown==5.1.0",
+      "modelscope": "modelscope==1.20.0",
+      "inflect": "inflect==7.3.1",
+      "pyworld": "pyworld==0.3.4",
+      "x_transformers": "x-transformers==2.11.24",
+      "huggingface_hub": "huggingface-hub==0.30.2",
+      "matplotlib": "matplotlib==3.7.5",
+      "hydra": "hydra-core==1.3.2",
+      "rich": "rich==13.9.4",
+      "pyarrow": "pyarrow==18.1.0"
+    }
+  },
+  "gpt-sovits": {
+    "repo": "RVC-Boss/GPT-SoVITS",
+    "commit": "1b47ca07ef43a284e0b8bd7f29d3e1e3ff76082a",
+    "modelRepo": "lj1995/GPT-SoVITS",
+    "torchIndex": "https://download.pytorch.org/whl/cu124",
+    "torch": [
+      "torch==2.6.0",
+      "torchaudio==2.6.0"
+    ],
+    "packages": {
+      "numpy": "numpy==1.26.4",
+      "librosa": "librosa==0.10.2",
+      "soundfile": "soundfile==0.12.1",
+      "transformers": "transformers==4.51.3",
+      "ffmpeg": "ffmpeg-python==0.2.0",
+      "matplotlib": "matplotlib==3.7.5",
+      "resampy": "resampy==0.4.3",
+      "pytorch_lightning": "pytorch-lightning==2.5.0.post0",
+      "onnxruntime": "onnxruntime==1.18.0",
+      "cn2an": "cn2an==0.5.24",
+      "pypinyin": "pypinyin==0.55.0",
+      "g2p_en": "g2p-en==2.1.0",
+      "modelscope": "modelscope==1.20.0",
+      "peft": "peft==0.17.1",
+      "yaml": "PyYAML==6.0.3",
+      "psutil": "psutil==7.2.2",
+      "jieba_fast": "jieba-fast==0.53",
+      "jieba": "jieba==0.42.1",
+      "split_lang": "split-lang==2.1.1",
+      "fast_langdetect": "fast-langdetect==1.0.1",
+      "wordsegment": "wordsegment==1.3.1",
+      "rotary_embedding_torch": "rotary-embedding-torch==0.8.9",
+      "ToJyutping": "ToJyutping==3.2.0",
+      "x_transformers": "x-transformers==2.11.24",
+      "huggingface_hub": "huggingface-hub==0.34.4"
+    }
+  },
+  "ffmpeg": {
+    "url": "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/ffmpeg.exe",
+    "sha256": "b6a4d917a444790f4c06ada640c1c0c95aecde2f8953ed8d0dfb19352500bfcd"
+  }
+}

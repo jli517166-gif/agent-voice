@@ -10,11 +10,12 @@ import urllib.error
 import urllib.request
 import uuid
 import zipfile
-from state import Store, atomic_json, defaults, merge, validate
+from state import Store, atomic_json, defaults, merge, validate, migrate_settings
+from operation_lock import offline_operation
 
 FORMAT='agent-voice-config'
 MAX_BYTES=8*1024**3
-SUFFIXES={'.pth','.index','.wav','.flac','.mp3','.m4a','.ogg','.png','.jpg','.jpeg','.bmp','.gif','.ico'}
+SUFFIXES={'.wav','.flac','.mp3','.m4a','.ogg','.png','.jpg','.jpeg','.bmp','.gif','.ico'}
 MODULES=set(defaults())-{'token','port'}
 
 def digest(path):
@@ -26,11 +27,12 @@ def digest(path):
 def slots(config):
     voices=[config['voice']]+[p['voice'] for p in config['profiles']]
     for voice in voices:
-        for key in ('model','index','reference'):
+        for key in ('reference',):
             if voice[key]:yield voice,key,voice['assetScope']=='private'
     for key in ('background','icon','loadingAnimation'):
         if config['appearance'][key]:yield config['appearance'],key,False
 
+@offline_operation
 def export_bundle(root,target,include_assets=True,config=None):
     store=Store(root);cfg=validate(copy.deepcopy(config or store.get()))
     cfg={key:cfg[key] for key in sorted(MODULES)}
@@ -50,7 +52,7 @@ def export_bundle(root,target,include_assets=True,config=None):
             sources[sha]=path;obj[key]='asset:'+sha
         else:obj[key]=str(path)
     if sum(f['size'] for f in assets.values())>MAX_BYTES:raise ValueError('配置资源超过 8 GB，请分开保存')
-    manifest={'format':FORMAT,'version':1,'processingRevision':'accepted-v1','scope':'private' if private else 'public',
+    manifest={'format':FORMAT,'version':1,'processingRevision':'tts-only-v2','scope':'private' if private else 'public',
               'config':cfg,'assets':list(assets.values()),'includesAssets':include_assets}
     temp=target.with_name(target.name+'.'+uuid.uuid4().hex+'.tmp')
     try:
@@ -92,13 +94,6 @@ def preflight(store,cfg,adjustments):
     for obj,key,_ in slots(cfg):
         path=store.resolve(obj[key])
         if not path.is_file():raise ValueError('导入资源不存在：'+str(path))
-        if key in ('model','index') and path.suffix.lower()!=('.pth' if key=='model' else '.index'):raise ValueError('模型或索引类型不匹配')
-    required=['pythonRvc','rvcHome']+(['pythonTts','cosyRepo','cosyModel'] if cfg['voice']['engine']=='cosyvoice' else [])
-    if cfg['voice']['model']:
-        for key in required:
-            value=cfg['engines'][key]
-            if not value or not store.resolve(value).exists():raise ValueError('请先配置本机引擎环境：'+key)
-        if cfg['voice']['engine']=='cosyvoice' and (not cfg['voice']['reference'] or not cfg['voice']['referenceText'].strip()):raise ValueError('底音参考录音或台词不完整')
     for key in ('background','icon','loadingAnimation'):
         if cfg['appearance'][key]:
             from PIL import Image
@@ -109,12 +104,8 @@ def preflight(store,cfg,adjustments):
         if current and (store.resolve(current)/'airi.exe').is_file():cfg['airi']['directory']=current
         else:cfg['airi'].update(directory='',enabled=False,output='local')
         adjustments.append('airi.directory')
-    roots=[]
-    for value in cfg['modelRoots']:
-        if value and store.resolve(value).is_dir():roots.append(value)
-    if not roots:roots=['models']
-    cfg['modelRoots']=roots
 
+@offline_operation
 def import_bundle(root,source,asset_root=None):
     store=Store(root);assert_offline(store);source=Path(source).resolve()
     if source.stat().st_size>MAX_BYTES+8*1024**2:raise ValueError('配置包过大')
@@ -130,21 +121,16 @@ def import_bundle(root,source,asset_root=None):
             info=archive.getinfo('manifest.json')
             if info.file_size>8*1024**2:raise ValueError('配置清单过大')
             manifest=json.loads(archive.read(info).decode('utf-8-sig'))
-            if manifest.get('format')!=FORMAT or manifest.get('version')!=1 or manifest.get('processingRevision')!='accepted-v1':raise ValueError('配置包版本或处理链不兼容')
+            if manifest.get('format')!=FORMAT or manifest.get('version')!=1 or manifest.get('processingRevision')!='tts-only-v2':raise ValueError('配置包版本或处理链不兼容')
             if manifest.get('scope') not in ('private','public'):raise ValueError('资产范围无效')
             if parent is None:
                 parent=(store.root.with_name(store.root.name+'-私有资产')/'config-imports') if manifest['scope']=='private' else store.root/'data/config-assets'
             parent.mkdir(parents=True,exist_ok=True);final=parent/package_id;stage=parent/('.staging-'+uuid.uuid4().hex)
             modules=manifest['config']
             if not isinstance(modules,dict) or set(modules)-MODULES:raise ValueError('配置包包含未知模块或本机连接密钥')
-            modules=copy.deepcopy(modules)
+            modules=migrate_settings(copy.deepcopy(modules))
             if 'voice' in modules:
-                # Old accepted bundles predate synthesisMode/advancedEnabled.
-                # Restore their original defaults, not the target's current mode.
-                original=modules['voice']
-                modules['voice']=merge(defaults()['voice'],original)
-                if 'synthesisMode' not in original:modules['voice']['synthesisMode']='rvc'
-                if 'advancedEnabled' not in original:modules['voice']['advancedEnabled']=True
+                modules['voice']=merge(defaults()['voice'],modules['voice'])
             cfg=validate(merge(store.get(),modules));records=manifest['assets']
             if not isinstance(records,list):raise ValueError('资源清单无效')
             allowed={'manifest.json'};assets={}
@@ -181,7 +167,7 @@ def import_bundle(root,source,asset_root=None):
             private_files=[]
             private_hashes={sha for sha,record in assets.items() if record.get('private') or manifest['scope']=='private'}
             for voice in [cfg['voice']]+[p['voice'] for p in cfg['profiles']]:
-                if any(voice[key] and Path(voice[key]).stem in private_hashes for key in ('model','index','reference')):voice['assetScope']='private'
+                if any(voice[key] and Path(voice[key]).stem in private_hashes for key in ('reference',)):voice['assetScope']='private'
             for sha in private_hashes:private_files.append({'file':str(final/Path(assets[sha]['entry']).name),'sha256':sha,'size':assets[sha]['size']})
             validate(cfg);assert_offline(store)
             backup=store.root/'data/config-backups'/uuid.uuid4().hex;backup.mkdir(parents=True)

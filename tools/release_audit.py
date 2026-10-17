@@ -15,6 +15,16 @@ def private_bundle(path,denied):
             info=archive.getinfo('manifest.json')
             if info.file_size>8*1024*1024:raise ValueError('归档配置清单过大')
             config=json.loads(archive.read(info).decode('utf-8-sig'))
+            if config.get('format')=='agent-voice-tts-model':
+                if config.get('voice',{}).get('assetScope')!='public':return True
+                entries=[i for i in archive.infolist() if i.filename.startswith('reference/')]
+                if sum(i.file_size for i in entries)>40*1024**2:raise ValueError('音色包参考录音过大')
+                for entry in entries:
+                    h=hashlib.sha256()
+                    with archive.open(entry) as incoming:
+                        for chunk in iter(lambda:incoming.read(1024*1024),b''):h.update(chunk)
+                    if h.hexdigest() in denied:return True
+                return False
             if config.get('format')!='agent-voice-config':return False
             if config.get('scope')!='public':return True
             module=config.get('config',{})

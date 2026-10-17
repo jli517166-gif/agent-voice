@@ -1,6 +1,8 @@
 """Launch a real non-interactive Harness turn for end-to-end voice verification."""
 import argparse,json,os,shutil,subprocess,sys
 from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'service'))
+from owned_process import terminate
 
 NAMES={
     'codex':('codex.exe','codex.cmd','codex.ps1','codex'),
@@ -42,13 +44,14 @@ def launch(source,location,prompt,timeout):
         raise ValueError('没有找到可自动调用的 Harness 命令（'+expected+'）。请确认已安装命令行组件并加入 PATH')
     command=command_for(source,executable,prompt,location)
     environment=os.environ.copy();environment['NO_COLOR']='1';environment['TERM']='dumb'
-    try:
-        completed=subprocess.run(command,cwd=str(location),env=environment,input=prompt if source=='deepseek' else None,stdin=None if source=='deepseek' else subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding='utf-8',errors='replace',timeout=timeout,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-    except subprocess.TimeoutExpired as exc:
-        raise ValueError('Harness 在 %d 秒内没有完成验证回复；请检查登录状态、网络或权限弹窗'%timeout) from exc
-    detail=(completed.stderr or completed.stdout or '').strip()[-3000:]
-    if completed.returncode!=0:raise ValueError('Harness 自动验证命令退出码 %d：%s'%(completed.returncode,detail or '没有错误输出'))
-    return {'ok':True,'source':source,'executable':str(executable),'exitCode':completed.returncode,'output':detail}
+    with subprocess.Popen(command,cwd=str(location),env=environment,stdin=subprocess.PIPE if source=='deepseek' else subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding='utf-8',errors='replace',creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0)) as process:
+        try:out,err=process.communicate(prompt if source=='deepseek' else None,timeout=timeout)
+        except subprocess.TimeoutExpired as exc:
+            terminate(process);process.communicate()
+            raise ValueError('Harness 在 %d 秒内没有完成验证回复；请检查登录状态、网络或权限弹窗'%timeout) from exc
+        detail=(err or out or '').strip()[-3000:]
+        if process.returncode!=0:raise ValueError('Harness 自动验证命令退出码 %d：%s'%(process.returncode,detail or '没有错误输出'))
+        return {'ok':True,'source':source,'executable':str(executable),'exitCode':process.returncode,'output':detail}
 
 def probe(source,location):
     executable=next(candidates(source,location),None)

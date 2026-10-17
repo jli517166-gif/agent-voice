@@ -11,26 +11,8 @@ from verification import Verification
 import test_core
 
 class ModeTests(unittest.TestCase):
-    def test_old_profile_defaults_preserve_accepted_voice(self):
-        cfg=defaults();voice=copy.deepcopy(cfg['voice'])
-        for key in ('synthesisMode','baseModel','advancedEnabled'):voice.pop(key)
-        cfg['profiles']=[{'id':'old','name':'旧认可版','voice':voice}]
-        restored=validate(cfg)['profiles'][0]['voice']
-        expected=defaults()['voice'];expected.update(synthesisMode='rvc',advancedEnabled=True);self.assertEqual(restored,expected)
 
-    def test_advanced_bypass_preserves_raw_and_home_controls(self):
-        raw=defaults()['voice'];raw.update(pitch=3,formant=.5,indexRate=.8,instruction='调皮',rmsMix=.2,volume=.5,speed=1.1,advancedEnabled=False)
-        applied=effective_voice(raw)
-        self.assertEqual((applied['indexRate'],applied['instruction'],applied['rmsMix'],applied['volume']),(0,'',1,1))
-        self.assertEqual((applied['pitch'],applied['formant'],applied['speed']),(3,.5,1.1))
-        self.assertEqual(raw['indexRate'],.8);self.assertEqual(raw['instruction'],'调皮')
 
-    def test_base_only_does_not_require_rvc_assets(self):
-        with tempfile.TemporaryDirectory() as temp:
-            store=Store(temp);store.update({'voice':{'engine':'sapi','synthesisMode':'base','model':'missing.pth','index':'missing.index'},'engines':{'pythonRvc':sys.executable,'rvcHome':'missing'}})
-            self.assertEqual(store.missing(),[])
-            store.update({'voice':{'synthesisMode':'rvc'}})
-            self.assertIn('RVC 模型 .pth',store.missing())
 
     def test_verification_never_accepts_heartbeat_wrong_source_failed_or_local_airi(self):
         jobs=Mock();clock=[0.0];checker=Verification(jobs,lambda:clock[0]);one=checker.start('deepseek')
@@ -63,11 +45,11 @@ class VerificationApiTests(unittest.TestCase):
         self.assertEqual(self.request('/api/verify/deepseek')['state'],'verified')
 
     def test_unconfigured_challenge_reports_failure_instead_of_waiting_forever(self):
-        self.store.update({'voice':{'model':'missing.pth'}})
+        self.store.update({'voice':{'reference':'missing.wav'}})
         challenge=self.request('/api/verify/codex',{})
         self.request('/api/harness/codex',{'type':'agent-turn-complete','last-assistant-message':challenge['text']})
         state=self.request('/api/verify/codex')
-        self.assertEqual(state['state'],'failed');self.assertIn('RVC',state['error'])
+        self.assertEqual(state['state'],'failed');self.assertIn('参考录音',state['error'])
 
     def test_concurrent_health_and_verification_reads_do_not_deadlock(self):
         from concurrent.futures import ThreadPoolExecutor

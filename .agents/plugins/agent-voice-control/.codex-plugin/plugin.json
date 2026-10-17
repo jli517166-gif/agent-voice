@@ -1,6 +1,6 @@
 {
   "name": "agent-voice-control",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Control the local Agent Voice service from Codex.",
   "skills": "./skills/",
   "requires_local_executor": true,

@@ -93,7 +93,7 @@ DeepSeek 回复连接器同时向原生人工命令注册表注册 `/agent-voice
 
 每一行应得到对应 JSON-RPC 响应，且标准输出中不能混入日志。
 
-本地 TTS 声音方案按 TTS 字段判断是否正在使用，备用 RVC 模型和音调不参与匹配；通过 MCP 应用本地方案也保留备用 RVC 参数，与桌面端保持一致。组合方案仍应用完整的 TTS＋RVC 参数。Piper 模型位置保存在独立的 `voice.piperModel`，不复用 CosyVoice 的 `baseModel`；MCP 的工具名和调用方式不随引擎改变。
+新声音方案保存 TTS 参数、固定参考录音和模型校验信息。MCP 与桌面端均应用同一套引擎、模型、参考录音、逐字台词、语速和档位：GPT-SoVITS 使用 `gptVariant`（`proplus` / `v5turbo`）；F5 已淘汰。不再提供第二次变声或混合输出模式。工具名与调用方式保持不变。
 
 ## 二次开发规则
 
@@ -113,3 +113,9 @@ Codex 保留原生技能与 MCP，不提供自定义按钮、悬浮窗或面板�
 本次检查官方插件扩展文档及本机 CLI 导出的公开 App Server 协议（包含实验字段），未发现内置朗读播放源或本机 TTS 提供方注册入口。可见实时语音启动、音色列表及追加可朗读文本接口，但其音色为固定枚举，不等同于替换客户端内置朗读。没有修改 Codex 客户端或声称已接管该按钮。
 
 参考：[插件扩展](https://developers.openai.com/plugins/build/extensions)、[语音功能](https://learn.chatgpt.com/docs/features/voice)。
+
+## TTS 集成同步（2026-10-16）
+
+正式选择为 CosyVoice、GPT-SoVITS v5 Turbo 和 ProPlus。声音方案同时保存 `engine`、`gptVariant`、`gptModel` 与参考条件。MCP 状态和方案列表返回引擎、版本；服务仍只有一个，原有停止、队列与自动朗读操作共用。配置版本为 4，完整使用范围见《[TTS 使用手册](TTS使用手册.md)》。
+
+稳定性、自检、恢复和声音方案固定参考规则见《[稳定性与故障排查](稳定性与故障排查.md)》；扩展引擎见《[TTS 适配开发说明](TTS适配开发说明.md)》。

@@ -8,7 +8,7 @@ from tts_bundle import export_model,import_model,REQUIRED
 class TtsBundleTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name)/'app';self.store=Store(self.root)
-        cfg=self.store.get()
+        cfg=self.store.get();cfg['engines']['pythonTts']=sys.executable
         with socket.socket() as s:s.bind(('127.0.0.1',0));cfg['port']=s.getsockname()[1]
         atomic_json(self.store.path,cfg);self.store=Store(self.root)
         self.model=self.root/'tts-engines/cosyvoice/models/fixture-model';self.model.mkdir(parents=True)
@@ -20,7 +20,7 @@ class TtsBundleTests(unittest.TestCase):
         (self.model/'.cache').mkdir();(self.model/'.cache/secret.bin').write_bytes(b'never-export')
         (self.root/'rvc.pth').write_bytes(b'rvc-choice');(self.root/'rvc.index').write_bytes(b'index-choice')
         with wave.open(str(self.root/'reference.wav'),'wb') as w:w.setparams((1,2,24000,0,'NONE',''));w.writeframes(b'\0\0'*2400)
-        self.store.update({'voice':{'model':'rvc.pth','index':'rvc.index','engine':'cosyvoice','baseModel':'tts-engines/cosyvoice/models/fixture-model','reference':'reference.wav','referenceText':'认真说话。','synthesisMode':'base','advancedEnabled':False},'appearance':{'accent':'#112233'},'phrases':['不应改变']})
+        self.store.update({'voice':{'engine':'cosyvoice','baseModel':'tts-engines/cosyvoice/models/fixture-model','reference':'reference.wav','referenceText':'认真说话。','advancedEnabled':False},'appearance':{'accent':'#112233'},'phrases':['不应改变']})
         self.before=self.store.get();self.package=Path(self.temp.name)/'声音-轻量.cosyvoice.ttsmodel';self.full=Path(self.temp.name)/'声音-完整.cosyvoice.ttsmodel'
         export_model(self.root,self.package,package_mode='lightweight');export_model(self.root,self.full,package_mode='full')
     def tearDown(self):self.temp.cleanup()
@@ -38,13 +38,21 @@ class TtsBundleTests(unittest.TestCase):
         parent=self.root/'voice-model-packages'/'已导入';self.assertEqual(list(parent.iterdir()) if parent.exists() else [],[])
     def test_lightweight_roundtrip_reuses_exact_engine_model_and_preserves_other_modules(self):
         result=import_model(self.root,self.package);after=Store(self.root).get()
-        self.assertTrue(result['ok']);self.assertEqual(result['packageMode'],'lightweight');self.assertEqual(after['voice']['synthesisMode'],'base')
+        self.assertTrue(result['ok']);self.assertEqual(result['packageMode'],'lightweight');self.assertNotIn('synthesisMode',after['voice'])
         self.assertFalse(after['voice']['advancedEnabled'])
         for key in self.before:
             if key!='voice':self.assertEqual(after[key],self.before[key],key)
-        for key in ('model','index','pitch','formant','processing','indexRate'):self.assertEqual(after['voice'][key],self.before['voice'][key])
+        for key in ('gptModel','gptVariant'):self.assertEqual(after['voice'][key],self.before['voice'][key])
         self.assertEqual(self.store.resolve(after['voice']['baseModel']),self.model.resolve())
         self.assertEqual(self.store.resolve(after['voice']['reference']).read_bytes(),(self.root/'reference.wav').read_bytes())
+    def test_lightweight_package_honors_custom_source_and_model_directories(self):
+        external=Path(self.temp.name)/'custom-model';shutil.move(str(self.model),str(external))
+        source=Path(self.temp.name)/'custom-source';shutil.move(str(self.root/'tts-engines/cosyvoice/source'),str(source))
+        self.store.update({'engines':{'cosyRepo':str(source),'cosyModel':str(external)},'voice':{'baseModel':str(external)}})
+        export_model(self.root,self.package,package_mode='lightweight')
+        result=import_model(self.root,self.package)
+        self.assertEqual(Path(result['modelDirectory']),external.resolve())
+        self.assertEqual(list((self.root/'tts-engines/cosyvoice/models').iterdir()),[])
     def test_lightweight_standard_contains_reference_and_fingerprint_but_no_weights(self):
         with zipfile.ZipFile(self.package) as archive:names=archive.namelist();manifest=json.loads(archive.read('manifest.json'))
         self.assertEqual(manifest['version'],2);self.assertEqual(manifest['packageMode'],'lightweight')
@@ -52,7 +60,7 @@ class TtsBundleTests(unittest.TestCase):
         self.assertTrue(manifest['modelFiles']);self.assertFalse(any(name.startswith('model/') for name in names))
         self.assertFalse(any(name.endswith(('.pth','.index')) or '.cache' in name for name in names))
     def test_full_standard_installs_model_into_dedicated_tts_engine_folder(self):
-        target=Path(self.temp.name)/'fresh';other=Store(target);cfg=other.get();(target/'tts-engines/cosyvoice/source/cosyvoice').mkdir(parents=True);shutil.copy2(self.root/'tts-engines/cosyvoice/source/cosyvoice/version.py',target/'tts-engines/cosyvoice/source/cosyvoice/version.py')
+        target=Path(self.temp.name)/'fresh';other=Store(target);cfg=other.get();cfg['engines']['pythonTts']=sys.executable;(target/'tts-engines/cosyvoice/source/cosyvoice').mkdir(parents=True);shutil.copy2(self.root/'tts-engines/cosyvoice/source/cosyvoice/version.py',target/'tts-engines/cosyvoice/source/cosyvoice/version.py')
         with socket.socket() as s:s.bind(('127.0.0.1',0));cfg['port']=s.getsockname()[1]
         atomic_json(other.path,cfg)
         result=import_model(target,self.full);after=Store(target).get();installed=other.resolve(after['voice']['baseModel'])
@@ -101,7 +109,7 @@ class TtsBundleTests(unittest.TestCase):
         return trained
 
     def fresh_root(self,with_base):
-        target=Path(self.temp.name)/('fresh-with-base' if with_base else 'fresh-without-base');store=Store(target);cfg=store.get()
+        target=Path(self.temp.name)/('fresh-with-base' if with_base else 'fresh-without-base');store=Store(target);cfg=store.get();cfg['engines']['pythonTts']=sys.executable
         source=target/'tts-engines/cosyvoice/source/cosyvoice';source.mkdir(parents=True)
         shutil.copy2(self.root/'tts-engines/cosyvoice/source/cosyvoice/version.py',source/'version.py')
         if with_base:shutil.copytree(self.model,target/'tts-engines/cosyvoice/models/fixture-model')

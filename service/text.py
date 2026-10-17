@@ -35,3 +35,14 @@ def playback_chunks(text):
         else:index+=1
     if start<len(text):chunks.append(text[start:])
     return [chunk for chunk in chunks if chunk]
+
+def generation_chunks(text,limit=220):
+    """Preserve sentence boundaries normally; bound pathological unpunctuated input."""
+    result=[]
+    for sentence in playback_chunks(text):
+        while len(sentence)>limit:
+            end=max(sentence.rfind(c,0,limit) for c in '，,；;、 ')+1
+            if end<limit//2:end=limit
+            result.append(sentence[:end]);sentence=sentence[end:]
+        if sentence:result.append(sentence)
+    return result

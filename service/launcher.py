@@ -18,10 +18,14 @@ if os.name=='nt':
     if ctypes.get_last_error()==183:
         kernel.CloseHandle(mutex);raise SystemExit(0)
 logs=root/'data/logs';logs.mkdir(parents=True,exist_ok=True)
-stream=(logs/'service.log').open('a',encoding='utf-8',buffering=1)
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+from bounded_logs import BoundedLog
+stream=BoundedLog(logs/'service.log')
 sys.stdout=stream;sys.stderr=stream
 sys.dont_write_bytecode=True
 sys.path.insert(0,str(Path(__file__).resolve().parent))
+from runtime_paths import repair_bundled_runtime
+repair_bundled_runtime(root)
 os.environ['PYTHONDONTWRITEBYTECODE']='1'
 os.environ['HF_HUB_OFFLINE']='1';os.environ['TRANSFORMERS_OFFLINE']='1'
 sys.argv=[str(Path(__file__).with_name('server.py')),'--root',str(root)]

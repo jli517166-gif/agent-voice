@@ -52,7 +52,7 @@ class Synthesizer:
         self.config = config
         # Load checkpoints on CPU and convert before uploading. The original
         # loader briefly held fp32 checkpoints and fp32 models together on GPU,
-        # exceeding 6 GB alongside RVC. Final weights use the same half precision.
+        # exceeding the local GPU budget. Final weights use the same half precision.
         from cosyvoice.cli.model import CosyVoiceModel
         from unittest.mock import patch
         def load_bounded(model, llm_path, flow_path, hift_path):
@@ -90,10 +90,10 @@ class Synthesizer:
             self.model.add_zero_shot_spk(prompt, reference["wav"], style)
             self.prompt_cache.add(style)
 
-    def synthesize(self, text, style, speed):
+    def synthesize(self, text, style, speed, seed=1986):
         import soundfile as sf
         torch = self.torch
-        torch.manual_seed(1986)
+        torch.manual_seed(seed)
         profile = self.config["profiles"][style]
         reference = self.config["references"][profile["reference"]]
         instruct = profile.get("mode", "zero_shot") == "instruct2"
@@ -133,7 +133,8 @@ class Synthesizer:
                         audio = audio[cut:]
                         leading_trim = cut / self.sample_rate
         duration = audio.numel() / self.sample_rate
-        if duration < .08 or duration > 420:
+        from audio_limits import MAX_AUDIO_SECONDS
+        if duration < .08 or duration > MAX_AUDIO_SECONDS:
             raise RuntimeError("The model produced an invalid audio duration")
         peak = float(audio.abs().max())
         if peak < .0001:
@@ -213,6 +214,7 @@ class Handler(BaseHTTPRequestHandler):
         self.reply(200, {"ready": self.server.actor is not None,
                         "pid": os.getpid(), "fingerprint": self.server.fingerprint,
                         "device": getattr(self.server.actor, "device", None),
+                        "gpu":self.server.actor.torch.cuda.get_device_name(0) if self.server.actor and self.server.actor.torch.cuda.is_available() else None,
                         "sample_rate": getattr(self.server.actor, "sample_rate", None),
                         "error": self.server.error})
 
@@ -244,6 +246,9 @@ class Handler(BaseHTTPRequestHandler):
             speed = float(data.get("speed", 0))
             if not math.isfinite(speed) or not -30 <= speed <= 30:
                 raise ValueError("Speech speed must be between -30 and 30")
+            seed=data.get('seed',1986)
+            if not isinstance(seed,int) or isinstance(seed,bool) or not 0<=seed<=2**31-1:
+                raise ValueError('Invalid seed')
         except (ValueError, TypeError, UnicodeError) as exc:
             return self.reply(400, {"ok": False, "error": str(exc)})
         if self.server.actor is None:
@@ -251,7 +256,7 @@ class Handler(BaseHTTPRequestHandler):
         if not self.server.lock.acquire(timeout=1):
             return self.reply(409, {"ok": False, "error": "Natural TTS is busy"})
         try:
-            wav, metadata = self.server.actor.synthesize(text, style, speed)
+            wav, metadata = self.server.actor.synthesize(text, style, speed, seed)
             print(json.dumps({"text": text, "style": style, **metadata}, ensure_ascii=False), flush=True)
             self.reply(200, wav, "audio/wav")
         except Exception as exc:

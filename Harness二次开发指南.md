@@ -1,5 +1,8 @@
 # Harness 二次开发指南
 
+> 当前引擎范围为 CosyVoice、GPT-SoVITS v5 Turbo／ProPlus。CosyVoice 训练流程仅用于 CosyVoice，GPT 不读取其训练权重；切换和音色包规范见《[TTS 使用手册](TTS使用手册.md)》。
+
+
 ## 正式支持边界
 
 当前发行版只把 **Codex** 与 **DeepSeek Harness** 标为正式支持。两者已经在真实客户端上完成目录识别、连接器安装、随机挑战回复、语音生成和实际播放验证。Claude Code、pi、OpenCode 及其他 Harness 不再出现在用户开关、自动识别或成功状态中。

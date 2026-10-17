@@ -34,33 +34,25 @@ class McpControlTests(unittest.TestCase):
             with self.assertRaises(ValueError):voice.call('read_text',{'text':text})
         voice.start.assert_not_called()
 
-    def test_local_profile_match_and_apply_ignore_dormant_rvc_parameters(self):
-        module=self.mcp_module();voice=module.AgentVoice('.','codex')
-        saved=defaults()['voice']
-        saved.update(engine='piper',synthesisMode='base',piperModel='piper/model.onnx')
-        current=dict(saved,model='my-rvc.pth',pitch=4,formant=.5,index='my.index')
-        cfg={'voice':current,'profiles':[{'id':'piper','name':'Piper','voice':saved}],'harness':{'codex':True}}
+    def test_tts_profile_match_and_apply_include_variant(self):
+        module=self.mcp_module();voice=module.AgentVoice('.','codex');saved=defaults()['voice'];saved.update(engine='gpt-sovits',gptVariant='v5turbo')
+        cfg={'voice':dict(saved),'profiles':[{'id':'gpt','name':'GPT','voice':saved}],'harness':{'codex':True}}
         voice.settings=Mock(return_value=cfg);voice.running=Mock(return_value={'ready':True});voice.request=Mock(return_value={'ok':True})
         self.assertTrue(voice.call('list_voice_profiles',{})['profiles'][0]['active'])
-        self.assertEqual(voice.public_status({'ready':True})['currentProfile']['id'],'piper')
-        voice.call('apply_voice_profile',{'profile_id':'piper'})
-        patch_value=voice.request.call_args.args[1]['voice']
-        self.assertEqual(patch_value['engine'],'piper');self.assertEqual(patch_value['piperModel'],'piper/model.onnx')
-        self.assertNotIn('pitch',patch_value);self.assertNotIn('model',patch_value);self.assertNotIn('index',patch_value)
-        current['speed']=1.2;self.assertFalse(voice.call('list_voice_profiles',{})['profiles'][0]['active'])
-        self.assertFalse(module.same_voice(dict(saved,synthesisMode='rvc',pitch=4),dict(saved,synthesisMode='rvc',pitch=0)))
+        voice.call('apply_voice_profile',{'profile_id':'gpt'});voice.request.assert_called_with('/api/profiles/apply',{'id':'gpt'},timeout=30)
+        cfg['voice']['gptVariant']='proplus';self.assertFalse(voice.call('list_voice_profiles',{})['profiles'][0]['active'])
 
     def test_language_commands_preserve_voice_and_target_host(self):
         module=self.mcp_module();voice=module.AgentVoice('.','codex')
-        saved={'voice':{'pitch':2},'harness':{'codex':True,'deepseek':True},'profiles':[{'id':'one','name':'声音一','voice':{'pitch':5}}]}
+        saved={'voice':{'speed':1},'harness':{'codex':True,'deepseek':True},'profiles':[{'id':'one','name':'声音一','voice':{'speed':1.2}}]}
         voice.settings=Mock(return_value=saved);voice.running=Mock(return_value={'ready':True})
         voice.request=Mock(return_value={'ok':True})
         voice.call('stop_speech',{});voice.request.assert_called_with('/stop',{})
-        voice.call('apply_voice_profile',{'profile_id':'one'});voice.request.assert_called_with('/api/config',{'voice':{'pitch':5}},timeout=30)
+        voice.call('apply_voice_profile',{'profile_id':'one'});voice.request.assert_called_with('/api/profiles/apply',{'id':'one'},timeout=30)
         voice.call('set_auto_reading',{'enabled':False})
         self.assertEqual(voice.request.call_args_list[-2].args,('/api/config',{'harness':{'codex':False,'deepseek':True}}))
         voice.request.assert_called_with('/api/connections/reload',{})
-        self.assertEqual(saved['voice'],{'pitch':2});self.assertTrue(saved['harness']['codex'])
+        self.assertEqual(saved['voice'],{'speed':1});self.assertTrue(saved['harness']['codex'])
         with self.assertRaises(ValueError):voice.call('apply_voice_profile',{'profile_id':'missing'})
 
     def test_deepseek_mcp_install_refreshes_actual_composer_bundle(self):

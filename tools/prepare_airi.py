@@ -97,14 +97,15 @@ if (process.argv.includes("--agent-voice-mouth-probe")) {
                     if (frames.length > 2400) frames.shift();
                     if (sample.motion.playing) { seenPlaying = true; ended = 0; }
                     if (!openCaptured && sample.drawnMouth > 0.25) {
-                        const image = await window.webContents.capturePage();
-                        await fs.writeFile(report + ".open.png", image.toPNG()); openCaptured = true;
+                        try { const image = await window.webContents.capturePage();
+                        await fs.writeFile(report + ".open.png", image.toPNG()); } catch {}
+                        openCaptured = true;
                     }
                     if (seenPlaying && !sample.motion.playing) {
                         if (!ended) ended = Date.now();
                         if (Date.now() - ended > 400) {
-                            const image = await window.webContents.capturePage();
-                            await fs.writeFile(report + ".closed.png", image.toPNG());
+                            try { const image = await window.webContents.capturePage();
+                            await fs.writeFile(report + ".closed.png", image.toPNG()); } catch {}
                             await fs.writeFile(report,JSON.stringify({ok:sample.drawnMouth===0 && sample.motion.finalValue===0 && sample.appliedMouth===0,frames},null,2));
                             clearInterval(timer);
                         }
@@ -249,8 +250,9 @@ def prepare(source,root):
     bridge=(root/'integrations/airi-bridge.js').read_bytes()
     mouth=(root/'integrations/mouth-motion.js').read_bytes()
     bridge_hash=hashlib.sha256(bridge+b'\0'+mouth).hexdigest()
+    installer_hash=file_hash(Path(__file__))
     same_install=(marker.get('installedHash')==current_hash and marker.get('voiceRoot')==str(root)
-                  and marker.get('connectionHash')==connection_hash and marker.get('bridgeHash')==bridge_hash)
+                  and marker.get('connectionHash')==connection_hash and marker.get('bridgeHash')==bridge_hash and marker.get('installerHash')==installer_hash)
     if same_install:
         print(json.dumps({'ok':True,'directory':str(source),'reused':True,'warning':'AIRI 更新可能覆盖桥接；失效后重新连接并验证。'},ensure_ascii=False));return
     patched_current=marker.get('installedHash')==current_hash
@@ -276,7 +278,7 @@ def prepare(source,root):
         if not patched_current:os.replace(backup_new,backup)
         atomic_json(marker_path,{'directory':str(source),'version':'0.10.2','voiceRoot':str(root),
                     'originalHash':original_hash,'installedHash':installed_hash,
-                    'connectionHash':connection_hash,'bridgeHash':bridge_hash})
+                    'connectionHash':connection_hash,'bridgeHash':bridge_hash,'installerHash':installer_hash})
     except Exception:
         if replaced and backup.is_file():shutil.copy2(backup,source_archive)
         for path in (staged,backup_new):

@@ -44,7 +44,7 @@ def install_codex(store,python,server):
     existing=subprocess.run([str(codex),"mcp","get",SERVER_NAME],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=getattr(subprocess,"CREATE_NO_WINDOW",0))
     try:
         if existing.returncode==0:run([codex,"mcp","remove",SERVER_NAME])
-        run([codex,"mcp","add",SERVER_NAME,"--",python,server,"--root",store.root,"--host","codex"])
+        run([codex,"mcp","add",SERVER_NAME,"--",python,"-I","-X","utf8",server,"--root",store.root,"--host","codex"])
         text=config.read_text(encoding="utf-8-sig")
         match=re.search(r"(?m)^\[mcp_servers\.agent_voice\]\s*$",text)
         if not match:raise ValueError("Codex 已添加 MCP，但未找到对应配置段")
@@ -99,7 +99,7 @@ def install_deepseek(store,python,server):
     for entry in entries:
         if isinstance(entry,dict) and isinstance(entry.get("insert"),list):entry["insert"]=[item for item in entry["insert"] if item.get("id")!="agent-voice-mcp"]
     entries=[entry for entry in entries if not (isinstance(entry,dict) and set(entry)=={"insert"} and not entry["insert"])]
-    entries.append({"insert":[{"id":"agent-voice-mcp","name":"@deepseek-ai/dsh-mcp-client","config":{"serverName":SERVER_NAME,"transport":"stdio","command":str(python),"args":[str(server),"--root",str(store.root),"--host","deepseek"],"cwd":str(store.root),"failOnStartupError":False}}]})
+    entries.append({"insert":[{"id":"agent-voice-mcp","name":"@deepseek-ai/dsh-mcp-client","config":{"serverName":SERVER_NAME,"transport":"stdio","command":str(python),"args":["-I","-X","utf8",str(server),"--root",str(store.root),"--host","deepseek"],"cwd":str(store.root),"failOnStartupError":False}}]})
     temp=patch.with_name(patch.name+".agent-voice.tmp");temp.write_text(yaml.safe_dump(entries,allow_unicode=True,sort_keys=False),encoding="utf-8");os.replace(temp,patch)
     import hashlib
     client=profile/"node_modules/dsh-agent-voice-public/client.js"
@@ -108,7 +108,7 @@ def install_deepseek(store,python,server):
     return {"ok":True,"source":"deepseek","message":"DeepSeek Harness MCP 与聊天栏界面已更新并校验，请重启 Harness。","profile":str(profile),"backup":str(backup),"clientSha256":hashlib.sha256(client.read_bytes()).hexdigest(),"connector":connector}
 
 def install(source,root):
-    store=Store(root);cfg=store.get();python=store.resolve(cfg["engines"]["pythonRvc"]);server=store.root/"integrations/agent_voice_mcp.py"
+    store=Store(root);cfg=store.get();python=store.resolve(cfg["engines"]["pythonService"]);server=store.root/"integrations/agent_voice_mcp.py"
     if not python.is_file():raise ValueError("主服务 Python 不存在："+str(python))
     if not server.is_file():raise ValueError("MCP 服务文件缺失："+str(server))
     return install_codex(store,python,server) if source=="codex" else install_deepseek(store,python,server)

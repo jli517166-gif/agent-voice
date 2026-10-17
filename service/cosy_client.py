@@ -44,15 +44,17 @@ class NaturalTTSClient:
         except (OSError, ValueError):
             return None
 
-    def ensure_ready(self):
+    def ensure_ready(self,check=lambda:None):
         with self.start_lock:
-            self._ensure_ready()
+            try:self._ensure_ready(check)
+            except Exception:self.abort();raise
 
-    def _ensure_ready(self):
+    def _ensure_ready(self,check):
+        check()
         state = self.health()
         if state is not None and state.get("fingerprint") != self.fingerprint:
             raise RuntimeError("自然语音服务正在使用另一套参考配置，请重启语音服务")
-        if state is None:
+        if state is None and (self.process is None or self.process.poll() is not None):
             for key in ("python", "server", "config"):
                 if not os.path.isfile(self.settings[key]):
                     raise RuntimeError("自然语音文件缺失：" + self.settings[key])
@@ -61,25 +63,29 @@ class NaturalTTSClient:
             environment.pop("PYTHONHOME", None)
             environment.pop("PYTHONPATH", None)
             environment["PYTHONUTF8"] = "1"
+            environment["PYTHONNOUSERSITE"] = "1"
             environment["TOKENIZERS_PARALLELISM"] = "false"
             environment["HF_HUB_OFFLINE"] = "1"
             environment["TRANSFORMERS_OFFLINE"] = "1"
             environment["MODELSCOPE_CACHE"] = os.path.join(os.path.dirname(self.settings["config"]), "modelscope-cache")
-            with open(log_path, "ab") as log:
-                self.process = subprocess.Popen([
+            self.process = subprocess.Popen([
                     self.settings["python"], "-X", "utf8", self.settings["server"],
                     "--config", self.settings["config"], "--port", str(self.port),
                     "--token", self.token, "--parent-pid", str(os.getpid())],
                     cwd=os.path.dirname(self.settings["server"]),
-                    env=environment, stdout=log, stderr=subprocess.STDOUT,
+                    env=environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                     stdin=subprocess.DEVNULL, **self.process_kwargs)
+            from bounded_logs import pump
+            self.log_reader=pump(self.process.stdout,log_path)
         deadline = time.monotonic() + 120
         while time.monotonic() < deadline:
+            check()
             state = self.health()
             if state is not None:
                 if state.get("fingerprint") != self.fingerprint:
                     raise RuntimeError("本地自然语音端口已被另一套配置占用")
                 if state.get("ready"):
+                    self.gpu=state.get('gpu',state.get('device'))
                     return
                 if state.get("error"):
                     raise RuntimeError("自然语音加载失败：" + state["error"])
@@ -88,24 +94,35 @@ class NaturalTTSClient:
             time.sleep(.3)
         raise RuntimeError("自然语音加载超时，请看 natural-tts.log")
 
-    def synthesize(self, text, out_wav, style="chat", speed=0):
-        self.ensure_ready()
-        body = json.dumps({"text": text, "style": style or "chat", "speed": speed},
+    def synthesize(self, text, out_wav, style="chat", speed=0, check=lambda:None, seed=1986):
+        self.ensure_ready(check)
+        body = json.dumps({"text": text, "style": style or "chat", "speed": speed,"seed":seed},
                           ensure_ascii=False).encode("utf-8")
         request = urllib.request.Request(self.url + "/synthesize", data=body,
                                          headers={"Content-Type": "application/json"})
-        try:
-            with self.opener.open(request, timeout=600) as response:
-                if response.headers.get_content_type() != "audio/wav":
-                    raise RuntimeError("自然语音服务没有返回 WAV 音频")
-                audio = response.read(40 * 1024 * 1024 + 1)
-        except urllib.error.HTTPError as exc:
+        completed=threading.Event();result={}
+        def receive():
             try:
-                message = json.loads(exc.read(16000).decode("utf-8"))["error"]
-            except (ValueError, KeyError):
-                message = str(exc)
-            raise RuntimeError("自然语音合成失败：" + message) from exc
-        if len(audio) > 40 * 1024 * 1024:
+                with self.opener.open(request, timeout=600) as response:
+                    if response.headers.get_content_type() != 'audio/wav':raise RuntimeError('自然语音服务没有返回 WAV 音频')
+                    from audio_limits import MAX_AUDIO_BYTES
+                    result['audio']=response.read(MAX_AUDIO_BYTES+1)
+            except urllib.error.HTTPError as exc:
+                try:message=json.loads(exc.read(16000).decode('utf-8'))['error']
+                except (ValueError,KeyError):message=str(exc)
+                result['error']=RuntimeError('自然语音合成失败：'+str(message))
+            except Exception as exc:result['error']=exc
+            finally:completed.set()
+        reader=threading.Thread(target=receive,name='cosy-response',daemon=True);reader.start()
+        try:
+            while not completed.wait(.1):check()
+            check()
+            if 'error' in result:raise result['error']
+            audio=result['audio']
+        except Exception:
+            self.abort();reader.join(timeout=2);raise
+        from audio_limits import MAX_AUDIO_BYTES
+        if len(audio) > MAX_AUDIO_BYTES:
             raise RuntimeError("自然语音音频过大")
         try:
             with wave.open(io.BytesIO(audio), "rb") as wav:
@@ -121,6 +138,12 @@ class NaturalTTSClient:
         with open(out_wav, "wb") as output:
             output.write(audio)
         return out_wav
+
+    def abort(self):
+        process,self.process=self.process,None
+        if process is not None and process.poll() is None:
+            from owned_process import terminate
+            terminate(process)
 
     def close(self):
         if self.process is None:
@@ -138,8 +161,8 @@ class NaturalTTSClient:
                 try:
                     self.process.wait(timeout=3)
                 except subprocess.TimeoutExpired:
-                    self.process.terminate()
-                    self.process.wait(timeout=3)
+                    from owned_process import terminate
+                    terminate(self.process)
         finally:
             if self.process.poll() is not None:
                 self.process = None

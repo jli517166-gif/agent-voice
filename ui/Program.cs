@@ -15,6 +15,7 @@ namespace AgentVoice {
             SetProcessDPIAware();Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);
             string root=AppPaths.CanonicalDirectory(AppDomain.CurrentDomain.BaseDirectory);
             var store=new SettingsStore(root);
+            if(args.Contains("--environmenttest"))return UiChecks.Environment(store,args);
             if(args.Contains("--selftest"))return UiChecks.Run(store,args);
             if(args.Contains("--scrolltest"))return ScrollChecks.Run(store,args);
             if(args.Contains("--flowtest"))return UiChecks.Flow(store,args);

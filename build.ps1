@@ -1,4 +1,4 @@
-param([string]$OutputDirectory = '')
+﻿param([string]$OutputDirectory = '')
 $ErrorActionPreference = 'Stop'
 $sourceRoot = $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) { $OutputDirectory = Join-Path $sourceRoot 'dist' }
@@ -6,7 +6,7 @@ $compiler = Join-Path $env:SystemRoot 'Microsoft.NET\Framework64\v4.0.30319\csc.
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 $compiledExecutable = Join-Path $OutputDirectory 'agent-voice-build.exe'
 $finalExecutable = Join-Path $OutputDirectory ('agent' + [char]0x8BED + [char]0x97F3 + '.exe')
-$arguments = @('/nologo','/target:winexe','/optimize+','/platform:x64',('/out:' + $compiledExecutable),'/r:System.dll','/r:System.Core.dll','/r:System.Drawing.dll','/r:System.Windows.Forms.dll','/r:System.Web.Extensions.dll','/r:Microsoft.CSharp.dll',('/win32manifest:' + (Join-Path $sourceRoot 'ui\app.manifest')))
+$arguments = @('/nologo','/target:winexe','/optimize+','/platform:x64',('/out:' + $compiledExecutable),'/r:System.dll','/r:System.Core.dll','/r:System.Drawing.dll','/r:System.Windows.Forms.dll','/r:System.Web.Extensions.dll','/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll','/r:Microsoft.CSharp.dll',('/win32manifest:' + (Join-Path $sourceRoot 'ui\app.manifest')))
 $sources = Get-ChildItem -LiteralPath (Join-Path $sourceRoot 'ui') -Filter '*.cs' | ForEach-Object FullName
 & $compiler @arguments @sources
 if ($LASTEXITCODE -ne 0) { throw 'Native UI compilation failed' }
@@ -14,7 +14,7 @@ Move-Item -LiteralPath $compiledExecutable -Destination $finalExecutable -Force
 foreach ($folder in @('service','integrations','tools')) {
     $target = Join-Path $OutputDirectory $folder
     New-Item -ItemType Directory -Path $target -Force | Out-Null
-    Get-ChildItem -LiteralPath (Join-Path $sourceRoot $folder) -File | Where-Object { $folder -ne 'tools' -or $_.Name -in @('prepare_airi.py','release_audit.py','export_connector.py','config_bundle.py','tts_bundle.py','connect_harness.py','verify_harness.py','install_mcp.py') } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $target $_.Name) -Force }
+    Get-ChildItem -LiteralPath (Join-Path $sourceRoot $folder) -File | Where-Object { $folder -ne 'tools' -or $_.Name -in @('prepare_airi.py','release_audit.py','export_connector.py','config_bundle.py','tts_bundle.py','connect_harness.py','verify_harness.py','install_mcp.py','diagnose.py','voice_profiles.py','provision_core_runtime.py','core-requirements.txt','prepare_training.py','prepare_gpt_resources.py','environment_repair.py','train_cosy_lora.py','prepare_cosy_tokens.py') } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $target $_.Name) -Force }
 }
 $agentAssets = Join-Path $sourceRoot '.agents'
 if (Test-Path -LiteralPath (Join-Path $sourceRoot 'assets')) {
@@ -25,11 +25,18 @@ if (Test-Path -LiteralPath (Join-Path $sourceRoot 'assets')) {
         Copy-Item -LiteralPath $_.FullName -Destination $targetAsset -Force
     }
 }
-if (Test-Path -LiteralPath $agentAssets) { Copy-Item -LiteralPath $agentAssets -Destination (Join-Path $OutputDirectory '.agents') -Recurse -Force }
-foreach ($obsolete in @('integrations\opencode-plugin.mjs','integrations\pi-extension.ts')) {
+if (Test-Path -LiteralPath $agentAssets) {
+    $pluginTarget = Join-Path $OutputDirectory '.agents'
+    New-Item -ItemType Directory -Path $pluginTarget -Force | Out-Null
+    Get-ChildItem -LiteralPath $agentAssets -Force | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $pluginTarget -Recurse -Force }
+}
+foreach ($obsolete in @('integrations\opencode-plugin.mjs','integrations\pi-extension.ts','integrations\piper-requirements.txt','service\rvc_tone.py','service\rvc_accepted.py','service\rvc_index.py','service\moss_client.py','service\moss_worker.py','service\moss_audio.py','service\piper_client.py','service\piper_worker.py','MOSS引擎说明.md')) {
     $obsoletePath = Join-Path $OutputDirectory $obsolete
     if (Test-Path -LiteralPath $obsoletePath) { Remove-Item -LiteralPath $obsoletePath -Force }
 }
 Get-ChildItem -LiteralPath $sourceRoot -Filter '*.md' -File | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $OutputDirectory $_.Name) -Force }
-New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'models'),(Join-Path $OutputDirectory 'voices'),(Join-Path $OutputDirectory 'voice-model-packages'),(Join-Path $OutputDirectory 'data'),(Join-Path $OutputDirectory 'tts-engines'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\source'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\runtime\tools'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\models') -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'docs') -Force | Out-Null
+Get-ChildItem -LiteralPath (Join-Path $sourceRoot 'docs') -Filter '*.md' -File | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path (Join-Path $OutputDirectory 'docs') $_.Name) -Force }
+New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'tts-engines\gpt-sovits') -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'voices'),(Join-Path $OutputDirectory 'voice-model-packages'),(Join-Path $OutputDirectory 'data'),(Join-Path $OutputDirectory 'tts-engines'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\source'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\runtime\tools'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\models') -Force | Out-Null
 Write-Output $finalExecutable

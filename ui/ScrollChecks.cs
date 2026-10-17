@@ -34,7 +34,7 @@ namespace AgentVoice {
                     Config.appearance=Json.Copy(original.appearance);
                     if(patterned){Config.appearance.background=backdrop;Config.appearance.backgroundColor="#12313B";Config.appearance.textColor="#FAF4F8";}
                     ClientSize=size;ApplyTheme();await Task.Delay(120);
-                    foreach(string id in new[]{"home","cosyReference","profiles","voices","configuration","engine","appearance","advanced","connections","harness","airi","training"}){
+                    foreach(string id in pages.Keys.ToArray()){
                         ShowPage(id);var viewport=pages[id];await Task.Delay(100);
                         int range=viewport.VerticalScroll.Maximum-viewport.VerticalScroll.LargeChange+1;
                         if(range<=0){reports.Add(new{page=id,size=size.ToString(),patterned=patterned,scrollable=false});continue;}

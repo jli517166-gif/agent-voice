@@ -52,16 +52,19 @@ const { default: hostPlugin, apply, inject, createReplyReader, runVoiceCommand }
 assert.equal(hostPlugin.apply, apply);
 assert.equal(hostPlugin.inject, inject);
 assert.deepEqual(inject, []);
-let registered, disposed,statusHandler;
+let registered, disposed,statusHandler,controlHandler;
 const listeners = new Map();
 const fake = {
   inject(dependencies,callback) { assert.ok(['commands','connection'].includes(dependencies[0]));callback(this); },
-  connection:{fetch:{register(route){assert.equal(route.path,'/api/agent-voice-playback');assert.deepEqual(route.methods,['POST']);statusHandler=route.fetch;}}},
+  connection:{fetch:{register(route){assert.deepEqual(route.methods,['POST']);if(route.path==='/api/agent-voice-playback')statusHandler=route.fetch;else{assert.equal(route.path,'/api/agent-voice-control');controlHandler=route.fetch;}}}},
   commands: { register(definition) { registered = definition; return {dispose(){disposed = true;}}; } },
   on(name, callback) { listeners.set(name, callback); },
 };
 apply(fake);
 assert.equal((await statusHandler({json:async()=>({type:'client-request',method:'execute',rpcId:'test'})})).status,400,'status channel only permits read-only snapshot');
+assert.equal((await controlHandler(new Request('http://local/api/agent-voice-control',{method:'POST',headers:{Origin:'https://untrusted.example'},body:'{}'}))).status,403);
+assert.equal((await controlHandler(new Request('http://local/api/agent-voice-control',{method:'POST',body:JSON.stringify({type:'client-request',method:'agent-voice-control',rpcId:'test',payload:{tool:'execute_shell'}})}))).status,400);
+assert.equal((await controlHandler(new Request('http://local/api/agent-voice-control',{method:'POST',body:JSON.stringify({type:'client-request',method:'agent-voice-control',rpcId:'test',payload:{tool:'voice_service_status'}})}))).status,200,'native SDK passes arguments in payload, not params');
 assert.equal((await runVoiceCommand('ui {"tool":"execute_shell"}')).kind,'error');
 assert.equal(registered.name, 'agent-voice');
 assert.equal(registered.definitionId, 'agent-voice.control');

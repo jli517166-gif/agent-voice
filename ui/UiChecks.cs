@@ -6,145 +6,47 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using System.Threading.Tasks;
-using System.Security.Cryptography;
-
 namespace AgentVoice {
     public sealed partial class MainForm {
-        static string FileDigest(string path){using(var sha=SHA256.Create())using(var stream=File.OpenRead(path))return BitConverter.ToString(sha.ComputeHash(stream)).Replace("-","").ToLowerInvariant();}
-        static bool SameVoiceParameters(VoiceConfig a,VoiceConfig b){return typeof(VoiceConfig).GetFields().All(field=>object.Equals(field.GetValue(a),field.GetValue(b)));}
-        bool SameVoiceAssets(VoiceConfig expected,VoiceConfig actual){
-            var comparable=actual.Clone();
-            foreach(string key in new[]{"model","index","reference"}){
-                var field=typeof(VoiceConfig).GetField(key);string oldPath=(string)field.GetValue(expected),newPath=(string)field.GetValue(actual);
-                if(oldPath.Length==0||newPath.Length==0){if(oldPath!=newPath)return false;}
-                else if(FileDigest(Store.Resolve(oldPath))!=FileDigest(Store.Resolve(newPath)))return false;
-                field.SetValue(comparable,oldPath);
-            }
-            return SameVoiceParameters(expected,comparable);
-        }
-        public async Task<object> VerifyBundle(string file,string directory){
-            Directory.CreateDirectory(directory);var original=Store.Read();var results=new List<string>();
-            Func<Task> wait=async()=>{for(int i=0;i<24000&&operation;i++)await Task.Delay(100);if(operation)throw new InvalidOperationException("模型传输按钮超时");};
-            try{
-                configurationTestPath=file;ShowPage("configuration");if(!File.Exists(file)){exportConfigurationButton.PerformClick();await wait();if(lastTransfer==null||!Convert.ToBoolean(lastTransfer["ok"])||Json.Text(lastTransfer,"engine")!="cosyvoice")throw new InvalidOperationException("本地模型导出失败："+footer.Text);results.Add("native engine-labelled model export");}else results.Add("previous native export reused for import recheck");
-                var changed=Json.Copy(original);changed.voice.engine="sapi";changed.voice.synthesisMode="rvc";changed.voice.advancedEnabled=true;Store.Write(changed);Config=changed;BindVoice();BindSettings();
-                lastTransfer=null;importConfigurationButton.PerformClick();await wait();if(lastTransfer==null||!Convert.ToBoolean(lastTransfer["ok"]))throw new InvalidOperationException("模型导入失败："+footer.Text);
-                if(Config.voice.engine!="cosyvoice"||Config.voice.synthesisMode!="base"||Config.voice.advancedEnabled!=original.voice.advancedEnabled)throw new InvalidOperationException("本地声音设置未恢复");
-                if(FileDigest(Store.Resolve(original.voice.reference))!=FileDigest(Store.Resolve(Config.voice.reference)))throw new InvalidOperationException("参考录音字节改变");
-                string oldModel=Store.Resolve(original.voice.baseModel.Length>0?original.voice.baseModel:original.engines.cosyModel),newModel=Store.Resolve(Config.voice.baseModel);
-                foreach(string name in new[]{"llm.pt","flow.pt","hift.pt"})if(FileDigest(Path.Combine(oldModel,name))!=FileDigest(Path.Combine(newModel,name)))throw new InvalidOperationException("模型权重校验失败："+name);
-                var unchanged=new Dictionary<string,bool>{{"RVC model",Config.voice.model==original.voice.model},{"RVC index",Config.voice.index==original.voice.index},{"profiles",Config.profiles.Count==original.profiles.Count&&Config.profiles.Zip(original.profiles,(a,b)=>a.id==b.id&&a.name==b.name&&typeof(VoiceConfig).GetFields().All(f=>object.Equals(f.GetValue(a.voice),f.GetValue(b.voice)))).All(equal=>equal)},{"AIRI",Json.Encode(Config.airi)==Json.Encode(original.airi)},{"Harness",Json.Encode(Config.harness)==Json.Encode(original.harness)},{"appearance",Json.Encode(Config.appearance)==Json.Encode(original.appearance)},{"token",Config.token==original.token}};if(unchanged.Any(k=>!k.Value)){File.WriteAllText(Path.Combine(directory,"preservation-details.json"),Json.Encode(new{checks=unchanged,expectedProfiles=original.profiles,actualProfiles=Config.profiles}));throw new InvalidOperationException("本地模型导入改变了其他模块："+string.Join(",",unchanged.Where(k=>!k.Value).Select(k=>k.Key)));}
-                results.Add("native model import preserves RVC and other modules");results.Add("model weights and reference hashes match");
-                ShowPage("home");serviceToggle.PerformClick();await wait();if(!await Service.Running())throw new InvalidOperationException("导入后服务启动失败");
-                body.Text="工作好久啦，起来动一动、喝口水吧～";FindButton(pages["home"],"只生成").PerformClick();await wait();if(lastJob.Length==0)throw new InvalidOperationException("导入后生成失败："+footer.Text);
-                var job=await Service.Request("/api/jobs/"+lastJob);var output=job["result"] as Dictionary<string,object>;
-                if(Json.Text(job,"state")!="completed"||output==null||Json.Text(output,"synthesisMode")!="base")throw new InvalidOperationException("未经过本地直出链路");
-                results.Add("real CosyVoice base-only synthesis after native import");File.Copy(Store.Resolve("data/output/"+Json.Text(output,"file")),Path.Combine(directory,"本地模型-导入后试听.wav"),true);
-                serviceToggle.PerformClick();await wait();return new{ok=true,checks=results,engine="cosyvoice",bundle=file,assetCount=lastTransfer["assetCount"],duration=output["duration"]};
-            }finally{configurationTestPath=null;}
-        }
-        public async Task<object> VerifyFlow(string directory){
-            var results=new List<string>();Directory.CreateDirectory(directory);
-            Func<Task> wait=async()=>{for(int i=0;i<2400&&operation;i++)await Task.Delay(100);if(operation)throw new InvalidOperationException("按钮操作超时");};
-            serviceToggle.PerformClick();await wait();if(!await Service.Running())throw new InvalidOperationException("启动按钮未开启服务："+footer.Text);results.Add("native start button");
-            ShowPage("voices");profileName.Text="真实流程配置 A";profileKind.SelectedIndex=1;synthesisChoice.SelectedIndex=1;ShowPage("home");pitch.Value=2;formant.Value=Config.voice.processing=="accepted"?0:.4M;saveVoiceButton.PerformClick();await wait();
-            ShowPage("voices");FindButton(pages["voices"],"保存方案").PerformClick();await wait();ShowPage("home");string ident=Config.profiles.Last().id;VoiceConfig saved=Config.profiles.Last().voice.Clone();if(!File.Exists(Path.Combine(ProfileFolder(Config.profiles.Last()),"profile.json")))throw new InvalidOperationException("声音方案没有建立独立文件夹");results.Add("full RVC plus TTS profile saved without applying and owns a named folder");
-            string currentModel=Store.Resolve(Config.voice.model),modelFolder=Path.GetDirectoryName(currentModel);string switchFixture=Directory.Exists(modelFolder)?Directory.GetFiles(modelFolder,"*.pth").FirstOrDefault(path=>!path.Equals(currentModel,StringComparison.OrdinalIgnoreCase)):null;if(String.IsNullOrWhiteSpace(switchFixture))switchFixture=currentModel;processingChoice.SelectedIndex=0;modelPath.Text=switchFixture;indexPath.Text="";pitch.Value=-2;formant.Value=-.3M;saveVoiceButton.PerformClick();await wait();if(!Store.Resolve(Config.voice.model).Equals(Path.GetFullPath(switchFixture),StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("模型切换未应用。界面模型="+modelPath.Text+"；实际模型="+Config.voice.model+"；状态="+footer.Text);results.Add(switchFixture.Equals(currentModel,StringComparison.OrdinalIgnoreCase)?"real RVC model reapplied":"different real RVC model applied");
-            ShowPage("voices");for(int i=0;i<profileList.Items.Count;i++)if(((SavedVoice)profileList.Items[i]).id==ident)profileList.SelectedIndex=i;
-            var restore=FindButton(pages["voices"],"使用选中方案");restore.PerformClick();await wait();if(!SameVoiceParameters(Config.voice,saved))throw new InvalidOperationException("声音方案未完整恢复");results.Add("native restore button preserves all parameters");
-            ShowPage("home");body.Text="工作好久啦，起来动一动、喝口水吧～";generate.PerformClick();await wait();if(lastJob.Length==0)throw new InvalidOperationException("生成按钮没有提交任务");var job=await Service.Request("/api/jobs/"+lastJob);if(Json.Text(job,"state")!="completed")throw new InvalidOperationException(Json.Text(job,"error"));results.Add("native generation and local playback");
-            ShowPage("voices");profileName.Text="真实本地配置";profileKind.SelectedIndex=0;FindButton(pages["voices"],"保存方案").PerformClick();await wait();var local=Config.profiles.Last();if(local.voice.synthesisMode!="base"||local.voice.model.Length!=0||Config.voice.synthesisMode!="rvc")throw new InvalidOperationException("本地保存类型错误或保存时改变了输出模式");results.Add("local snapshot excludes RVC and does not auto-apply");
-            for(int i=0;i<profileList.Items.Count;i++)if(((SavedVoice)profileList.Items[i]).id==local.id)profileList.SelectedIndex=i;FindButton(pages["voices"],"使用选中方案").PerformClick();await wait();if(Config.voice.synthesisMode!="base"||Config.voice.model!=saved.model||Config.voice.index!=saved.index||Config.voice.pitch!=saved.pitch)throw new InvalidOperationException("应用本地配置改变了 RVC 备用参数");results.Add("native local apply preserves RVC standby choice");
-            ShowPage("home");FindButton(pages["home"],"只生成").PerformClick();await wait();var localJob=await Service.Request("/api/jobs/"+lastJob);var localResult=localJob["result"] as Dictionary<string,object>;if(Json.Text(localJob,"state")!="completed"||Json.Text(localResult,"synthesisMode")!="base")throw new InvalidOperationException("本地配置未直出");results.Add("real base-only generation after local configuration apply");
-            ShowPage("voices");for(int i=0;i<profileList.Items.Count;i++)if(((SavedVoice)profileList.Items[i]).id==ident)profileList.SelectedIndex=i;FindButton(pages["voices"],"使用选中方案").PerformClick();await wait();
-            ShowPage("voices");var remove=FindButton(pages["voices"],"删除方案");remove.PerformClick();await wait();if(Config.profiles.Any(p=>p.id==ident))throw new InvalidOperationException("删除按钮未生效");FindButton(pages["voices"],"撤销删除").PerformClick();await wait();if(!Config.profiles.Any(p=>p.id==ident))throw new InvalidOperationException("撤销按钮未生效");results.Add("native delete and undo buttons");
-            Settings reopened=Store.Read();if(!SameVoiceParameters(reopened.voice,saved))throw new InvalidOperationException("重开持久化未通过");results.Add("reopened settings retain voice");
-            ShowPage("home");serviceToggle.PerformClick();await wait();if(await Service.Running())throw new InvalidOperationException("关闭按钮未关闭服务");results.Add("native stop button");
-            return new{ok=true,checks=results,fixture=new{scope=saved.assetScope,processing=saved.processing,model=Path.GetFileName(Store.Resolve(saved.model)),index=Path.GetFileName(Store.Resolve(saved.index)),reference=Path.GetFileName(Store.Resolve(saved.reference)),modelSha256=FileDigest(Store.Resolve(saved.model)),referenceSha256=saved.reference.Length==0?"":FileDigest(Store.Resolve(saved.reference))}};
-        }
-        static Button FindButton(Control root,string text){foreach(Control child in root.Controls){var button=child as Button;if(button!=null&&button.Text==text)return button;var nested=FindButton(child,text);if(nested!=null)return nested;}return null;}
-        public object Verify(string directory){
-            Directory.CreateDirectory(directory);var errors=new List<string>();int before=CountControls(this);
-            int buttonEdgeChecks=0;
-            using(var card=new ScenePanel{Host=this,Card=true})using(var sample=new AnimeButton{Parent=card,BackColor=CardColor,BorderColor=Accent,BorderSize=1,AutoSize=false}){
-                foreach(var size in new[]{new Size(180,42),new Size(225,53),new Size(270,63)}){
-                    sample.Size=size;using(var bitmap=new Bitmap(size.Width,size.Height)){
-                        sample.DrawToBitmap(bitmap,new Rectangle(Point.Empty,size));
-                        foreach(var point in new[]{Point.Empty,new Point(size.Width-1,0),new Point(0,size.Height-1),new Point(size.Width-1,size.Height-1)}){if(bitmap.GetPixel(point.X,point.Y).ToArgb()!=CardColor.ToArgb())errors.Add("按钮圆角外存在残留像素："+size);buttonEdgeChecks++;}
-                        if(sample.Region!=null)errors.Add("按钮仍使用窗口区域裁切");
-                        bitmap.Save(Path.Combine(directory,"button-outline-"+size.Width+".png"));
-                    }
-                }
-            }
-            int tooltipChecks=0;foreach(string text in new[]{"首页","RVC 变声","声音方案","音色包","基础训练","高级训练","设置"}){var entry=FindButton(this,text);if(entry==null||string.IsNullOrWhiteSpace(tips.GetToolTip(entry))||string.IsNullOrWhiteSpace(entry.AccessibleDescription))errors.Add("入口缺少悬浮注释："+text);else tooltipChecks++;}
-            if(!navigationButtons.ContainsKey("connections")||navigationButtons["connections"].Text!="连接设备")errors.Add("重要的连接设备入口未固定在主导航");
-            if(Convert.ToString(serviceToggle.Tag)!="primary"||Convert.ToString(generate.Tag)!="primary"||Convert.ToString(saveVoiceButton.Tag)!="primary")errors.Add("首页主要操作没有视觉强调");
-            ShowPage("profiles");var switchMode=FindButton(pages["profiles"],"选择输出方式");if(switchMode==null)errors.Add("RVC 页面缺少输出方式入口");else{switchMode.PerformClick();if(page!="outputMode"||outputModeStatus==null||!outputModeStatus.Text.Contains("本地 TTS")&&!outputModeStatus.Text.Contains("RVC＋本地 TTS"))errors.Add("输出方式入口未显示当前模式提示");}
-            if(FindButton(pages["profiles"],"启用 RVC")==null||rvcModeStatus==null||(!rvcModeStatus.Text.Contains("已启用")&&!rvcModeStatus.Text.Contains("备用状态")))errors.Add("RVC 应用入口或当前生效状态提示不完整");
-            if(!pages.ContainsKey("training")||FindButton(pages["training"],"选择训练模型")==null||!pages.ContainsKey("advancedTraining")||FindButton(pages["advancedTraining"],"打开完整手册")==null)errors.Add("CosyVoice 训练入口不完整");
-            if(!pages.ContainsKey("connections")||FindButton(pages["connections"],"Harness")==null||FindButton(pages["connections"],"AIRI 桌宠")==null)errors.Add("连接中心入口不完整");
-            if(FindButton(pages["harness"],"选择目录并自动接入")==null)errors.Add("Harness 缺少统一的目录自动识别入口");
-            if(FindButton(pages["harness"],"全自动接入")!=null)errors.Add("Harness 仍保留要求用户预先判断类型的旧入口");
-            if(FindButton(pages["airi"],"选择目录并接入验证")==null)errors.Add("AIRI 缺少选目录后自动接入验证入口");
-            if(!pages.ContainsKey("cosyReference")||FindButton(pages["cosyReference"],"使用参考声音")==null)errors.Add("参考声音入口不完整");
-            if(FindButton(pages["home"],"使用当前声音")==null)errors.Add("首页当前声音应用入口命名不正确");
-            if(FindButton(pages["home"],"保存声音配置")!=null||FindButton(pages["home"],"模型导入导出")!=null)errors.Add("本地 TTS 仍保留重复的声音保存或模型传输入口");
-            if(FindButton(pages["home"],"选择音色包")==null)errors.Add("首页缺少音色包库选择入口");
-            if(FindButton(pages["configuration"],"导出轻量包")==null||FindButton(pages["configuration"],"导出参考完整包")==null||FindButton(pages["configuration"],"导出高级训练包")==null||FindButton(pages["configuration"],"导出高级完整包")==null||FindButton(pages["configuration"],"导入音色包")==null)errors.Add("四种音色包的导入导出入口不完整");
-            string repeatedPackage=Path.Combine(directory,"小挽昼-轻量.cosyvoice.ttsmodel.cosyvoice.ttsmodel");
-            if(PackageDisplayName("小挽昼-轻量.cosyvoice.ttsmodel.cosyvoice.ttsmodel")!="小挽昼"||NormalizePackagePath(repeatedPackage)!=Path.Combine(Path.GetFullPath(directory),"小挽昼-轻量.cosyvoice.ttsmodel"))errors.Add("音色包导出文件名未去除重复类型或后缀");
-            if(FindButton(pages["engine"],"打开引擎目录")==null)errors.Add("本地 TTS 引擎专用目录入口缺失");
-            ShowPage("home");string oldEngine=Convert.ToString(engineChoice.SelectedItem),oldPiper=piperModelPath.Text,oldCosy=baseModelPath.Text;
-            engineChoice.SelectedItem="piper";piperModelPath.Text="tts-engines/piper/models/test.onnx";baseModelPath.Text="cosyvoice-preserved";
-            if(!piperOnlyControls.All(c=>c.Visible)||cosyOnlyControls.Any(c=>c.Visible)||ReadVoice().piperModel!=piperModelPath.Text||!engineDetails.Text.Contains("不读取 CosyVoice")||exportConfigurationButton.Enabled||!importConfigurationButton.Enabled)errors.Add("Piper 首页未隔离模型、参考条件或 CosyVoice 导出入口");
-            var piperSaved=MergeLocal(new VoiceConfig(),ReadVoice());engineChoice.SelectedItem="cosyvoice";
-            if(piperOnlyControls.Any(c=>c.Visible)||!cosyOnlyControls.All(c=>c.Visible)||baseModelPath.Text!="cosyvoice-preserved"||MergeLocal(new VoiceConfig(),piperSaved).piperModel!=piperSaved.piperModel)errors.Add("跨引擎切换丢失模型路径或没有切换专用控件");
-            engineChoice.SelectedItem=oldEngine;piperModelPath.Text=oldPiper;baseModelPath.Text=oldCosy;
-            if(!fields.ContainsKey("pythonPiper")||!fields.ContainsKey("piperModel")||FindButton(pages["home"],"选择 Piper 模型")==null)errors.Add("Piper 独立环境和模型选择入口缺失");
-            if(FindButton(pages["profiles"],"刷新目录")!=null||FindButton(pages["profiles"],"保存组合声音")!=null)errors.Add("RVC 页面仍保留重复模型列表或组合保存入口");
-            if(FindButton(pages["voices"],"打开方案目录")==null)errors.Add("声音方案储存位置入口缺失");
-            if(!fields.ContainsKey("loadingAnimation")||FindButton(pages["appearance"],"使用默认动画")==null)errors.Add("自定义等待动画入口缺失");
-            StatusError("连接失败阶段自检");if(!footer.Text.StartsWith("操作失败：")||footer.BackColor.R<220||footer.Height<50)errors.Add("底部失败提示不够醒目或无法容纳完整信息");Status("界面状态提示自检通过。");
-            ShowBusy("正在执行界面动画自检……");Application.DoEvents();if(busyOverlay==null||busyOverlay.Dock!=DockStyle.Fill||busyOverlay.Width<shell.ClientSize.Width-2)errors.Add("等待动画没有覆盖完整程序页面");if(busyOverlay!=null)using(var bitmap=new Bitmap(busyOverlay.Width,busyOverlay.Height)){busyOverlay.DrawToBitmap(bitmap,new Rectangle(Point.Empty,bitmap.Size));bitmap.Save(Path.Combine(directory,"loading-animation.png"));}HideBusy();
-            ShowCelebration("界面自检");Application.DoEvents();var celebration=shell.Controls.Cast<Control>().OfType<Celebration>().FirstOrDefault();if(celebration==null||celebration.Dock!=DockStyle.Fill||celebration.Width<shell.ClientSize.Width-2||celebration.Height<shell.ClientSize.Height-2)errors.Add("接入成功礼花没有覆盖完整页面");if(celebration!=null)celebration.Dispose();
-            ShowPage("home");
-            body.Text="页面切换不应丢失这份草稿";processingChoice.SelectedIndex=0;pitch.Value=3;formant.Value=.65M;
-            bool wasDeepSeek=Config.harness["deepseek"];Config.harness["deepseek"]=true;
-            foreach(string state in new[]{"verified","connected","recent_event","waiting"}){
-                UpdateHarnessIndicators(new Dictionary<string,object>{{"deepseek",new Dictionary<string,object>{{"state",state}}}},true);
-                bool shouldGreen=state=="verified";
-                if(harnessIndicators["deepseek"].Any(label=>(label.ForeColor!=ForeColor)!=shouldGreen))errors.Add("Harness 状态颜色未匹配实际连接证据");
-            }
-            Config.harness["deepseek"]=false;UpdateHarnessIndicators(new Dictionary<string,object>{{"deepseek",new Dictionary<string,object>{{"state","connected"}}}},true);
-            if(harnessIndicators["deepseek"].Any(label=>!label.Text.EndsWith("未启用")||label.ForeColor!=ForeColor))errors.Add("未启用 Harness 被误报为在线");
-            Config.harness["deepseek"]=wasDeepSeek;UpdateHarnessIndicators(null,false);
-            ShowPage("settings");ShowPage("airi");backButton.PerformClick();
-            if(page!="settings"||!backButton.Visible)errors.Add("设置子页面未返回上一页");
-            backButton.PerformClick();if(page!="home"||backButton.Visible)errors.Add("设置未返回首页或首页仍显示返回按钮");
-            ShowPage("profiles");backButton.PerformClick();if(page!="home")errors.Add("模型配置未返回首页");
-            ShowPage("profiles");ShowPage("settings");backButton.PerformClick();if(page!="profiles")errors.Add("跨入口导航历史未正确返回");
-            ShowPage("home");ShowPage("settings");backButton.PerformClick();if(page!="home"||pageHistory.Count!=0)errors.Add("首页未重置旧导航历史");
-            synthesisChoice.SelectedIndex=0;checks["advancedEnabled"].Checked=false;baseModelPath.Text="engines/test-base";var mode=ReadVoice();if(mode.synthesisMode!="base"||mode.advancedEnabled||mode.baseModel!="engines/test-base"||pitch.Enabled||formant.Enabled||numbers["indexRate"].Enabled)errors.Add("输出模式或高级旁路控件未正确绑定");synthesisChoice.SelectedIndex=1;checks["advancedEnabled"].Checked=true;baseModelPath.Text="";
-            connection.Text="服务：已开启\r\n输出：本地播放\r\n声音：私有";
-            foreach(var size in new[]{new Size(900,620),new Size(1080,750)}){ClientSize=size;foreach(string id in pages.Keys){ShowPage(id);Application.DoEvents();CheckFlowLayout(pages[id],errors);}var measured=TextRenderer.MeasureText(connection.Text,connection.Font,new Size(connection.ClientSize.Width,0),TextFormatFlags.WordBreak|TextFormatFlags.NoPadding);if(measured.Height>connection.ClientSize.Height)errors.Add("当前状态文字超出容器高度："+size);}ClientSize=new Size(1080,750);
-            foreach(string id in pages.Keys){ShowPage(id);Application.DoEvents();using(var bitmap=new Bitmap(Width,Height)){DrawToBitmap(bitmap,new Rectangle(0,0,Width,Height));bitmap.Save(Path.Combine(directory,id+".png"));}}
-            for(int i=0;i<120;i++){ShowPage(pages.Keys.ElementAt(i%pages.Count));Application.DoEvents();}
-            if(CountControls(this)!=before)errors.Add("页面切换改变了控件数量");
-            if(body.Text!="页面切换不应丢失这份草稿"||pitch.Value!=3||formant.Value!=.65M)errors.Add("页面切换丢失草稿或参数");
-            var clone=ReadVoice().Clone();if(clone.pitch!=3||clone.formant!=.65||clone.referenceText!=fields["referenceText"].Text)errors.Add("声音快照不完整");
-            var current=Json.Copy(Config);current.profiles.Add(new SavedVoice{name="自检",voice=clone});string temp=Path.Combine(directory,"config-test");var fixture=new SettingsStore(temp);fixture.Write(current);var read=fixture.Read();if(Json.Encode(read)!=Json.Encode(current))errors.Add("配置重开不一致");
-            var record=read.profiles.Last();read.profiles.Remove(record);fixture.Write(read);if(fixture.Read().profiles.Any(p=>p.id==record.id))errors.Add("删除未持久化");read.profiles.Add(record);fixture.Write(read);if(fixture.Read().profiles.Last().voice.formant!=.65)errors.Add("撤销未恢复参数");
-            foreach(var container in pages.Values)foreach(Control stack in container.Controls)foreach(Control card in stack.Controls)if(card is ScenePanel && card.Width<300)errors.Add("卡片宽度异常");
-            ShowPage("home");if(pageTitle.Text!="首页"||navigationButtons["home"].BackColor!=Accent)errors.Add("页面标题或主导航选中状态不正确");return new{ok=errors.Count==0,pages=pages.Count,switches=120,controls=before,backNavigationChecks=5,harnessStateChecks=4,tooltipChecks=tooltipChecks,newFeatureChecks=16,buttonEdgeChecks=buttonEdgeChecks,errors=errors};
-        }
         static int CountControls(Control control){return 1+control.Controls.Cast<Control>().Sum(c=>CountControls(c));}
-        static void CheckFlowLayout(Control root,List<string> errors){
-            var flow=root as FlowLayoutPanel;
-            if(flow!=null){var children=flow.Controls.Cast<Control>().Where(c=>c.Visible).ToArray();for(int i=0;i<children.Length;i++)for(int j=i+1;j<children.Length;j++)if(children[i].Bounds.IntersectsWith(children[j].Bounds))errors.Add("控件重叠："+children[i].Text+" / "+children[j].Text);}
-            foreach(Control child in root.Controls)CheckFlowLayout(child,errors);
+        static Button FindButton(Control root,string text){foreach(Control c in root.Controls){var b=c as Button;if(b!=null&&b.Text==text)return b;var found=FindButton(c,text);if(found!=null)return found;}return null;}
+        public object Verify(string directory){
+            Directory.CreateDirectory(directory);var errors=new List<string>();int before=CountControls(this);string draft=body.Text;var original=ReadVoice();
+            string[] expected=EngineChoices;if(!engineChoice.Items.Cast<string>().SequenceEqual(expected))errors.Add("TTS engine choices incorrect");
+            foreach(string engine in expected){ShowPage("home");engineChoice.SelectedItem=engine;Application.DoEvents();if(cosyOnlyControls.Any(c=>c.Visible!=(SelectedEngine()=="cosyvoice"))||gptOnlyControls.Any(c=>c.Visible!=(SelectedEngine()=="gpt-sovits")))errors.Add("Engine controls overlap: "+engine);if(!new[]{"v5turbo","proplus"}.Contains(ReadVoice().gptVariant))errors.Add("CosyVoice selection corrupts the GPT variant field");}
+            for(int n=0;n<30;n++){engineChoice.SelectedIndex=n%expected.Length;var selected=ReadVoice();if(!new[]{"v5turbo","proplus"}.Contains(selected.gptVariant))errors.Add("Repeated engine switch corrupts saved settings");}
+            ShowPage("training");var trainingSelect=Controls.Find("trainingEngineChoice",true).FirstOrDefault() as ComboBox;
+            if(trainingSelect==null||trainingSelect.Items.Count!=3)errors.Add("Training engine selector missing");
+            else{for(int n=0;n<3;n++){trainingSelect.SelectedIndex=n;Application.DoEvents();var cosyGuide=Controls.Find("cosyTrainingGuide",true).First();var gptGuide=Controls.Find("gptTrainingGuide",true).First();if(cosyGuide.Visible!=(n==0)||gptGuide.Visible!=(n>0))errors.Add("Wrong training guidance displayed");}}
+            engineChoice.SelectedIndex=1;var snapshot=ReadVoice();if(snapshot.gptVariant!="v5turbo"||snapshot.engine!="gpt-sovits")errors.Add("TTS variant binding incorrect");
+            var fixture=new SettingsStore(Path.Combine(directory,"settings-fixture"));var cfg=Json.Copy(Config);cfg.voice=snapshot;cfg.profiles.Add(new SavedVoice{name="TTS check",voice=snapshot.Clone()});fixture.Write(cfg);if(Json.Encode(fixture.Read())!=Json.Encode(cfg))errors.Add("TTS settings roundtrip mismatch");
+            body.Text="草稿保持不变";var ids=pages.Keys.ToArray();for(int i=0;i<120;i++){ShowPage(ids[i%ids.Length]);Application.DoEvents();}if(CountControls(this)!=before||body.Text!="草稿保持不变")errors.Add("Page switching lost controls or draft");
+            if(pages.ContainsKey("profiles")||pages.ContainsKey("outputMode"))errors.Add("Removed processing page still exists");
+            int stopClicks=0;ShowBusy("长文生成验收");busyOverlay.SetStopAction(()=>stopClicks++);busyOverlay.SetStopAction(()=>stopClicks++);
+            var overlayStops=busyOverlay.Controls.OfType<System.Windows.Forms.Button>().ToArray();
+            if(overlayStops.Length!=1)errors.Add("Busy overlay must expose exactly one stop action");else overlayStops[0].PerformClick();
+            if(stopClicks!=1)errors.Add("Busy overlay stop action did not execute");
+            PerformLayout();Application.DoEvents();
+            using(var bitmap=new Bitmap(busyOverlay.Width,busyOverlay.Height)){busyOverlay.DrawToBitmap(bitmap,new Rectangle(0,0,bitmap.Width,bitmap.Height));bitmap.Save(Path.Combine(directory,"busy-stop.png"));}HideBusy();
+            if(CountControls(this)!=before)errors.Add("Busy overlay leaked controls");
+            foreach(string label in new[]{"RVC 变声","启用 RVC","选择输出方式","选择 Piper 模型"})if(FindButton(this,label)!=null)errors.Add("Removed button remains: "+label);
+            SelectEngineVoice(original);body.Text=draft;ShowPage("home");Application.DoEvents();
+            foreach(string id in new[]{"home","voices","engine","advanced","connections","environmentRepair"}){ShowPage(id);Application.DoEvents();using(var bitmap=new Bitmap(Width,Height)){DrawToBitmap(bitmap,new Rectangle(0,0,Width,Height));bitmap.Save(Path.Combine(directory,id+".png"));}}
+            ShowPage("home");return new{ok=errors.Count==0,pages=pages.Count,switches=120,engines=expected,errors=errors};
         }
+        public async Task<object> VerifyFlow(string directory){Directory.CreateDirectory(directory);var original=Json.Copy(Config);bool running=await Service.Running();Exception failure=null;try{await Service.Start();var result=await Service.Request("/speak",new{text="工作好久啦，起来动一动、喝口水吧。",play=false,source="ui-test"});await WaitJob(Json.Text(result,"jobId"));await Service.Request("/stop",new{});}catch(Exception error){failure=error;}if(await Service.Running())await Service.Stop();Store.Write(original);Config=original;BindVoice();if(running)await Service.Start();if(failure!=null)throw failure;return new{ok=true,ttsGeneration=true,stop=true};}
+        public async Task<object> VerifyBundle(string file,string directory){Directory.CreateDirectory(directory);var original=Json.Copy(Config);bool running=await Service.Running();if(running)await Service.Stop();try{if(!File.Exists(file))await ExportConfiguration(file,"lightweight");await ImportConfiguration(file);if(Config.voice.engine!=original.voice.engine||(Config.voice.engine=="gpt-sovits"&&Config.voice.gptVariant!=original.voice.gptVariant)||Json.Encode(Config.harness)!=Json.Encode(original.harness)||Config.token!=original.token)throw new InvalidOperationException("音色包改变了连接设置");return new{ok=true,engine=Config.voice.engine,variant=Config.voice.gptVariant,voiceImportExport=true};}finally{Store.Write(original);Config=original;BindVoice();}}
     }
     static class UiChecks {
+        public static int Environment(SettingsStore store,string[] args){
+            string directory=args.Length>1?args[1]:Path.Combine(store.Root,"acceptance","environment");Directory.CreateDirectory(directory);
+            try{
+                if(File.Exists(store.Resolve(store.Read().engines.pythonService)))throw new InvalidOperationException("此验收仅用于空白安装目录，避免修改现有环境。");
+                EnvironmentBootstrap.EnsureCore(store,value=>{}).GetAwaiter().GetResult();
+                var client=new ServiceClient(store);string text=client.RunTool("environment_repair.py","repair --root "+ServiceClient.Quote(store.Root)+" --engine core").GetAwaiter().GetResult();
+                var result=Json.Object(text);File.WriteAllText(Path.Combine(directory,"environment-results.json"),Json.Encode(result));return Convert.ToBoolean(result["ok"])?0:1;
+            }catch(Exception error){File.WriteAllText(Path.Combine(directory,"environment-error.txt"),error.ToString());return 1;}
+        }
         public static int Bundle(SettingsStore store,string[] args){
             if(args.Length<3)return 2;string file=args[1],directory=args[2];int exit=1;
             using(var form=new MainForm(store,true)){

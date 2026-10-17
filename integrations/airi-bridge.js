@@ -1,4 +1,4 @@
-// Installed only in a separate AIRI companion copy. The original is untouched.
+// Installed in the selected AIRI; prepare_airi keeps a recoverable original archive.
 export function installAgentVoiceBridge(host) {
   if (globalThis.__agentVoiceBridge) return;
   const state = { generation: null, current: null, stopped: false, received: 0, completed: 0, failed: 0, maxMouth: 0 };

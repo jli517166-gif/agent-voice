@@ -40,10 +40,11 @@ function find(node,label){
 }
 const quiet=find(tree,'停止朗读');assert.ok(quiet,'composer menu contains stop-speech button');await quiet.props.onClick();
 assert.equal(submitted,0,'controls must not write or submit a chat draft');
-assert.equal(calls[0].agentId,'test-session');assert.equal(JSON.parse(calls[0].line.slice('/agent-voice ui '.length)).tool,'stop_speech');assert.equal(calls[0].attachments.length,0);
+assert.equal(calls.length,0,'control actions must not add command turns to chat');
+assert.equal(snapshots[0].endpoint,'agent-voice-control');assert.equal(snapshots[0].payload.tool,'stop_speech');
 assert.equal((await wrapper.props.request('voice_playback_status',{})).playback.state,'playing');
-assert.equal(calls.length,1,'status polling must not execute or log chat commands');
-assert.equal(snapshots[0].channel,'/api');assert.equal(snapshots[0].endpoint,'agent-voice-playback');
+assert.equal(calls.length,0,'status polling must not execute or log chat commands');
+assert.equal(snapshots[1].channel,'/api');assert.equal(snapshots[1].endpoint,'agent-voice-playback');
 assert.match(style.textContent,/@keyframes avc-wave/);
 assert.match(style.textContent,/prefers-reduced-motion:reduce/);
 assert.equal(exported.playbackPhase({running:true,busy:true,playback:{state:'generating'}}),'generating');

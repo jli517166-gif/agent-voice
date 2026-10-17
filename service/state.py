@@ -10,24 +10,32 @@ import uuid
 SOURCES = ("codex", "deepseek")
 
 def defaults():
-    return {"version":1, "port":8820, "token":uuid.uuid4().hex,
-        "voice":{"model":"", "index":"", "pitch":0, "formant":0,
-                 "indexRate":0, "rmsMix":1, "f0Method":"rmvpe", "engine":"cosyvoice",
-                 "speed":1, "style":"chat", "reference":"", "referenceText":"",
-                 "instruction":"", "leadingSilence":0.35, "volume":1,
-                 "processing":"standard", "protect":0.33, "assetScope":"public",
-                 "synthesisMode":"base", "baseModel":"", "piperModel":"", "advancedEnabled":False},
-        "engines":{"pythonRvc":"tts-engines/cosyvoice/runtime/tools/python.exe", "rvcHome":"engines/rvc",
-                   "pythonTts":"tts-engines/cosyvoice/runtime/tools/python.exe", "cosyRepo":"tts-engines/cosyvoice/source",
-                   "cosyModel":"tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B",
-                   "pythonPiper":"tts-engines/piper/runtime/Scripts/python.exe",
-                   "piperModel":"tts-engines/piper/models/zh_CN-huayan-medium.onnx"},
-        "appearance":{"accent":"#19C7F2", "backgroundColor":"#05101D", "textColor":"#EAF6FF",
-                      "background":"", "icon":"", "loadingAnimation":""},
-        "cleanup":{"maxAgeMinutes":30, "keepLatest":3, "maxTotalMb":200, "intervalSeconds":900},
-        "harness":{source:source == "codex" for source in SOURCES},
-        "airi":{"enabled":False, "directory":"", "output":"local"},
-        "modelRoots":["models"], "phrases":["工作好久啦，起来动一动、喝口水吧～"], "profiles":[]}
+    return {"version":4,"port":8820,"token":uuid.uuid4().hex,
+        "voice":{"engine":"cosyvoice","baseModel":"","gptModel":"","gptVariant":"v5turbo",
+                 "speed":1,"style":"chat","reference":"","referenceText":"","instruction":"","leadingSilence":.35,"volume":1,"assetScope":"public","advancedEnabled":False},
+        "engines":{"pythonService":"runtime/core/python.exe","pythonTts":"tts-engines/cosyvoice/runtime/tools/python.exe","cosyRepo":"tts-engines/cosyvoice/source","cosyModel":"tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B",
+                   "pythonGpt":"tts-engines/gpt-sovits/runtime/Scripts/python.exe","gptRepo":"tts-engines/gpt-sovits/source","gptModel":"tts-engines/gpt-sovits/models/GPT-SoVITS",
+                   "ffmpeg":"tools/ffmpeg.exe"},
+        "appearance":{"accent":"#19C7F2","backgroundColor":"#05101D","textColor":"#EAF6FF","background":"","icon":"","loadingAnimation":""},
+        "cleanup":{"maxAgeMinutes":30,"keepLatest":3,"maxTotalMb":200,"intervalSeconds":900},
+        "harness":{source:source=="codex" for source in SOURCES},"airi":{"enabled":False,"directory":"","output":"local"},
+        "phrases":["工作好久啦，起来动一动、喝口水吧～"],"profiles":[]}
+
+def migrate_settings(saved):
+    """One-way legacy migration; no removed processing path can be re-enabled."""
+    value=copy.deepcopy(saved)
+    if value.get('version',1) not in (1,2,3,4):return value
+    value['version']=4;value.pop('modelRoots',None)
+    if isinstance(value.get('profiles'),list):value['profiles']=[p for p in value['profiles'] if not isinstance(p,dict) or not isinstance(p.get('voice'),dict) or p['voice'].get('engine','cosyvoice') in ('cosyvoice','gpt-sovits')]
+    obsolete={'model','index','pitch','formant','indexRate','rmsMix','f0Method','protect','processing','synthesisMode','piperModel','mossModel','mossVoice','mossReference','f5Model','f5Steps'}
+    for voice in [value.get('voice',{})]+[p.get('voice',{}) for p in value.get('profiles',[]) if isinstance(p,dict)]:
+        if voice.get('engine','cosyvoice') not in ('cosyvoice','gpt-sovits'):voice['engine']='cosyvoice'
+        for key in obsolete:voice.pop(key,None)
+    paths=value.get('engines',{})
+    if 'pythonService' not in paths and paths.get('pythonRvc'):paths['pythonService']=paths['pythonRvc']
+    if paths.get('pythonService','').replace('\\','/').endswith('tts-engines/cosyvoice/runtime/tools/python.exe'):paths['pythonService']='runtime/core/python.exe'
+    for key in ('pythonRvc','rvcHome','pythonPiper','piperModel','pythonMoss','mossRepo','mossModel','pythonF5','f5Model','f5Vocoder'):paths.pop(key,None)
+    return value
 
 def merge(base, incoming):
     result = copy.deepcopy(base)
@@ -47,25 +55,17 @@ def number(value, low, high, name):
         raise ValueError(name + "超出范围")
 
 def validate_voice(voice):
-    for key in ("model", "index", "engine", "reference", "referenceText", "instruction", "style", "f0Method", "processing", "assetScope", "synthesisMode", "baseModel", "piperModel"):
-        if not isinstance(voice[key], str) or len(voice[key]) > 8000:
-            raise ValueError("声音配置字段错误：" + key)
-    for key, low, high in (("pitch",-16,16),("formant",-2,2),("indexRate",0,1),
-                         ("rmsMix",0,1),("speed",.7,1.3),("volume",0,1.5),("leadingSilence",.2,1),("protect",0,.5)):
-        number(voice[key],low,high,key)
-    if voice["f0Method"] not in ("rmvpe", "harvest", "crepe", "pm"):
-        raise ValueError("不支持的基频算法")
-    if voice["engine"] not in ("cosyvoice", "sapi", "piper"):
-        raise ValueError("该本地 TTS 引擎尚未适配")
-    if voice["synthesisMode"] not in ("rvc", "base") or not isinstance(voice["advancedEnabled"],bool):
-        raise ValueError("音频输出模式或高级声音开关无效")
-    if voice["processing"] not in ("standard", "accepted") or voice["assetScope"] not in ("public", "private"):
-        raise ValueError("声音处理模式或资产范围无效")
-    if voice["processing"] == "accepted" and voice["formant"] != 0:
-        raise ValueError("认可版兼容链保持原算法；调整声线粗细请先切换标准 RVC 模式")
+    from engine_registry import ENGINE_IDS,spec
+    if set(voice)!=set(defaults()['voice']):raise ValueError('声音配置包含缺失或已移除的字段')
+    for key in ('engine','baseModel','gptModel','gptVariant','style','reference','referenceText','instruction','assetScope'):
+        if not isinstance(voice[key],str) or len(voice[key])>8000:raise ValueError('声音配置字段错误：'+key)
+    for key,low,high in (('speed',.7,1.3),('volume',0,1.5),('leadingSilence',.2,1)):number(voice[key],low,high,key)
+    if voice['engine'] not in ENGINE_IDS:raise ValueError('只支持 CosyVoice、GPT-SoVITS v5 Turbo 和 ProPlus')
+    if voice['gptVariant'] not in [v['id'] for v in spec('gpt-sovits')['variants']]:raise ValueError('GPT-SoVITS 版本无效')
+    if not isinstance(voice['advancedEnabled'],bool) or voice['assetScope'] not in ('public','private'):raise ValueError('高级声音开关或资产范围无效')
 
 def validate(data):
-    if data["version"] != 1:
+    if data["version"] != 4:
         raise ValueError("配置版本不兼容")
     number(data["port"],1024,65534,"端口")
     if not isinstance(data["token"], str) or len(data["token"]) < 24:
@@ -91,8 +91,6 @@ def validate(data):
         raise ValueError("桌宠配置无效")
     if not isinstance(data["phrases"],list) or len(data["phrases"])>200 or any(not isinstance(p,str) or len(p)>4000 for p in data["phrases"]):
         raise ValueError("常用句配置无效")
-    if not isinstance(data["modelRoots"],list) or len(data["modelRoots"])>100 or any(not isinstance(p,str) for p in data["modelRoots"]):
-        raise ValueError("模型目录配置无效")
     if not isinstance(data["profiles"],list) or len(data["profiles"])>200:
         raise ValueError("模型配置列表无效")
     seen = set()
@@ -104,8 +102,6 @@ def validate(data):
         seen.add(profile["id"])
         original=profile['voice']
         profile['voice']=merge(defaults()["voice"],original)
-        if 'synthesisMode' not in original:profile['voice']['synthesisMode']='rvc'
-        if 'advancedEnabled' not in original:profile['voice']['advancedEnabled']=True
         validate_voice(profile['voice'])
     return data
 
@@ -135,7 +131,12 @@ class Store:
             # unverified Harness adapters.  Drop those switches during load.
             if isinstance(saved.get("harness"),dict):
                 saved["harness"]={key:value for key,value in saved["harness"].items() if key in SOURCES}
-            self.data = validate(merge(defaults(),saved))
+            migrated=migrate_settings(saved)
+            self.data=validate(merge(defaults(),migrated))
+            if migrated!=saved:
+                backup=self.root/'data/migrations/settings-before-stability.json'
+                if not backup.exists():atomic_json(backup,saved)
+                atomic_json(self.path,self.data)
         else:
             self.data = defaults()
             atomic_json(self.path,self.data)
@@ -164,28 +165,19 @@ class Store:
             return self.get()
 
     def missing(self,voice=None):
-        data=self.get(); voice=voice or data["voice"]; missing=[]
-        if voice.get("synthesisMode","rvc")=="rvc" and (not voice["model"] or not self.resolve(voice["model"]).is_file()):
-            missing.append("RVC 模型 .pth")
-        if voice.get("synthesisMode","rvc")=="rvc" and voice["index"] and not self.resolve(voice["index"]).is_file():
-            missing.append("RVC 索引 .index")
-        for key in (("pythonRvc","rvcHome") if voice.get("synthesisMode","rvc")=="rvc" else ("pythonRvc",)):
-            if not data["engines"][key] or not self.resolve(data["engines"][key]).exists():
-                missing.append(key)
-        if voice["engine"] == "cosyvoice":
-            for key in ("pythonTts","cosyRepo"):
-                if not data["engines"][key] or not self.resolve(data["engines"][key]).exists():
-                    missing.append(key)
-            model=voice.get("baseModel") or data["engines"]["cosyModel"]
-            if not model or not self.resolve(model).is_dir():missing.append("CosyVoice 本地模型目录")
-            if not voice["reference"] or not self.resolve(voice["reference"]).is_file():
-                missing.append("公共参考录音")
-            if not voice["referenceText"].strip():
-                missing.append("参考录音对应台词")
-        if voice["engine"] == "piper":
-            if not data['engines']['pythonPiper'] or not self.resolve(data['engines']['pythonPiper']).is_file():
-                missing.append('Piper Python 运行时')
-            model=voice.get('piperModel') or data['engines']['piperModel']
-            if not model or not self.resolve(model).is_file():missing.append('Piper ONNX 模型')
-            elif not Path(str(self.resolve(model))+'.json').is_file():missing.append('Piper 同名 ONNX JSON 配置')
+        data=self.get();voice=voice or data['voice'];missing=[]
+        if not data['engines']['pythonService'] or not self.resolve(data['engines']['pythonService']).is_file():missing.append('主服务 Python 运行时')
+        if voice['engine']=='cosyvoice':
+            for key in ('pythonTts','cosyRepo'):
+                if not data['engines'][key] or not self.resolve(data['engines'][key]).exists():missing.append(key)
+            model=voice.get('baseModel') or data['engines']['cosyModel']
+            if not model or not self.resolve(model).is_dir():missing.append('CosyVoice 本地模型目录')
+        else:
+            from local_tts import worker_config,required_files
+            cfg=worker_config(self,voice)
+            if not Path(cfg['python']).is_file():missing.append(voice['engine']+' Python 运行时')
+            for file in required_files(cfg):
+                if not file.is_file():missing.append(str(file))
+        if not voice['reference'] or not self.resolve(voice['reference']).is_file():missing.append('参考录音')
+        if not voice['referenceText'].strip():missing.append('参考录音对应台词')
         return missing

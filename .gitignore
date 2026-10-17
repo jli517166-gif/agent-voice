@@ -17,6 +17,9 @@ voice-model-packages/
 *.onnx
 *.safetensors
 *.cosyvoice.ttsmodel
+*.gpt-sovits.ttsmodel
+*.ckpt
+*.avconfig
 *.wav
 *.flac
 *.mp3

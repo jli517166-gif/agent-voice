@@ -3,6 +3,7 @@ import { writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 export const name = 'agent-voice-public';
 export const inject = [];
+const controlTools=new Set(['voice_service_status','start_voice_service','stop_voice_service','stop_speech','list_voice_profiles','apply_voice_profile','set_auto_reading']);
 
 function commandHelp() {
   return ['🎙 Agent Voice 控制台', 'status  状态', 'start  开启服务', 'stop  关闭服务',
@@ -12,8 +13,7 @@ export async function runVoiceCommand(rawInput = '') {
   if(rawInput.trim().startsWith('ui ')){
     try{
       const payload=JSON.parse(rawInput.trim().slice(3));
-      const allowed=new Set(['voice_service_status','start_voice_service','stop_voice_service','stop_speech','list_voice_profiles','apply_voice_profile','set_auto_reading']);
-      if(!allowed.has(payload.tool))throw new Error('未知语音控制操作');
+      if(!controlTools.has(payload.tool))throw new Error('未知语音控制操作');
       return {kind:'success',text:JSON.stringify(await mcpControl('deepseek',payload.tool,payload.args??{}))};
     }catch(error){return {kind:'error',text:error.message};}
   }
@@ -77,6 +77,18 @@ export function apply(ctx) {
       if(body.type!=='client-request'||body.method!=='agent-voice-playback'||typeof body.rpcId!=='string')return new Response('invalid playback request',{status:400});
       let result;
       try{result={ok:true,value:await playbackStatus()};}
+      catch(error){result={ok:false,error:{code:'INTERNAL_ERROR',message:error.message}};}
+      return Response.json({type:'server-response',rpcId:body.rpcId,result});
+    }});
+    // Button actions use the native transport too. Executing a slash command
+    // logged raw JSON as a command turn in the user's conversation history.
+    scope.connection.fetch.register({path:'/api/agent-voice-control',methods:['POST'],requestBody:'buffered',fetch:async request=>{
+      const origin=request.headers.get('origin');
+      if(origin&&origin!=='dsh-app://app')return new Response('invalid control origin',{status:403});
+      const body=await request.json();
+      if(body.type!=='client-request'||body.method!=='agent-voice-control'||typeof body.rpcId!=='string'||!controlTools.has(body.payload?.tool))return new Response('invalid control request',{status:400});
+      let result;
+      try{result={ok:true,value:await mcpControl('deepseek',body.payload.tool,body.payload.args??{})};}
       catch(error){result={ok:false,error:{code:'INTERNAL_ERROR',message:error.message}};}
       return Response.json({type:'server-response',rpcId:body.rpcId,result});
     }});

@@ -1,18 +1,23 @@
 # Agent 语音
 
-面向 Windows 的本地语音服务与桌面控制程序。它以本地 TTS 为主要输出方式，可选 RVC 二次变声，并能接收 Codex、DeepSeek Harness 与 AIRI 的朗读请求。
+面向 Windows 的本地语音服务与桌面控制程序。它由本地 TTS 直接生成最终语音，并能接收 Codex、DeepSeek Harness 与 AIRI 的朗读请求。
 
 > [!IMPORTANT]
-> 本仓库**不包含 CosyVoice 源码、CosyVoice 预训练模型、Python 运行环境、任何音色包、参考录音或 RVC 模型**。这些文件体积大，并可能受各自许可证或个人声音资产限制。首次使用前请按照《[安装手册](安装手册.md)》自行下载 CosyVoice，并放到规定目录。
+> 本仓库**不包含本地 TTS 引擎源码、预训练权重、Python 运行环境、音色包和参考录音**。这些文件体积大，并可能受各自许可证或个人声音资产限制。首次使用可在设置中使用“补齐环境”下载，或按照《[安装手册](安装手册.md)》自行下载 CosyVoice 并放到规定目录。GitHub 不携带这些大文件。
+
+## 引擎选择
+
+CosyVoice 保留原有认可声音；新增 GPT 版本中推荐 v5 Turbo，ProPlus 用于按角色保存备选。F5、Chatterbox、VoxCPM、Qwen、MOSS 不再进入正式选择。当前本机集成版已经配置引擎；GitHub 源码仍不携带运行环境和权重。操作与兼容范围见《[TTS 使用手册](TTS使用手册.md)》。
 
 ## 主要功能
 
 - 本地 TTS 直接输出，默认使用 CosyVoice 3。
-- 可安装 Piper（`piper`）并选择 ONNX 模型进行直接输出或配合 RVC，模型位置与 CosyVoice 分开，语速及模型可保存到声音方案。也支持 Windows 系统 TTS（`sapi`）。目前适配 CosyVoice、Piper 和 SAPI，其他 TTS 需要开发适配，不能只选择安装目录。
-- 可选 RVC `.pth` 与 `.index`，支持音调、声线粗细和相关高级参数。
-- 导入、导出轻量、参考完整、高级训练和高级完整四种 `.cosyvoice.ttsmodel`。
+- 正式集成三种选择：CosyVoice、GPT-SoVITS v5 Turbo、GPT-SoVITS ProPlus。所有声音直接由所选 TTS 输出。
+- 首页切换引擎、模型和档位，设置共用参考录音与逐字台词；每套声音方案保存完整 TTS 参数。
+- GPT-SoVITS 使用独立常驻推理进程；跨引擎切换时释放上一引擎，避免同时占用显存。
+- CosyVoice 支持四种 `.cosyvoice.ttsmodel`；GPT 支持轻量／模型完整两种 `.gpt-sovits.ttsmodel`，自动恢复 v5 Turbo 或 ProPlus 版本。
 - 本地 TTS 引擎统一放在 `tts-engines`，按引擎 ID、模型类型、源码、Python 依赖和模型 SHA-256 指纹自动匹配。
-- 保存、应用和删除本地 TTS 或 RVC＋本地 TTS 声音配置。
+- 保存、应用和删除 TTS 声音方案。
 - 长回复按完整句号、问号、感叹号或自然换行分段，生成首句后立即播放，后续句子保持原顺序排队。
 - 正式支持经过真机端到端验证的 Codex 与 DeepSeek Harness；使用同一个入口选择目录，程序自动识别类型、安装连接器、检查 CLI、启动真实验证会话并确认播放结果。任一验证阶段失败时会停止并说明原因，修复后选择同一目录即可重试。
 - 为 Codex 与 DeepSeek Harness 提供聊天栏快捷控制：Codex 安装“语音控制”技能入口（聊天栏技能选择器或 `$agent-voice-control`）；DeepSeek 在聊天输入栏安装透明、无边框的“语音”按钮并保留 `/agent-voice` 命令。两者通过同一套本地 MCP 工具启停服务、停止朗读、查看状态、开关自动朗读以及列出和切换声音方案。
@@ -23,6 +28,7 @@
 
 其他 Harness 不作为未经验证的内置功能发布。开发者可以按《[Harness 二次开发指南](Harness二次开发指南.md)》新增回复适配器，并按《[MCP 控制插件开发说明](MCP控制插件开发说明.md)》复用或扩展 MCP 控制服务。
 - 自定义程序图标、桌面快捷方式、托盘图标、页面配色、整窗背景和等待动画；等待动画支持 PNG、JPG、BMP 与 GIF。
+- 设置 → 系统维护 → 补齐环境：检查缺失依赖、源码与基础模型，下载和安装均放在软件内。详见《[环境补齐说明](环境补齐说明.md)》。
 - 自动清理历史音频、日志与缓存。
 
 ## 系统要求
@@ -57,34 +63,36 @@ dist/
 ├─ service/                         # 本地语音服务
 ├─ integrations/                    # Harness 连接器及注入 AIRI 的桥接源码
 ├─ tools/                           # 配置、音色包与接入工具
+├─ runtime/core/python.exe           # 主服务和播放；不含 Torch
 ├─ tts-engines/                     # 所有本地 TTS 引擎的专用根目录
+│  ├─ gpt-sovits/                   # 两个 GPT 版本共用源码、运行环境和模型库
+│  │  └─ runtime/gpu-packages/       # GPT 自有 GPU 库，不可当缓存删除
 │  └─ cosyvoice/
 │     ├─ source/                    # 用户自行下载的 CosyVoice 源码
 │     ├─ runtime/tools/python.exe   # 用户自行创建的 CosyVoice Python 环境
 │     └─ models/
 │        └─ Fun-CosyVoice3-0.5B/    # 用户自行下载的预训练模型
-├─ engines/
-│  └─ rvc/                          # 可选 RVC 引擎，不随仓库提供
 ├─ voice-model-packages/             # 用户自己的 .cosyvoice.ttsmodel
-├─ models/                           # 用户自己的 RVC .pth/.index
 ├─ voices/                           # 用户自己的参考资源
 └─ data/                             # 首次运行后生成的设置、缓存与输出
 ```
 
-默认情况下，主服务、CosyVoice 和 RVC 共用 `tts-engines/cosyvoice/runtime/tools/python.exe`，避免重复安装大型 Python、PyTorch 与 CUDA 依赖。RVC 引擎代码放在 `engines/rvc`；`.pth` 与 `.index` 可以放在 `models`、`voices` 或用户选择的外部目录。
+主服务默认使用 `runtime/core/python.exe`，CosyVoice 推理使用 `tts-engines/cosyvoice/runtime/tools/python.exe`，GPT 使用 `tts-engines/gpt-sovits/runtime/Scripts/python.exe`。主服务不依赖任一 TTS 的 Torch 环境。详细准备方式见安装手册。
+
+旧配置首次加载会备份到 `data/migrations/settings-before-stability.json`，保留 CosyVoice 参数、参考录音、声音方案、外观和连接信息；移除变声参数，已淘汰引擎回到 CosyVoice。运行时不再加载变声模型。
 
 AIRI 不复制进程序目录。连接后，桥接直接安装到用户选择的单个 AIRI 目录，并在其 `resources` 下保留 `app.asar.agent-voice-backup` 单文件备份；`agent-voice-integration.json` 记录桥接版本和语音服务位置。AIRI 更新可能覆盖桥接，失效后重新执行连接验证即可自动检查和修复。
 
 ## 使用要点
 
 - 首页“应用当前设置的声音配置”会更新当前运行设置，不会训练模型。
-- “声音方案”保存参数和资产路径快照，不会重复复制几 GB 的模型。
+- “声音方案”保存参数，去重复制参考录音并记录模型校验信息，不重复复制大模型。原录音移动后仍可恢复；跨电脑请导出音色包。
 - “轻量包”只保存参考音频、逐字台词、声音参数以及引擎源码、运行依赖和基础模型指纹；目标电脑必须已经安装完全一致的环境与模型。
-- “参考完整包”会额外携带当前基础模型。“高级训练包”只携带训练后变化的权重，需要目标电脑已有完全相同的基础模型；“高级完整包”携带完整训练模型。四种包都不包含 CosyVoice 源码、Python 或 CUDA。
+- “模型完整包”会额外携带当前基础模型。“高级训练包”只携带训练后变化的权重，需要目标电脑已有完全相同的基础模型；“高级完整包”携带完整训练模型。四种包都不包含 CosyVoice 源码、Python 或 CUDA。
 - 高配置用户可按《[高级 CosyVoice 训练手册](高级CosyVoice训练手册.md)》训练专属权重、验收结果并选择合适的包类型。
-- “完整便携包”额外保存完整基础模型，适合离线换机；相同模型指纹下，两种包输出一致。
-- “音色包”不会写入 RVC、外观、Harness、AIRI、连接密钥或 Python 运行环境。
-- 高级声音与说话风格默认关闭。关闭后仍保留本地 TTS 模型、参考条件、语速，以及 RVC 音调与声线粗细。
+- 音色“模型完整包”包含模型；整套“程序便携包”还需要运行环境。音色包本身不能替代程序和引擎安装。
+- “音色包”不会写入外观、Harness、AIRI、连接密钥或 Python 运行环境。
+- 高级声音与说话风格默认关闭。关闭后仍保留本地 TTS 模型、参考条件、语速，以及 GPT 版本。
 - `local` 表示当前 Windows 电脑的默认扬声器或耳机；选择 AIRI 输出才会把播放和嘴型交给桌宠。
 
 ## 开发与检查
@@ -104,3 +112,15 @@ node .\tests\test_mouth.mjs
 程序默认把设置、日志、缓存和生成音频写入本地 `data` 目录。本仓库通过 `.gitignore` 排除运行环境、模型权重、音色包、参考录音、生成数据、验收截图和本机专用脚本；提交前仍应检查即将上传的文件列表。
 
 CosyVoice 与预训练模型由其原作者发布，本项目不重新分发这些文件。使用、训练和发布声音模型前，请确认你拥有相应录音、模型与角色声音的使用权。
+
+稳定性、自检、恢复和声音方案固定参考规则见《[稳定性与故障排查](稳定性与故障排查.md)》；扩展引擎见《[TTS 适配开发说明](TTS适配开发说明.md)》。
+
+训练新音色从《[音色训练从零开始](音色训练从零开始.md)》开始：程序能检查 CSV/WAV、划分数据集并生成清单，权重训练使用单独的 Linux/WSL 环境；将操作交给 AI 时附上《[AI 训练操作约定](AI训练操作约定.md)》。
+
+本轮真实连接、音色包往返、长文、时延与压力测试的结果及未覆盖范围见《[工程检查与实机验收](docs/工程验收-20261016.md)》。
+
+GPT 两个版本的数据准备、微调和权重接入限制见《[GPT-SoVITS 训练指南](GPT-SoVITS训练指南.md)》。英文词典等离线资源保存在 `tts-engines/gpt-sovits/nltk_data`，准备命令见安装手册。
+
+生成失败与切换问题的修复、三个引擎各 60 次真实生成和验收范围见《[生成可靠性验收](docs/生成可靠性验收-20261016.md)》。
+
+维护入口见《[维护与回归](CONTRIBUTING.md)》。Fairy 默认音色正在本机训练试听验收，尚未作为通过验收的发行资产；用户确认前不制作新便携包。

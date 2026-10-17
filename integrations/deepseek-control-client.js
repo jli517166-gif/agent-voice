@@ -49,7 +49,7 @@ window.__ModuleLoader__.load({
     }
 
     function playbackPhase(value){return value?.running?(['idle','queued','generating','playing'].includes(value.playback?.state)?value.playback.state:'unknown'):'offline';}
-    const phaseLabels={playing:'播放中',generating:'生成中',queued:'等待播放',idle:'待播放',offline:'服务未启动',unknown:'状态未确认',error:'连接中断'};
+    const phaseLabels={playing:'播放中',generating:'生成中',queued:'等待播放',idle:'空闲',offline:'服务未启动',unknown:'状态未确认',error:'连接中断'};
     function watchPlayback(request,onValue,onError,{visible=()=>document.visibilityState!=='hidden',schedule=setTimeout,cancel=clearTimeout}={}){
       let timer=null,disposed=false,inFlight=false,revision=0,recheck=false;
       function later(delay){if(!disposed)timer=schedule(poll,delay);}
@@ -132,13 +132,10 @@ window.__ModuleLoader__.load({
             if(!value.ok)throw new Error(value.error?.message||'播放状态不可用');
             return value.value;
           }
-          if(!props.sessionId)throw new Error('请先选择一个会话');
-          const result=await scope.remote.commands.execute(props.sessionId,'/agent-voice ui '+JSON.stringify({tool,args}),[]);
+          if(!scope.connection?.rpc)throw new Error('请重启 Harness 以加载语音控制通道');
+          const result=await scope.connection.rpc.call('/api','agent-voice-control',{tool,args},AbortSignal.timeout(50000));
           if(!result.ok)throw new Error(result.error?.message||'MCP 控制通道不可用');
-          const settled=result.value?.result;
-          if(!settled){const catalog=await scope.remote.commands.list(props.sessionId);throw new Error('语音控制命令未加载。可用命令：'+(catalog.value||[]).map(item=>item.name).join('、'));}
-          if(settled.kind!=='success')throw new Error(settled.text||'语音控制失败');
-          return JSON.parse(settled.text);
+          return result.value;
         }})));
       });
     }
