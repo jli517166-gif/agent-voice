@@ -11,7 +11,7 @@ from harness import CodexTail
 class HarnessProgressTests(unittest.TestCase):
     def test_new_session_progress_is_read_without_replaying_startup_history(self):
         with tempfile.TemporaryDirectory() as temporary:
-            home=Path(temporary);folder=home/'sessions/2026/10/15';folder.mkdir(parents=True)
+            home=Path(temporary).resolve();folder=home/'sessions/2026/10/15';folder.mkdir(parents=True)
             progress={'type':'response_item','payload':{'type':'message','role':'assistant','phase':'commentary','content':[{'type':'output_text','text':'正在检查。'}]}}
             old=folder/'old.jsonl';old.write_text(json.dumps(progress)+'\n',encoding='utf8')
             received=[];tail=CodexTail(lambda source,event:received.append(event),lambda:True,root=home);tail.start()

@@ -58,7 +58,7 @@ class McpControlTests(unittest.TestCase):
     def test_deepseek_mcp_install_refreshes_actual_composer_bundle(self):
         from tools import install_mcp
         with tempfile.TemporaryDirectory() as temporary:
-            base=Path(temporary);root=base/'voice';store=Store(root);home=base/'home';location=base/'harness';location.mkdir()
+            base=Path(temporary).resolve();root=base/'voice';store=Store(root);home=base/'home';location=base/'harness';location.mkdir()
             profile=home/'.dsh/profiles/desktop';profile.mkdir(parents=True);(profile/'cordis.patch.yml').write_text('[]',encoding='utf-8')
             source=root/'integrations/deepseek-control-client.js';source.parent.mkdir();source.write_text('// dsh-agent-voice-public\nconst version=1;\n',encoding='utf-8')
             (root/'data/harness-installations.json').write_text(json.dumps({'deepseek':{'directory':str(location),'deepseekProfiles':[str(profile)]}}),encoding='utf-8')
@@ -85,7 +85,7 @@ class McpControlTests(unittest.TestCase):
 
     def test_stdio_initialization_tools_and_profile_listing(self):
         with tempfile.TemporaryDirectory() as temporary:
-            root=Path(temporary);store=Store(root)
+            root=Path(temporary).resolve();store=Store(root)
             voice=store.get()["voice"];store.update({"profiles":[{"id":"voice-one","name":"声音一","voice":voice}]})
             server=Path(__file__).resolve().parents[1]/"integrations/agent_voice_mcp.py"
             process=subprocess.Popen([sys.executable,str(server),"--root",str(root),"--host","codex"],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding="utf-8")
@@ -112,7 +112,7 @@ class McpControlTests(unittest.TestCase):
 
     def test_old_unverified_harness_switches_are_migrated_out(self):
         with tempfile.TemporaryDirectory() as temporary:
-            root=Path(temporary);store=Store(root);saved=store.get();saved["harness"].update({"claude":True,"pi":True,"opencode":True})
+            root=Path(temporary).resolve();store=Store(root);saved=store.get();saved["harness"].update({"claude":True,"pi":True,"opencode":True})
             store.path.write_text(json.dumps(saved),encoding="utf-8")
             self.assertEqual(set(Store(root).get()["harness"]),{"codex","deepseek"})
 

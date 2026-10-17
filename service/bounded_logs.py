@@ -1,6 +1,15 @@
 """Bounded application/worker logs without changing the synthesis protocol."""
-import codecs,logging,logging.handlers,threading
+import codecs,logging,logging.handlers,threading,sys
 from pathlib import Path
+
+def message(text):
+    """A console locale or closed log pipe must never abort synthesis."""
+    try:
+        stream=sys.stdout
+        encoding=getattr(stream,'encoding',None) or 'utf-8'
+        safe=str(text).encode(encoding,errors='backslashreplace').decode(encoding)
+        stream.write(safe+'\n');stream.flush()
+    except (OSError,ValueError,UnicodeError,AttributeError):pass
 
 class BoundedLog:
     encoding='utf-8'

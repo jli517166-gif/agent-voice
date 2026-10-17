@@ -8,7 +8,7 @@ from local_tts import worker_config,required_files
 class TtsOnlyTests(unittest.TestCase):
     def test_legacy_settings_and_profiles_migrate_with_exact_backup(self):
         with tempfile.TemporaryDirectory() as temp:
-            root=Path(temp);cfg=defaults();cfg['version']=1
+            root=Path(temp).resolve();cfg=defaults();cfg['version']=1
             cfg['voice'].update(model='old.pth',index='old.index',pitch=3,formant=.4,synthesisMode='rvc',processing='accepted',speed=1.12,reference='own.wav',referenceText='原台词')
             cfg['engines'].pop('pythonService');cfg['engines'].update(pythonRvc='custom-python.exe',rvcHome='old-rvc')
             cfg['profiles']=[{'id':'old','name':'旧认可版','voice':copy.deepcopy(cfg['voice'])},{'id':'retired','name':'淘汰测试','voice':dict(cfg['voice'],engine='piper')}];cfg['modelRoots']=['old-models']

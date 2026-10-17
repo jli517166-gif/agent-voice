@@ -65,7 +65,7 @@ class LockAndLogTests(unittest.TestCase):
 class TrainingDataTests(unittest.TestCase):
  def setUp(self):
   import numpy as np,soundfile as sf
-  self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name)/'audio';self.root.mkdir();self.rows=[]
+  self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name).resolve()/'audio';self.root.mkdir();self.rows=[]
   for n in range(12):
    name=str(n)+'.wav';sf.write(self.root/name,.1*np.sin(np.arange(24000)*(200+n*31)/24000*2*np.pi),24000);self.rows.append({'file':name,'text':'第%s条素材。'%n,'speaker':'角色','split':''})
   self.write()
@@ -74,7 +74,7 @@ class TrainingDataTests(unittest.TestCase):
  def tearDown(self):self.temp.cleanup()
  def test_splits_deterministic_and_prepared_without_mutating_audio(self):
   a=validate_dataset(self.root);b=validate_dataset(self.root);self.assertTrue(a['ok'],a);self.assertEqual(a['items'],b['items'])
-  target=Path(self.temp.name)/'prepared';r=prepare(self.root,target);self.assertTrue(r['ok']);self.assertEqual(sum(len((target/s/'wav.scp').read_text().splitlines()) for s in ('train','dev','test')),12)
+  target=Path(self.temp.name).resolve()/'prepared';r=prepare(self.root,target);self.assertTrue(r['ok']);self.assertEqual(sum(len((target/s/'wav.scp').read_text().splitlines()) for s in ('train','dev','test')),12)
   with self.assertRaises(ValueError):prepare(self.root,target)
  def test_duplicate_and_path_escape_rejected(self):
   self.rows[1]['file']='0.wav';self.rows[2]['file']='../escape.wav';self.write();r=validate_dataset(self.root);self.assertFalse(r['ok']);self.assertIn('重复',''.join(r['errors']));self.assertIn('目录',''.join(r['errors']))
@@ -82,7 +82,7 @@ class TrainingDataTests(unittest.TestCase):
   for n,r in enumerate(self.rows):r.update(split='train' if n<10 else 'dev' if n==10 else 'test',speaker='未训练' if n==11 else '训练')
   self.write();r=validate_dataset(self.root);self.assertFalse(r['ok']);self.assertIn('没有训练集',''.join(r['errors']))
  def test_output_path_with_spaces_rejected(self):
-  with self.assertRaisesRegex(ValueError,'空格'):prepare(self.root,Path(self.temp.name)/'invalid output')
+  with self.assertRaisesRegex(ValueError,'空格'):prepare(self.root,Path(self.temp.name).resolve()/'invalid output')
  def test_inference_only_source_is_not_training_ready(self):self.assertFalse(train_repo(self.root)['ok'])
 
 import test_core as core_tests

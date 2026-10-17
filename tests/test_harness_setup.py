@@ -7,7 +7,7 @@ from harness_setup import configure,detect
 
 class SetupTests(unittest.TestCase):
     def setUp(self):
-        self.temp=tempfile.TemporaryDirectory();self.base=Path(self.temp.name);self.root=self.base/'voice';Store(self.root)
+        self.temp=tempfile.TemporaryDirectory();self.base=Path(self.temp.name).resolve();self.root=self.base/'voice';Store(self.root)
         integrations=self.root/'integrations';integrations.mkdir();(integrations/'deepseek-control-client.js').write_text('window.__agentVoiceControl=true;',encoding='utf8')
         self.home=self.base/'home';self.home.mkdir();self.install=self.base/'installed';self.install.mkdir()
     def tearDown(self):self.temp.cleanup()

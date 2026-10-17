@@ -8,7 +8,7 @@ from runtime_paths import repair_bundled_runtime
 
 class GptBundleTests(unittest.TestCase):
     def setUp(self):
-        self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name)/'app';self.store=self.make_store(self.root)
+        self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name).resolve()/'app';self.store=self.make_store(self.root)
         self.fp=patch('tts_bundle.runtime_fingerprint',return_value='a'*64);self.fp.start();self.addCleanup(self.fp.stop)
         self.desc=patch('tts_bundle.runtime_descriptor',return_value={'python':'fixture','packages':{}});self.desc.start();self.addCleanup(self.desc.stop)
         self.model=self.root/'tts-engines/gpt-sovits/models/GPT-SoVITS'
@@ -20,7 +20,7 @@ class GptBundleTests(unittest.TestCase):
             p=self.model/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(name.encode())
         with wave.open(str(self.root/'ref.wav'),'wb') as w:w.setparams((1,2,16000,0,'NONE',''));w.writeframes(b'\0\0'*1600)
         self.store.update({'voice':{'engine':'gpt-sovits','gptVariant':'v5turbo','reference':'ref.wav','referenceText':'原台词','speed':1.1},'appearance':{'accent':'#123456'},'phrases':['不修改']})
-        self.package=Path(self.temp.name)/'角色-轻量.gpt-sovits.ttsmodel'
+        self.package=Path(self.temp.name).resolve()/'角色-轻量.gpt-sovits.ttsmodel'
     def tearDown(self):self.temp.cleanup()
     def make_store(self,root):
         store=Store(root);cfg=store.get()
@@ -48,7 +48,7 @@ class GptBundleTests(unittest.TestCase):
         with zipfile.ZipFile(full) as z:
             self.assertIn('model/gsv-v5-pretrained/s2Gv5turbo.pth',z.namelist())
             self.assertNotIn('model/v2Pro/s2Gv2ProPlus.pth',z.namelist())
-        other=self.make_store(Path(self.temp.name)/'fresh')
+        other=self.make_store(Path(self.temp.name).resolve()/'fresh')
         first=import_model(other.root,full);second=import_model(other.root,full)
         self.assertEqual(first['modelDirectory'],second['modelDirectory'])
         installed=Path(first['modelDirectory']);self.assertEqual(installed.parent,other.root/'tts-engines/gpt-sovits/models')

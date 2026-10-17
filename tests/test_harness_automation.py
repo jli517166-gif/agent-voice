@@ -6,7 +6,7 @@ from verify_harness import command_for,candidates,probe
 class HarnessAutomationTests(unittest.TestCase):
     def test_probe_accepts_powershell_shim(self):
         with tempfile.TemporaryDirectory() as temporary:
-            root=Path(temporary);shim=root/'codex.ps1';shim.write_text('exit 0',encoding='utf8')
+            root=Path(temporary).resolve();shim=root/'codex.ps1';shim.write_text('exit 0',encoding='utf8')
             result=probe('codex',root)
             self.assertEqual(result['stage'],'cli')
             self.assertEqual(Path(result['executable']),shim)
@@ -17,7 +17,7 @@ class HarnessAutomationTests(unittest.TestCase):
         self.assertEqual(command_for('deepseek',exe,prompt,root)[1:],['headless','-'])
     def test_selected_directory_executable_has_priority(self):
         with tempfile.TemporaryDirectory() as temp:
-            root=Path(temp);(root/'codex.exe').write_bytes(b'fixture')
+            root=Path(temp).resolve();(root/'codex.exe').write_bytes(b'fixture')
             self.assertEqual(next(candidates('codex',root)),root/'codex.exe')
 
 if __name__=='__main__':unittest.main()

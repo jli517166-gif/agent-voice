@@ -17,7 +17,7 @@ from export_connector import export
 class IsolationTests(unittest.TestCase):
     def test_private_hash_is_rejected_even_without_external_manifest(self):
         with tempfile.TemporaryDirectory() as temp:
-            root=Path(temp);Store(root)
+            root=Path(temp).resolve();Store(root)
             payload=b'private-test-fixture';(root/'renamed.pth').write_bytes(payload)
             atomic_json(root/'data/private-assets.json',{'files':[{'sha256':hashlib.sha256(payload).hexdigest()}]})
             atomic_json(root/'release.json',{'files':['renamed.pth','../escape.wav','data/settings.json'],
@@ -41,7 +41,7 @@ class IsolationTests(unittest.TestCase):
             self.assertEqual(reopened['gptVariant'],'v5turbo');self.assertEqual(reopened['assetScope'],'public')
     def test_connector_exports_preserve_existing_configuration_and_are_idempotent(self):
         with tempfile.TemporaryDirectory() as temp:
-            root=Path(temp)/'app';project=Path(temp)/'project';project.mkdir();Store(root)
+            root=Path(temp).resolve()/'app';project=Path(temp).resolve()/'project';project.mkdir();Store(root)
             (root/'service').mkdir();(root/'service/state.py').write_bytes((BASE/'service/state.py').read_bytes())
             with contextlib.redirect_stdout(io.StringIO()):
                 export('deepseek',root,project);export('deepseek',root,project)

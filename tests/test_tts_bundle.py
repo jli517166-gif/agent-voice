@@ -7,7 +7,7 @@ from tts_bundle import export_model,import_model,REQUIRED
 
 class TtsBundleTests(unittest.TestCase):
     def setUp(self):
-        self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name)/'app';self.store=Store(self.root)
+        self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name).resolve()/'app';self.store=Store(self.root)
         cfg=self.store.get();cfg['engines']['pythonTts']=sys.executable
         with socket.socket() as s:s.bind(('127.0.0.1',0));cfg['port']=s.getsockname()[1]
         atomic_json(self.store.path,cfg);self.store=Store(self.root)
@@ -21,13 +21,13 @@ class TtsBundleTests(unittest.TestCase):
         (self.root/'rvc.pth').write_bytes(b'rvc-choice');(self.root/'rvc.index').write_bytes(b'index-choice')
         with wave.open(str(self.root/'reference.wav'),'wb') as w:w.setparams((1,2,24000,0,'NONE',''));w.writeframes(b'\0\0'*2400)
         self.store.update({'voice':{'engine':'cosyvoice','baseModel':'tts-engines/cosyvoice/models/fixture-model','reference':'reference.wav','referenceText':'认真说话。','advancedEnabled':False},'appearance':{'accent':'#112233'},'phrases':['不应改变']})
-        self.before=self.store.get();self.package=Path(self.temp.name)/'声音-轻量.cosyvoice.ttsmodel';self.full=Path(self.temp.name)/'声音-完整.cosyvoice.ttsmodel'
+        self.before=self.store.get();self.package=Path(self.temp.name).resolve()/'声音-轻量.cosyvoice.ttsmodel';self.full=Path(self.temp.name).resolve()/'声音-完整.cosyvoice.ttsmodel'
         export_model(self.root,self.package,package_mode='lightweight');export_model(self.root,self.full,package_mode='full')
     def tearDown(self):self.temp.cleanup()
     def rewrite(self,source,change):
         with zipfile.ZipFile(source) as a:files={n:a.read(n) for n in a.namelist()}
         manifest=json.loads(files['manifest.json']);change(manifest,files);files['manifest.json']=json.dumps(manifest).encode()
-        bad=Path(self.temp.name)/('bad-'+source.name)
+        bad=Path(self.temp.name).resolve()/('bad-'+source.name)
         with zipfile.ZipFile(bad,'w') as a:
             for name,data in files.items():a.writestr(name,data)
         return bad
@@ -46,8 +46,8 @@ class TtsBundleTests(unittest.TestCase):
         self.assertEqual(self.store.resolve(after['voice']['baseModel']),self.model.resolve())
         self.assertEqual(self.store.resolve(after['voice']['reference']).read_bytes(),(self.root/'reference.wav').read_bytes())
     def test_lightweight_package_honors_custom_source_and_model_directories(self):
-        external=Path(self.temp.name)/'custom-model';shutil.move(str(self.model),str(external))
-        source=Path(self.temp.name)/'custom-source';shutil.move(str(self.root/'tts-engines/cosyvoice/source'),str(source))
+        external=Path(self.temp.name).resolve()/'custom-model';shutil.move(str(self.model),str(external))
+        source=Path(self.temp.name).resolve()/'custom-source';shutil.move(str(self.root/'tts-engines/cosyvoice/source'),str(source))
         self.store.update({'engines':{'cosyRepo':str(source),'cosyModel':str(external)},'voice':{'baseModel':str(external)}})
         export_model(self.root,self.package,package_mode='lightweight')
         result=import_model(self.root,self.package)
@@ -60,7 +60,7 @@ class TtsBundleTests(unittest.TestCase):
         self.assertTrue(manifest['modelFiles']);self.assertFalse(any(name.startswith('model/') for name in names))
         self.assertFalse(any(name.endswith(('.pth','.index')) or '.cache' in name for name in names))
     def test_full_standard_installs_model_into_dedicated_tts_engine_folder(self):
-        target=Path(self.temp.name)/'fresh';other=Store(target);cfg=other.get();cfg['engines']['pythonTts']=sys.executable;(target/'tts-engines/cosyvoice/source/cosyvoice').mkdir(parents=True);shutil.copy2(self.root/'tts-engines/cosyvoice/source/cosyvoice/version.py',target/'tts-engines/cosyvoice/source/cosyvoice/version.py')
+        target=Path(self.temp.name).resolve()/'fresh';other=Store(target);cfg=other.get();cfg['engines']['pythonTts']=sys.executable;(target/'tts-engines/cosyvoice/source/cosyvoice').mkdir(parents=True);shutil.copy2(self.root/'tts-engines/cosyvoice/source/cosyvoice/version.py',target/'tts-engines/cosyvoice/source/cosyvoice/version.py')
         with socket.socket() as s:s.bind(('127.0.0.1',0));cfg['port']=s.getsockname()[1]
         atomic_json(other.path,cfg)
         result=import_model(target,self.full);after=Store(target).get();installed=other.resolve(after['voice']['baseModel'])
@@ -92,7 +92,7 @@ class TtsBundleTests(unittest.TestCase):
         self.assertEqual(result['packageMode'],'full');self.assertEqual(result['engine'],'cosyvoice')
     def test_named_saved_voice_can_be_exported_without_applying_it(self):
         cfg=self.store.get();voice=copy.deepcopy(cfg['voice']);voice['referenceText']='保存配置自己的台词。';cfg['profiles']=[{'id':'saved-one','name':'保存声音','voice':voice}];atomic_json(self.store.path,cfg)
-        package=Path(self.temp.name)/'保存声音-轻量.cosyvoice.ttsmodel';export_model(self.root,package,'saved-one','lightweight')
+        package=Path(self.temp.name).resolve()/'保存声音-轻量.cosyvoice.ttsmodel';export_model(self.root,package,'saved-one','lightweight')
         with zipfile.ZipFile(package) as archive:manifest=json.loads(archive.read('manifest.json'))
         self.assertEqual(manifest['voice']['referenceText'],'保存配置自己的台词。')
         with self.assertRaises(ValueError):export_model(self.root,package,'missing')
@@ -104,12 +104,12 @@ class TtsBundleTests(unittest.TestCase):
         with self.assertRaises(ValueError):export_model(self.root,self.package)
 
     def trained_model(self):
-        trained=Path(self.temp.name)/'trained-result';shutil.copytree(self.model,trained)
+        trained=Path(self.temp.name).resolve()/'trained-result';shutil.copytree(self.model,trained)
         (trained/'llm.pt').write_bytes(b'fine-tuned-llm-weights')
         return trained
 
     def fresh_root(self,with_base):
-        target=Path(self.temp.name)/('fresh-with-base' if with_base else 'fresh-without-base');store=Store(target);cfg=store.get();cfg['engines']['pythonTts']=sys.executable
+        target=Path(self.temp.name).resolve()/('fresh-with-base' if with_base else 'fresh-without-base');store=Store(target);cfg=store.get();cfg['engines']['pythonTts']=sys.executable
         source=target/'tts-engines/cosyvoice/source/cosyvoice';source.mkdir(parents=True)
         shutil.copy2(self.root/'tts-engines/cosyvoice/source/cosyvoice/version.py',source/'version.py')
         if with_base:shutil.copytree(self.model,target/'tts-engines/cosyvoice/models/fixture-model')
@@ -117,7 +117,7 @@ class TtsBundleTests(unittest.TestCase):
         atomic_json(store.path,cfg);return target,Store(target)
 
     def test_advanced_trained_delta_roundtrip_requires_and_rebuilds_exact_base(self):
-        trained=self.trained_model();package=Path(self.temp.name)/'高级训练.cosyvoice.ttsmodel'
+        trained=self.trained_model();package=Path(self.temp.name).resolve()/'高级训练.cosyvoice.ttsmodel'
         export_model(self.root,package,package_mode='trained',trained_model_dir=trained)
         with zipfile.ZipFile(package) as archive:
             manifest=json.loads(archive.read('manifest.json'));models={n for n in archive.namelist() if n.startswith('model/')}
@@ -128,19 +128,19 @@ class TtsBundleTests(unittest.TestCase):
         self.assertEqual((installed/'flow.pt').read_bytes(),(self.model/'flow.pt').read_bytes())
 
     def test_advanced_trained_delta_rejects_when_base_is_missing(self):
-        trained=self.trained_model();package=Path(self.temp.name)/'高级训练缺基础.cosyvoice.ttsmodel'
+        trained=self.trained_model();package=Path(self.temp.name).resolve()/'高级训练缺基础.cosyvoice.ttsmodel'
         export_model(self.root,package,package_mode='trained',trained_model_dir=trained)
         target,_=self.fresh_root(False)
         with self.assertRaisesRegex(ValueError,'需要匹配的基础模型'):import_model(target,package)
 
     def test_advanced_full_roundtrip_does_not_require_base_model(self):
-        trained=self.trained_model();package=Path(self.temp.name)/'高级完整.cosyvoice.ttsmodel'
+        trained=self.trained_model();package=Path(self.temp.name).resolve()/'高级完整.cosyvoice.ttsmodel'
         export_model(self.root,package,package_mode='trained-full',trained_model_dir=trained)
         target,store=self.fresh_root(False);result=import_model(target,package);installed=store.resolve(Store(target).get()['voice']['baseModel'])
         self.assertEqual(result['packageMode'],'trained-full');self.assertEqual((installed/'llm.pt').read_bytes(),b'fine-tuned-llm-weights')
 
     def test_advanced_delta_manifest_tampering_is_rejected(self):
-        trained=self.trained_model();package=Path(self.temp.name)/'高级篡改.cosyvoice.ttsmodel'
+        trained=self.trained_model();package=Path(self.temp.name).resolve()/'高级篡改.cosyvoice.ttsmodel'
         export_model(self.root,package,package_mode='trained',trained_model_dir=trained)
         bad=self.rewrite(package,lambda m,f:m['baseModel'].update(deltaFiles=['../outside.pt']))
         self.rejected(bad)

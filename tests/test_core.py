@@ -41,7 +41,7 @@ class FakePipeline:
 
 class CoreTests(unittest.TestCase):
     def setUp(self):
-        self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name);self.store=Store(self.root)
+        self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name).resolve();self.store=Store(self.root)
         with socket.socket() as sock:sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
         self.store.data['port']=port
         model=self.root/'fixture.wav';model.write_bytes(b'test-only')

@@ -72,7 +72,7 @@ class QueueFaultTests(unittest.TestCase):
         c.opener.open.side_effect=wait
         try:
             def check():raise Cancelled('已停止')
-            with self.assertRaises(Cancelled):c.synthesize('正文',Path(self.temp.name)/'test.wav','chat',0,check)
+            with self.assertRaises(Cancelled):c.synthesize('正文',Path(self.temp.name).resolve()/'test.wav','chat',0,check)
             c.abort.assert_called_once()
         finally:release.set()
 
@@ -126,7 +126,7 @@ class RuntimeAndStateTests(unittest.TestCase):
     def test_custom_gpt_venv_is_not_repointed_to_core(self):
         from runtime_paths import repair_bundled_runtime
         with tempfile.TemporaryDirectory() as temp:
-            root=Path(temp);core=root/'runtime/core';core.mkdir(parents=True);(core/'python.exe').write_bytes(b'test')
+            root=Path(temp).resolve();core=root/'runtime/core';core.mkdir(parents=True);(core/'python.exe').write_bytes(b'test')
             runtime=root/'tts-engines/gpt-sovits/runtime';runtime.mkdir(parents=True);cfg=runtime/'pyvenv.cfg';cfg.write_text('home = C:/user-python\nversion = 3.10.11\n')
             before=cfg.read_bytes();self.assertEqual(repair_bundled_runtime(root),[]);self.assertEqual(cfg.read_bytes(),before)
     @unittest.skipUnless(os.name=='nt','Windows worker tree')
@@ -134,7 +134,7 @@ class RuntimeAndStateTests(unittest.TestCase):
         from owned_process import terminate
         import ctypes
         with tempfile.TemporaryDirectory() as temp:
-            pidfile=Path(temp)/'child.pid'
+            pidfile=Path(temp).resolve()/'child.pid'
             code="import subprocess,sys,time,pathlib; p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)']); pathlib.Path("+repr(str(pidfile))+").write_text(str(p.pid)); time.sleep(30)"
             process=subprocess.Popen([sys.executable,'-c',code],creationflags=subprocess.CREATE_NO_WINDOW)
             try:
@@ -163,9 +163,9 @@ class RuntimeAndStateTests(unittest.TestCase):
     def test_v3_migration_preserves_voice_and_uses_core_python(self):
         with tempfile.TemporaryDirectory() as temp:
             cfg=defaults();cfg['version']=3;cfg['engines']['pythonService']='tts-engines/cosyvoice/runtime/tools/python.exe';cfg['voice']['speed']=1.12
-            atomic_json(Path(temp)/'data/settings.json',cfg);store=Store(temp);after=store.get()
+            atomic_json(Path(temp).resolve()/'data/settings.json',cfg);store=Store(temp);after=store.get()
             self.assertEqual(after['version'],4);self.assertEqual(after['voice'],cfg['voice']);self.assertEqual(after['engines']['pythonService'],'runtime/core/python.exe')
-            self.assertEqual(json.loads((Path(temp)/'data/migrations/settings-before-stability.json').read_text()),cfg)
+            self.assertEqual(json.loads((Path(temp).resolve()/'data/migrations/settings-before-stability.json').read_text(encoding='utf-8')),cfg)
     def test_snapshot_distinguishes_unloaded_ready_and_dead_worker(self):
         with tempfile.TemporaryDirectory() as temp:
             p=Pipeline(Store(temp));voice=p.store.get()['voice'];self.assertEqual(p.snapshot(voice)['state'],'not_loaded')
@@ -174,7 +174,7 @@ class RuntimeAndStateTests(unittest.TestCase):
     def test_new_runtime_relocates_without_cosy_or_candidate(self):
         from runtime_paths import repair_bundled_runtime
         with tempfile.TemporaryDirectory() as temp:
-            root=Path(temp);base=root/'runtime/core';base.mkdir(parents=True);(base/'python.exe').write_bytes(b'test')
+            root=Path(temp).resolve();base=root/'runtime/core';base.mkdir(parents=True);(base/'python.exe').write_bytes(b'test')
             runtime=root/'tts-engines/gpt-sovits/runtime';(runtime/'Lib/site-packages').mkdir(parents=True);(runtime/'gpu-packages').mkdir();(runtime/'pyvenv.cfg').write_text('home = obsolete\nexecutable = obsolete\n');pth=runtime/'Lib/site-packages/000_candidate_gpu.pth';pth.write_text('obsolete')
             repair_bundled_runtime(root);self.assertIn(str(base),(runtime/'pyvenv.cfg').read_text());self.assertIn("/'gpu-packages'",pth.read_text());self.assertNotIn('cosyvoice',pth.read_text())
     def test_diagnostics_missing_engine_is_failure_not_success(self):

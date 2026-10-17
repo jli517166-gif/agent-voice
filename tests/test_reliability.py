@@ -13,7 +13,7 @@ class SynthesisRecoveryTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.pipeline=Pipeline(Store(self.temp.name));self.pipeline.prepare=Mock()
         self.adapter=Mock();self.pipeline.adapter=self.adapter
-        self.target=Path(self.temp.name)/'result.wav';self.voice=self.pipeline.store.get()['voice']
+        self.target=Path(self.temp.name).resolve()/'result.wav';self.voice=self.pipeline.store.get()['voice']
     def run_audio(self,errors):
         self.calls=[]
         def synth(text,voice,path,check):
@@ -97,7 +97,7 @@ class WorkerIdentityTests(unittest.TestCase):
         from local_tts import LocalTtsClient
         from tts_process import TtsProcess
         with tempfile.TemporaryDirectory() as temp:
-            client=LocalTtsClient.__new__(LocalTtsClient);client.model=Path(temp);client.config={'engine':'gpt-sovits','variant':'proplus'};client.close=Mock()
+            client=LocalTtsClient.__new__(LocalTtsClient);client.model=Path(temp).resolve();client.config={'engine':'gpt-sovits','variant':'proplus'};client.close=Mock()
             client.ready_info={'engine':'gpt-sovits','variant':'v5turbo','model':temp}
             with patch.object(TtsProcess,'ensure_ready'),self.assertRaisesRegex(ValueError,'不一致'):client.ensure_ready(lambda:None)
             client.close.assert_called_once()
@@ -115,7 +115,7 @@ class ReferencePreflightTests(unittest.TestCase):
         import numpy as np,soundfile as sf
         from reference_audio import validate_gpt_reference
         with tempfile.TemporaryDirectory() as temp:
-            path=Path(temp)/'ref.wav'
+            path=Path(temp).resolve()/'ref.wav'
             for seconds in (2,11):
                 sf.write(path,np.ones(16000*seconds)*.1,16000)
                 with self.assertRaisesRegex(ValueError,'3～10'):validate_gpt_reference(path)

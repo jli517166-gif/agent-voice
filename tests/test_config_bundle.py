@@ -20,7 +20,7 @@ from release_audit import audit
 
 class BundleTests(unittest.TestCase):
     def setUp(self):
-        self.temp=tempfile.TemporaryDirectory();self.base=Path(self.temp.name);self.root=self.base/'app';self.root.mkdir()
+        self.temp=tempfile.TemporaryDirectory();self.base=Path(self.temp.name).resolve();self.root=self.base/'app';self.root.mkdir()
         cfg=defaults()
         with socket.socket() as sock:sock.bind(('127.0.0.1',0));cfg['port']=sock.getsockname()[1]
         cfg['engines']={key:str(self.root) for key in cfg['engines']};cfg['engines']['pythonService']=sys.executable;cfg['engines']['pythonTts']=sys.executable
