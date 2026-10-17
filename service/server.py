@@ -131,7 +131,8 @@ class Server(ThreadingHTTPServer):
                     playback={"state":state,"jobId":job["id"],"source":job["source"]}
             elif not job and self.jobs.queue.qsize():playback={"state":"queued"}
             error=self.jobs.last_error or model.get('error')
-            state='unconfigured' if missing else 'loading' if self.jobs.switching else 'error' if error and current is None else playback['state'] if playback['state'] in ('generating','playing','queued') else model['state']
+            activity=playback['state'] if playback['state'] in ('generating','playing','queued') else 'generating' if job and job.get('generation')==self.jobs.generation and job.get('state')=='generating' else None
+            state='unconfigured' if missing else 'loading' if self.jobs.switching else 'error' if error and current is None else activity or model['state']
             return {"service":"agent-voice-public","version":1,"pid":os.getpid(),"instanceId":self.instance_id,
                 "ready":bool(model['ready'] and not missing and not self.jobs.switching),"resourcesReady":not missing,"missing":missing,"serviceState":state,"modelState":model['state'],
                 "engine":voice['engine'],"variant":voice.get('gptVariant') if voice['engine']=='gpt-sovits' else None,"switching":self.jobs.switching,"voiceRevision":self.voice_revision,

@@ -69,6 +69,7 @@ class EnvironmentRepairTests(unittest.TestCase):
    self.assertTrue(all('==' in value for value in CATALOG[engine]['packages'].values()))
   self.assertEqual(len(CATALOG['python']['sha256']),64)
   self.assertEqual(len(CATALOG['ffmpeg']['sha256']),64)
+  for engine in ['cosyvoice','gpt-sovits']:self.assertEqual(len(CATALOG[engine]['modelRevision']),40)
  def test_repair_reinstalls_failed_root_without_forcing_transitive_upgrades(self):
   with tempfile.TemporaryDirectory() as temp:
    helper=Repair(temp);helper.run=Mock();helper.download=Mock(return_value=Path(temp)/'pip.whl')

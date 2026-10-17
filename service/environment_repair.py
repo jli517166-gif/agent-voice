@@ -184,7 +184,7 @@ class Repair:
                             patterns=[*REQUIRED,'CosyVoice-BlankEN/*']
                         else:patterns=[str(p.relative_to(model)) for variant in ('proplus','v5turbo') for p in gpt_required({'source':str(source),'model':str(model),'variant':variant})[1:]]
                     if name=='gpt-sovits':patterns=sorted(set(x.split('/')[0]+'/*' if x.startswith(('chinese-hubert-base/','chinese-roberta-wwm-ext-large/')) else x for x in patterns))
-                    code='from huggingface_hub import snapshot_download;snapshot_download(repo_id='+repr(CATALOG[name]['modelRepo'])+',local_dir='+repr(str(stage))+',allow_patterns='+repr(patterns)+')'
+                    code='from huggingface_hub import snapshot_download;snapshot_download(repo_id='+repr(CATALOG[name]['modelRepo'])+',revision='+repr(CATALOG[name]['modelRevision'])+',local_dir='+repr(str(stage))+',allow_patterns='+repr(patterns)+')'
                     self.run([python,'-I','-X','utf8','-c',code],timeout=14400)
                     for file in stage.rglob('*'):
                         if file.is_file() and '.cache' not in file.relative_to(stage).parts:

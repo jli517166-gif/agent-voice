@@ -78,6 +78,7 @@ class CoreTests(unittest.TestCase):
             self.actor.playing=False;self.assertEqual(self.server.status()['playback']['state'],'generating','buffering between segments must not animate')
             self.actor.playing=True;self.assertEqual(self.server.status()['playback']['state'],'playing')
             job['play']=False;self.assertEqual(self.server.status()['playback']['state'],'idle')
+            job['state']='generating';self.assertEqual(self.server.status()['serviceState'],'generating','nonplaying generation must not be reported as idle/ready')
             job['play']=True;jobs.generation+=1;self.assertEqual(self.server.status()['playback']['state'],'idle')
             jobs.current=None
     def test_sanitizer_retains_body_skips_code_links_and_paths(self):
