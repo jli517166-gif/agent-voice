@@ -204,10 +204,24 @@ class Repair:
             finally:
                 if pipeline and pipeline.adapter:pipeline.adapter.close()
         return results
+    @staticmethod
+    def driver_version(system):
+        text=str((system or {}).get('nvidiaSmi') or '')
+        parts=[part.strip() for part in text.split(',')]
+        return parts[1] if len(parts)>1 else ''
+    @staticmethod
+    def driver_supports_cuda128(version):
+        try:numbers=tuple(int(part) for part in str(version).split('.')[:2])
+        except (TypeError,ValueError):return None
+        return len(numbers)==2 and numbers>=(570,26)
     def install_compat_torch(self,python):
         profile=CATALOG.get('cuda128Compatibility') or {}
         requirements=list(profile.get('torch') or [])
         if not requirements:raise RuntimeError('没有可用的显卡兼容运行时配置')
+        driver=self.driver_version(self.system())
+        supported=self.driver_supports_cuda128(driver)
+        if supported is False:
+            raise RuntimeError('当前 NVIDIA 驱动 %s 不支持 CUDA 12.8（需要 570.26 或更高）。请先更新显卡驱动后重试；本次没有下载 3.2 GB 兼容运行时。'%driver)
         timeout=int(profile.get('timeoutSeconds',14400))
         runtime_root=Path(python).resolve().parent.parent
         shadow=runtime_root/'gpu-packages'

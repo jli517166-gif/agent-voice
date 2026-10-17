@@ -146,6 +146,17 @@ class EnvironmentRepairTests(unittest.TestCase):
    self.assertIn('torchvision==0.22.1',flattened)
    self.assertFalse((shadow/'torchvision').exists())
    self.assertTrue(any(kwargs.get('target')==shadow for _,kwargs in calls))
+ def test_cuda128_requires_a_supporting_driver(self):
+  self.assertEqual(Repair.driver_version({'nvidiaSmi':'NVIDIA GeForce RTX 5070 Laptop GPU, 596.13, 8151 MiB'}),'596.13')
+  self.assertTrue(Repair.driver_supports_cuda128('596.13'))
+  self.assertFalse(Repair.driver_supports_cuda128('566.36'))
+  self.assertIsNone(Repair.driver_supports_cuda128(''))
+ def test_old_driver_is_reported_before_downloading_cu128(self):
+  with tempfile.TemporaryDirectory() as temp:
+   helper=Repair(temp);helper.pip=Mock()
+   with patch.object(helper,'system',return_value={'nvidiaSmi':'NVIDIA GeForce RTX 5070 Laptop GPU, 566.36, 8151 MiB'}):
+    with self.assertRaisesRegex(RuntimeError,'570.26'):helper.install_compat_torch(Path(temp).resolve()/'python.exe')
+   helper.pip.assert_not_called()
  def test_unsupported_gpu_runtime_is_repaired_and_synthesized_again(self):
   with tempfile.TemporaryDirectory() as temp:
    helper=Repair(temp);failed=[{'id':'cosyvoice/cosyvoice3','ok':False,'error':'no kernel image is available'}];passed=[{'id':'cosyvoice/cosyvoice3','ok':True}]
