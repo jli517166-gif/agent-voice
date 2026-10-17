@@ -7,7 +7,10 @@ def retryable(error):
     return isinstance(error,(ConnectionError,TimeoutError)) or any(x in message for x in (
         'out of memory','cuda error','进程已退出','推理超时','timed out','connection reset',
         'connection aborted','远程主机','no audio','silent audio','invalid audio samples','invalid audio duration',
-        '静音或无效音频','没有生成音频','音频样本无效','empty audio'))
+        '静音或无效音频','没有生成音频','音频样本无效','empty audio',
+        # A sampled empty/too-short speech-token sequence can reach the
+        # vocoder before audio validation. Retry the same voice with a new seed.
+        'calculated padded input size per channel'))
 
 def validate_audio(path):
     import numpy as np

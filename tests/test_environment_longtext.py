@@ -9,6 +9,14 @@ from environment_repair import Repair,inside,extract,CATALOG
 import test_core
 
 class LongTextTests(unittest.TestCase):
+ def test_markdown_emphasis_and_closing_marks_cannot_form_empty_speech_segments(self):
+  from text import sanitize
+  for raw in ['**暂不打包，等你确认。**','__先完成项目内长文测试。__','这段文章名为“荷塘月色。”','太好了！！！继续测试。','**这是标题。**\n下面是完整的正文。']:
+   cleaned=sanitize(raw);chunks=generation_chunks(cleaned)
+   self.assertEqual(''.join(chunks),cleaned)
+   import re
+   self.assertTrue(all(re.search(r'[^\W_]',c) for c in chunks),chunks)
+  self.assertEqual(sanitize('**暂不打包，等你确认。**'),'暂不打包，等你确认。')
  def test_all_content_preserved_with_and_without_punctuation(self):
   for text in [('长文本测试。'*600)[:4000], '连续文字'*1000, '这是一句很长的文字，'*350]:
    chunks=generation_chunks(text)

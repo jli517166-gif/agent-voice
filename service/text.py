@@ -18,6 +18,11 @@ def sanitize(text):
     out=re.sub(r"[\w\u4e00-\u9fff\-]+\.(?:png|jpe?g|gif|webp|bmp|ico|zip|rar|7z|exe|msi|bat|cmd|ps1|py|pyc|js|mjs|ts|json|ya?ml|md|txt|log|wav|mp3|flac|m4a|ogg|pth|index|dll|so|bin|lnk)\b"," ",out,flags=re.I)
     out=re.sub(r"\S*\\\S*|(?<![A-Za-z0-9_])[a-z][a-z0-9]*(?:_[a-z0-9]+)+(?![A-Za-z0-9_])|\b[A-Fa-f0-9]{8,}\b|\b[A-Za-z0-9]{18,}\b|\b[a-z]+[A-Z][A-Za-z0-9]{4,}\b"," ",out)
     out=re.sub(r"(?m)^\s*(?:#{1,6}\s*|[-*+]\s+|>\s*)","",out)
+    # Visible chat text contains emphasis delimiters. A trailing ** after a
+    # sentence must never become a separate, non-speech synthesis request.
+    out=re.sub(r"(\*\*|__|~~)(.+?)\1",lambda m:m.group(2),out,flags=re.S)
+    out=re.sub(r"(?<!\w)(\*|_)([^\n]+?)\1(?!\w)",lambda m:m.group(2),out)
+    out=re.sub(r"(?m)^[*_~]{1,3}|[*_~]{1,3}$","",out)
     out=re.sub(r"[ \t]{2,}"," ",out)
     out=re.sub(r"\n{2,}","\n",out).strip(" \t，、；:：-—\n")
     return out if re.search(r"[^\W_]",out,re.UNICODE) else ""
@@ -30,7 +35,7 @@ def playback_chunks(text):
     while index<len(text):
         if text[index] in "。！？!?\n":
             end=index+1
-            while end<len(text) and text[end] in " \t\r\n":end+=1
+            while end<len(text) and text[end] in " \t\r\n。！？!?…\"'”’」』）》】":end+=1
             chunks.append(text[start:end]);start=end;index=end
         else:index+=1
     if start<len(text):chunks.append(text[start:])

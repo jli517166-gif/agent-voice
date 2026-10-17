@@ -33,6 +33,11 @@ class SynthesisRecoveryTests(unittest.TestCase):
     def test_missing_dependency_not_retried(self):
         with self.assertRaisesRegex(RuntimeError,'cmudict'):self.run_audio([RuntimeError("Resource cmudict not found")])
         self.assertEqual(len(self.calls),1);self.assertFalse(self.target.exists())
+    def test_empty_sampled_token_vocoder_failure_retries_same_voice(self):
+        result=self.run_audio([RuntimeError("Calculated padded input size per channel: (3). Kernel size: (4). Kernel size can't be greater than actual input size"),None])
+        self.assertEqual(result['attempts'],2)
+        self.assertEqual([v['_retryAttempt'] for v in self.calls],[0,1])
+        self.assertEqual(self.calls[0]['reference'],self.calls[1]['reference'])
     def test_retry_exhausted_is_failure(self):
         with self.assertRaisesRegex(RuntimeError,'out of memory'):self.run_audio([RuntimeError('CUDA out of memory') for _ in range(3)])
         self.assertEqual(len(self.calls),3);self.assertFalse(self.target.exists())
