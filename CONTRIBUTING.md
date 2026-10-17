@@ -22,7 +22,7 @@
 
 ```powershell
 python -m pip install -r tools/core-requirements.txt
-python -m unittest discover -s tests -p 'test_*.py'
+python -X utf8 -m unittest discover -s tests -p 'test_*.py'
 node --test tests/test_connector.mjs tests/test_deepseek_control_client.mjs
 powershell -ExecutionPolicy Bypass -File build.ps1
 .\dist\agent语音.exe --selftest .\acceptance\ui
@@ -37,3 +37,5 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 ## 发布边界
 
 Git 仓库不上传 Python、TTS 源码副本、模型、用户录音、配置密钥、缓存和试听音频。真实测试证据存本机 `acceptance/`，可公开的统计与限制写 `docs/`。CI 运行无 GPU 的回归和 Windows 界面编译；GPU 推理、声卡、Harness 和 AIRI 真机验收仍需本机完成。
+
+自动回归也应在英文 Windows 上运行。业务日志不能因控制台编码或日志管道断开使生成失败；临时目录需先规范化，兼容 Windows 8.3 短路径与实际长路径。新增此类问题的针对性回归，避免只在开发电脑上通过。
