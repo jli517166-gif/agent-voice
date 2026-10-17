@@ -38,7 +38,7 @@ namespace AgentVoice {
         ComboBox repairScope;TextBox repairDetails;
         void BuildEnvironmentRepair(){
             var card=SettingsCard("environmentRepair","检查与补齐环境");
-            Add(card,Hint("先检查缺少的运行环境、依赖、源码和基础模型，再只补缺项。下载、安装、缓存和报告都保存在软件内；不会向外部 Python 安装库，也不会替换已有音色权重。补齐前请关闭语音服务。"));
+            Add(card,Hint("先检查缺少的运行环境、依赖、源码和基础模型，再只补缺项。补齐结束前会实际加载模型并生成验证音频，只有真实合成通过才会显示成功。下载、安装、缓存和报告都保存在软件内；不会向外部 Python 安装库，也不会替换已有音色权重。补齐前请关闭语音服务。"));
             repairScope=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Name="repairScope"};repairScope.Items.AddRange(new object[]{"当前引擎与主服务","仅主服务","CosyVoice 与主服务","GPT 两版与主服务","全部环境"});repairScope.SelectedIndex=0;Add(card,repairScope);
             Add(card,Row(Primary(AsyncBtn("检查缺少什么",async()=>await RepairEnvironment(false))),AsyncBtn("补齐缺失环境",async()=>await RepairEnvironment(true)),EntryBtn("打开修复报告","查看下载进度、详细安装日志和设置备份。",()=>{string p=Store.Resolve("data/environment-repair");Directory.CreateDirectory(p);ServiceClient.Open(p);}),EntryBtn("安装说明","查看目录、系统组件和失败恢复方法。",()=>ServiceClient.Open(Store.Resolve("环境补齐说明.md")))));
             repairDetails=new TextBox{Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Vertical,Height=280,Name="environmentRepairResult"};Add(card,repairDetails);
@@ -51,7 +51,7 @@ namespace AgentVoice {
             if(repair){await EnvironmentBootstrap.EnsureCore(Store,BusyStatus);Config=Store.Read();}
             var progress=new Timer{Interval=1000};progress.Tick+=(s,e)=>{try{string p=Store.Resolve("data/environment-repair/progress.json");if(File.Exists(p))BusyStatus(Json.Text(Json.Object(File.ReadAllText(p)),"message"));}catch(IOException){}catch(ArgumentException){}};
             try{
-                progress.Start();string text=await Service.RunTool("environment_repair.py",(repair?"repair":"inspect")+" --root "+ServiceClient.Quote(Store.Root)+" --engine "+scope);var report=Json.Object(text);bool ok=Convert.ToBoolean(report["ok"]);repairDetails.Text=EnvironmentReport(report);Config=Store.Read();BindSettings();Status(ok?(repair?"环境补齐通过，请启动服务并实际生成试听。":"环境检查通过。"):"仍有未通过项目，请查看页面和安装日志。");
+                progress.Start();string text=await Service.RunTool("environment_repair.py",(repair?"repair":"inspect")+" --root "+ServiceClient.Quote(Store.Root)+" --engine "+scope);var report=Json.Object(text);bool ok=Convert.ToBoolean(report["ok"]),verified=report.ContainsKey("verifiedUsable")&&Convert.ToBoolean(report["verifiedUsable"]);repairDetails.Text=EnvironmentReport(report);Config=Store.Read();BindSettings();Status(!ok?"仍有未通过项目，请按页面提示处理后重试。":!repair?"环境检查通过；补齐时还会进行真实合成验证。":verified?"环境补齐与真实合成验证均已通过。":"主服务环境补齐通过；请选择声音引擎完成真实合成验证。");
             }finally{progress.Stop();progress.Dispose();}
         }
         string EnvironmentReport(Dictionary<string,object> report){
@@ -64,6 +64,7 @@ namespace AgentVoice {
                 object probe;if(item.TryGetValue("probe",out probe)&&probe is Dictionary<string,object>){string detail=Json.Text((Dictionary<string,object>)probe,"error");if(detail.Length>0)text.AppendLine("  检查失败："+detail);}
             }
             if(report.TryGetValue("runtimeChecks",out items)&&items is object[])foreach(var raw in (object[])items){var check=(Dictionary<string,object>)raw;text.AppendLine((Convert.ToBoolean(check["ok"])?"✓ ":"✗ ")+Json.Text(check,"section")+" 推理环境："+Json.Text(check,"detail"));}
+            if(report.TryGetValue("synthesisChecks",out items)&&items is object[])foreach(var raw in (object[])items){var check=(Dictionary<string,object>)raw;bool ok=Convert.ToBoolean(check["ok"]);text.AppendLine((ok?"✓ ":"✗ ")+Json.Text(check,"id")+" 真实合成"+(ok?"："+Json.Text(check,"seconds")+" 秒，验证音频 "+Json.Text(check,"audio"):"："+Json.Text(check,"error")));if(!ok&&Json.Text(check,"guidance").Length>0)text.AppendLine("  处理方法："+Json.Text(check,"guidance"));}
             text.AppendLine(Json.Text(report,"systemNotice"));text.AppendLine("日志："+Json.Text(report,"log"));return text.ToString();
         }
     }

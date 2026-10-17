@@ -1,5 +1,5 @@
-"""App-local, explicit environment repair. Never installs into an external interpreter."""
-import argparse,hashlib,json,os,shutil,subprocess,sys,time,urllib.request,uuid,zipfile
+"""App-local environment repair with a real end-to-end synthesis check."""
+import argparse,copy,hashlib,json,os,platform,shutil,subprocess,sys,time,urllib.request,uuid,zipfile
 from pathlib import Path
 from state import Store,atomic_json
 from operation_lock import OperationLock
@@ -113,6 +113,68 @@ class Repair:
         # Do not force-upgrade otherwise healthy transitive dependencies.
         self.run(command[:-len(requirements)]+['--force-reinstall','--no-deps',*requirements])
         self.run(command)
+    def system(self):
+        """Collect actionable host facts without depending on the TTS runtime."""
+        result={'windows':sys.platform=='win32','architecture':platform.machine(),'pythonBits':__import__('struct').calcsize('P')*8}
+        if sys.platform=='win32':
+            result['windowsVersion']=platform.platform()
+            try:
+                probe=subprocess.run(['nvidia-smi','--query-gpu=name,driver_version,memory.total','--format=csv,noheader'],capture_output=True,text=True,encoding='utf-8',timeout=15,**__import__('pipeline').hidden_process())
+                result['nvidiaSmi']=probe.stdout.strip() if probe.returncode==0 else ''
+                if probe.returncode:result['nvidiaError']=(probe.stderr or probe.stdout).strip()[-1000:]
+            except (OSError,subprocess.TimeoutExpired) as exc:result['nvidiaError']=str(exc)
+        return result
+    @staticmethod
+    def guidance(error):
+        text=str(error);low=text.lower()
+        if 'no kernel image' in low or 'not compatible with the current pytorch' in low or 'sm_' in low and 'not compatible' in low:
+            return '当前 PyTorch 不支持这张显卡架构。请再次运行补齐；程序会改用 CUDA 12.8 兼容运行时。若仍失败，请先更新 NVIDIA 驱动。'
+        if 'cuda out of memory' in low or 'out of memory' in low:
+            return '显存不足。关闭占用显卡的软件后重试；不要同时加载多个 TTS 引擎。'
+        if 'cuda driver' in low or 'torch.cuda.is_available' in low or '需要 nvidia' in text.lower() or 'cuda' in low and ('false' in low or 'not found' in low):
+            return '没有可用的 NVIDIA CUDA 驱动。请安装或更新 NVIDIA 官方显卡驱动，重启电脑后再补齐。'
+        if 'dll load failed' in low or 'winerror 126' in low or 'vcruntime' in low or 'msvcp' in low:
+            return 'Windows 原生运行库加载失败。请安装 Microsoft Visual C++ 2015–2022 x64 运行库并重启。'
+        if '参考' in text or 'reference' in low:
+            return '参考音频或逐字台词不可用。请重新导入音色包，或在首页重新选择参考音频。'
+        if 'timed out' in low or '超时' in text:
+            return '模型加载超时。关闭占用显卡的软件后重试，并检查杀毒软件是否正在扫描模型文件。'
+        return '打开安装日志和工作进程日志查看原始错误；修复后再次运行补齐。'
+    def smoke(self,selected):
+        """Load the selected model(s) and create a validated WAV.
+
+        Import-only checks used to produce false success on a new PC.  This is
+        deliberately part of repair completion, not an optional diagnostic.
+        """
+        cfg=self.store.get();base=copy.deepcopy(cfg['voice']);results=[]
+        directory=inside(self.root,self.work/'smoke');directory.mkdir(parents=True,exist_ok=True)
+        plans=[]
+        for engine in selected:
+            if engine=='cosyvoice':plans.append(('cosyvoice','cosyvoice3'))
+            else:plans.extend(('gpt-sovits',variant) for variant in ('v5turbo','proplus'))
+        for engine,variant in plans:
+            label=engine+'/'+variant;target=directory/(engine+'-'+variant+'.wav')
+            target.unlink(missing_ok=True);voice=copy.deepcopy(base);voice.update(engine=engine,gptVariant=variant,advancedEnabled=False)
+            started=time.monotonic();pipeline=None
+            self.progress('正在实际加载并生成验证音频：'+label,engine=engine,variant=variant)
+            try:
+                missing=self.store.missing(voice)
+                if missing:raise RuntimeError('真实合成仍缺少：'+'、'.join(missing))
+                from pipeline import Pipeline
+                pipeline=Pipeline(self.store);details=pipeline.synthesize('环境补齐验证成功。',voice,target,lambda:None)
+                from synthesis_recovery import validate_audio
+                rate,duration=validate_audio(target)
+                results.append({'id':label,'ok':True,'audio':str(target),'sampleRate':rate,'duration':duration,'seconds':round(time.monotonic()-started,2),'gpu':pipeline.gpu,'attempts':details.get('attempts',1)})
+            except Exception as exc:
+                results.append({'id':label,'ok':False,'error':str(exc),'guidance':self.guidance(exc),'seconds':round(time.monotonic()-started,2),'logs':[str(self.log),str(self.root/'data/logs'),str(self.root/'data/cache')]})
+            finally:
+                if pipeline and pipeline.adapter:pipeline.adapter.close()
+        return results
+    def install_compat_torch(self,python):
+        profile=CATALOG.get('cuda128Compatibility')
+        if not profile:raise RuntimeError('没有可用的显卡兼容运行时配置')
+        self.progress('正在安装新显卡兼容的 CUDA 12.8 推理运行时')
+        self.pip(python,profile['torch'],profile['torchIndex'])
     def source(self,engine,destination):
         data=CATALOG[engine];archive=self.download('https://codeload.github.com/'+data['repo']+'/zip/'+data['commit'],engine+'-'+data['commit']+'.zip')
         stage=inside(self.root,destination.with_name('.source-stage-'+uuid.uuid4().hex))
@@ -194,12 +256,25 @@ class Repair:
                 updates.update({data['pythonKey']:self.store.portable(python),data['sourceKey']:self.store.portable(source),data['modelKey']:self.store.portable(model)})
             if updates:self.store.update({'engines':updates})
             result=self.inspect(engine)
+            result['system']=self.system()
             if result['ok'] and result['selected']:
-                self.progress('正在验证推理源码与 CUDA，不加载音色权重')
+                self.progress('正在验证推理源码与 CUDA')
                 from diagnostics import inspect_installation
                 deep=inspect_installation(self.store,deep=True)
                 result['runtimeChecks']=[c for c in deep['checks'] if c['name']=='CUDA 与推理依赖' and c['section'].split('/')[0] in result['selected']]
                 result['ok']=all(c['ok'] for c in result['runtimeChecks']) and bool(result['runtimeChecks'])
+            if result['ok'] and result['selected']:
+                result['synthesisChecks']=self.smoke(result['selected'])
+                unsupported=[x for x in result['synthesisChecks'] if not x['ok'] and ('no kernel image' in x.get('error','').lower() or 'not compatible with the current pytorch' in x.get('error','').lower())]
+                if unsupported:
+                    # Blackwell-class cards can pass torch.cuda.is_available()
+                    # while older bundled kernels still fail at first inference.
+                    for name in result['selected']:
+                        data=spec(name);self.install_compat_torch(self.store.resolve(self.store.get()['engines'][data['pythonKey']]))
+                    result['synthesisChecks']=self.smoke(result['selected'])
+                    result['compatibilityRuntimeInstalled']=True
+                result['ok']=all(x['ok'] for x in result['synthesisChecks'])
+            result['verifiedUsable']=bool(result.get('synthesisChecks')) and result['ok']
             atomic_json(self.work/'latest.json',result);self.progress('补齐完成' if result['ok'] else '仍有未通过项目，请查看报告和安装日志','completed' if result['ok'] else 'incomplete')
             return result
 

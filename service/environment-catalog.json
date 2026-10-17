@@ -97,5 +97,12 @@
   "ffmpeg": {
     "url": "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/ffmpeg.exe",
     "sha256": "b6a4d917a444790f4c06ada640c1c0c95aecde2f8953ed8d0dfb19352500bfcd"
+  },
+  "cuda128Compatibility": {
+    "torchIndex": "https://download.pytorch.org/whl/cu128",
+    "torch": [
+      "torch==2.7.1",
+      "torchaudio==2.7.1"
+    ]
   }
 }

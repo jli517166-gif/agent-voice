@@ -94,5 +94,27 @@ class EnvironmentRepairTests(unittest.TestCase):
    helper.pip(Path(temp).resolve()/'python.exe',['Pillow==12.3.0'])
    commands=[call.args[0] for call in helper.run.call_args_list]
    self.assertEqual(len(commands),2);self.assertIn('--force-reinstall',commands[0]);self.assertIn('--no-deps',commands[0]);self.assertNotIn('--force-reinstall',commands[1])
+ def test_repair_success_requires_real_synthesis(self):
+  with tempfile.TemporaryDirectory() as temp:
+   helper=Repair(temp)
+   with patch.object(helper,'inspect',return_value={'ok':True,'selected':['cosyvoice'],'items':[]}),patch.object(helper,'system',return_value={}),patch('diagnostics.inspect_installation',return_value={'checks':[{'name':'CUDA 与推理依赖','section':'cosyvoice/cosyvoice3','ok':True}]}),patch.object(helper,'smoke',return_value=[{'id':'cosyvoice/cosyvoice3','ok':False,'error':'worker failed','guidance':'retry'}]):
+    result=helper.repair('cosyvoice')
+   self.assertFalse(result['ok']);self.assertFalse(result['verifiedUsable']);self.assertEqual(result['synthesisChecks'][0]['error'],'worker failed')
+ def test_smoke_failure_has_actionable_guidance(self):
+  self.assertIn('CUDA 12.8',Repair.guidance('no kernel image is available for execution'))
+  self.assertIn('Visual C++',Repair.guidance('DLL load failed while importing native module'))
+  self.assertIn('显存不足',Repair.guidance('CUDA out of memory'))
+ def test_compatibility_torch_is_officially_pinned(self):
+  profile=CATALOG['cuda128Compatibility']
+  self.assertEqual(profile['torchIndex'],'https://download.pytorch.org/whl/cu128')
+  self.assertEqual(profile['torch'],['torch==2.7.1','torchaudio==2.7.1'])
+ def test_unsupported_gpu_runtime_is_repaired_and_synthesized_again(self):
+  with tempfile.TemporaryDirectory() as temp:
+   helper=Repair(temp);failed=[{'id':'cosyvoice/cosyvoice3','ok':False,'error':'no kernel image is available'}];passed=[{'id':'cosyvoice/cosyvoice3','ok':True}]
+   fake_check={'name':'CUDA 与推理依赖','section':'cosyvoice/cosyvoice3','ok':True}
+   with patch.object(helper,'inspect',return_value={'ok':True,'selected':['cosyvoice'],'items':[]}),patch.object(helper,'system',return_value={}),patch('diagnostics.inspect_installation',return_value={'checks':[fake_check]}),patch.object(helper,'smoke',side_effect=[failed,passed]) as smoke,patch.object(helper,'install_compat_torch') as install:
+    result=helper.repair('cosyvoice')
+   self.assertTrue(result['ok']);self.assertTrue(result['verifiedUsable']);self.assertTrue(result['compatibilityRuntimeInstalled'])
+   self.assertEqual(smoke.call_count,2);install.assert_called_once()
 
 if __name__=='__main__':unittest.main()
