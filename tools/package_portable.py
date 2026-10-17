@@ -72,9 +72,10 @@ def stage(build,installation,model,reference,spec,target,commit):
 
 def release_files(root):
     root=Path(root).resolve()
-    for relative,path in files(root,skip={'data','acceptance'}):
+    for relative,path in files(root,skip={'data','acceptance','voice-model-packages/已导入'}):
         if len(relative.parts)>1 and relative.parts[0] not in ROOTS:raise ValueError('未批准的发布目录：'+str(relative))
         if len(relative.parts)==1 and relative.suffix.lower() not in {'.exe','.md','.json'}:raise ValueError('未批准的发布文件：'+str(relative))
+        if relative.parts[0] in {'voices','voice-model-packages'} and (len(relative.parts)<3 or relative.parts[1]!='Fairy'):raise ValueError('发布包只允许 Fairy 声音资源')
         if path.suffix.lower()=='.index' or any(p.casefold() in {'小挽昼','星见雅','rvc','rvc20240604nvidia'} for p in relative.parts):raise ValueError('发布包包含排除的音色或变声资源')
         yield relative.as_posix(),path
 

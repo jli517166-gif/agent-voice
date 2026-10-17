@@ -24,7 +24,7 @@ namespace AgentVoice {
             string wakeName="Local\\AgentVoicePublicWake-"+key;
             bool created;using(var mutex=new Mutex(true,"Local\\AgentVoicePublic-"+key,out created)){
                 if(!created){try{using(var wake=EventWaitHandle.OpenExisting(wakeName))wake.Set();}catch(WaitHandleCannotBeOpenedException){}return 0;}
-                try{if(!File.Exists(store.FilePath))store.Write(new Settings());using(var wake=new EventWaitHandle(false,EventResetMode.AutoReset,wakeName))using(var form=new MainForm(store)){var registration=ThreadPool.RegisterWaitForSingleObject(wake,(s,t)=>{if(form.IsHandleCreated&&!form.IsDisposed)form.BeginInvoke((Action)(()=>{form.Show();form.WindowState=FormWindowState.Normal;form.Activate();}));},null,Timeout.Infinite,false);try{Application.Run(form);}finally{registration.Unregister(null);}}return 0;}
+                try{if(!File.Exists(store.FilePath))store.Write(store.Read());using(var wake=new EventWaitHandle(false,EventResetMode.AutoReset,wakeName))using(var form=new MainForm(store)){var registration=ThreadPool.RegisterWaitForSingleObject(wake,(s,t)=>{if(form.IsHandleCreated&&!form.IsDisposed)form.BeginInvoke((Action)(()=>{form.Show();form.WindowState=FormWindowState.Normal;form.Activate();}));},null,Timeout.Infinite,false);try{Application.Run(form);}finally{registration.Unregister(null);}}return 0;}
                 catch(Exception exc){Directory.CreateDirectory(Path.Combine(root,"data","logs"));File.AppendAllText(Path.Combine(root,"data","logs","ui-error.log"),DateTime.Now+" "+exc+Environment.NewLine);return 1;}
             }
         }

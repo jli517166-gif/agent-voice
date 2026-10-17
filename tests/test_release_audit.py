@@ -59,7 +59,7 @@ class LockAndLogTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as tmp:
    p=Path(tmp)/'service.log';sink=BoundedLog(p,max_bytes=2048,backups=2)
    for _ in range(100):sink.write('中文日志'*80+'\n')
-   sink.close();self.assertLessEqual(len(list(Path(tmp).iterdir())),3);self.assertLess(sum(f.stat().st_size for f in Path(tmp).iterdir()),6144)
+   sink.close();records=[(f.name,f.stat().st_size) for f in Path(tmp).iterdir()];self.assertLessEqual(len(records),3,records);self.assertLess(sum(size for _,size in records),6144,records)
    source=io.BufferedReader(io.BytesIO(('中文跨块🙂'*500).encode()));t=pump(source,Path(tmp)/'worker.log');t.join(3);self.assertFalse(t.is_alive());self.assertEqual((Path(tmp)/'worker.log').read_text(encoding='utf-8'),'中文跨块🙂'*500)
 
 class TrainingDataTests(unittest.TestCase):

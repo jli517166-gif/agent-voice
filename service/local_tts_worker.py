@@ -13,7 +13,12 @@ def main():
             import torch,numpy as np,soundfile as sf
             torch.set_num_threads(4)
             if not torch.cuda.is_available():raise RuntimeError('需要 NVIDIA 显卡与可用的 CUDA 驱动')
-            source=Path(cfg['source']);os.chdir(source);sys.path.insert(0,str(source));sys.path.insert(0,str(source/'GPT_SoVITS'))
+            source=Path(cfg['source']);home=Path(cfg['model']);os.chdir(source);sys.path.insert(0,str(source));sys.path.insert(0,str(source/'GPT_SoVITS'))
+            # G2PW lazily imports chinese2 on the first utterance and reads this
+            # upstream-supported variable independently of TTS_Config. Keep it
+            # on the selected local BERT rather than an installation junction.
+            os.environ['bert_path']=str(home/'chinese-roberta-wwm-ext-large')
+            os.environ['HF_HUB_OFFLINE']='1';os.environ['TRANSFORMERS_OFFLINE']='1'
             from gpt_resources import configure
             configure(source)
             os.environ['PATH']=str(source/'runtime')+os.pathsep+os.environ.get('PATH','')
@@ -21,7 +26,7 @@ def main():
             import fast_langdetect
             lite=Path(fast_langdetect.__file__).parent/'resources/lid.176.ftz'
             fast_langdetect.infer._default_detector=fast_langdetect.infer.LangDetector(fast_langdetect.infer.LangDetectConfig(custom_model_path=str(lite)))
-            home=Path(cfg['model']);variant=cfg['variant'];acoustic='gsv-v5-pretrained/s2Gv5turbo.pth' if variant=='v5turbo' else 'v2Pro/s2Gv2ProPlus.pth'
+            variant=cfg['variant'];acoustic='gsv-v5-pretrained/s2Gv5turbo.pth' if variant=='v5turbo' else 'v2Pro/s2Gv2ProPlus.pth'
             # Upstream SV/vocoder defaults point into its source checkout. Resolve
             # these two assets from the selected package as well, without copying
             # weights or changing the user's upstream files.

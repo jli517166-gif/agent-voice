@@ -28,7 +28,7 @@ class PortablePackageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'未批准'):list(release_files(self.root))
         self.root.joinpath('private/reference.wav').unlink();self.root.joinpath('private').rmdir()
         self.put('voice-model-packages/小挽昼/model.bin')
-        with self.assertRaisesRegex(ValueError,'排除'):list(release_files(self.root))
+        with self.assertRaisesRegex(ValueError,'Fairy|排除'):list(release_files(self.root))
     def test_link_is_not_followed_to_other_files(self):
         if sys.platform=='win32':
             import os,subprocess

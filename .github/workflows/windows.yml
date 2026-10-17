@@ -18,3 +18,5 @@ jobs:
       - run: node --test tests/test_connector.mjs tests/test_deepseek_control_client.mjs
       - shell: powershell
         run: ./build.ps1
+      - shell: powershell
+        run: ./tests/check_first_run.ps1
