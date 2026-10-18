@@ -32,8 +32,9 @@ namespace AgentVoice {
         }
         string HarnessManualHelp(string source){
             if(source=="codex")return "请确认 Codex CLI 已登录且可运行 codex exec；也可在 Codex 中手动发送页面显示的验证短句。";
-            return "请确认 DeepSeek Harness 已登录，且安装目录中存在 resources/runtime/cli/bin/dsh.cmd；程序会使用 headless 配置执行真实验证。";
+            return "请确认 DeepSeek Harness 已登录，且安装目录中存在 resources/runtime/cli/bin/dsh.cmd。配置 API Key 时程序可全自动验证；只使用桌面账号登录时，请把已复制的验证短句粘贴到桌面 Harness 并发送，后续回执仍由程序自动验证。";
         }
+        static bool HarnessNeedsDesktop(Dictionary<string,object> launch){object value;return launch!=null&&launch.TryGetValue("manualRequired",out value)&&value!=null&&Convert.ToBoolean(value);}
         async Task InstallHarnessMcp(string source){
             BusyStatus("正在为 "+(source=="codex"?"Codex":"DeepSeek Harness")+" 安装聊天栏快捷控制……");
             var result=Json.Object(await Service.RunTool("install_mcp.py","--source "+source+" --root "+ServiceClient.Quote(Store.Root)));
@@ -66,16 +67,14 @@ namespace AgentVoice {
                 try{await Service.RunTool("verify_harness.py","--source "+source+" --location "+ServiceClient.Quote(dialog.SelectedPath)+" --probe");}
                 catch(Exception error){verificationHint.Text=source+"：连接器已安装，但未启用；真实验证命令检查失败。修复后重新选择同一目录即可继续。"+HarnessManualHelp(source);ShowPage("connectionGuide");throw new InvalidOperationException(verificationHint.Text+" 原因："+error.Message);}
                 var next=Json.Copy(Config);next.harness[source]=true;checks[source].Checked=true;await Persist(next,new {harness=next.harness});
-                Exception verificationError=null;
                 try{
                     if(source=="codex")await Service.Request("/api/connections/reload",new {});
                     verificationHint.Text=connectionHints[source]+" 命令行组件可用，开始真实回复验证。";
                     await VerifyHarness(source,dialog.SelectedPath);
-                }catch(Exception error){verificationError=error;}
-                if(verificationError!=null){
-                    var rollback=Json.Copy(Config);rollback.harness[source]=false;checks[source].Checked=false;await Persist(rollback,new {harness=rollback.harness});
-                    connectionHints[source]="连接器已安装，但真实验证未通过；当前未启用。修复提示中的问题后，重新选择同一目录即可自动检查并修复。";
-                    throw verificationError;
+                }catch(Exception error){
+                    connectionHints[source]="连接器已安装并保持启用，但真实回复或播放验证尚未通过。修复提示中的问题后，重新选择同一目录即可继续验证。";
+                    verificationHint.Text=source+"："+connectionHints[source];ShowPage("connectionGuide");
+                    throw new InvalidOperationException(verificationHint.Text+" 原因："+error.Message,error);
                 }
             }
         }
@@ -84,9 +83,15 @@ namespace AgentVoice {
             string challenge=Json.Text(item,"text");string prompt=Json.Text(item,"prompt");
             if(String.IsNullOrWhiteSpace(prompt))prompt="Reply with exactly this line and nothing else:\n"+challenge;
             BusyStatus("第 3/5 步：正在启动 "+source+" 的真实验证会话……");
-            try{await Service.RunTool("verify_harness.py","--source "+source+" --location "+ServiceClient.Quote(harnessLocation)+" --prompt "+ServiceClient.Quote(prompt)+" --timeout 180");}
+            Dictionary<string,object> launch;
+            try{launch=Json.Object(await Service.RunTool("verify_harness.py","--source "+source+" --location "+ServiceClient.Quote(harnessLocation)+" --prompt "+ServiceClient.Quote(prompt)+" --timeout 180"));}
             catch(Exception error){Clipboard.SetText("请只回复下面这段文字，不加解释和标点：\r\n"+challenge);verificationHint.Text=source+"：自动验证停在“启动 Harness 并获取回复”。验证短句已复制。"+HarnessManualHelp(source);ShowPage("connectionGuide");throw new InvalidOperationException(verificationHint.Text+" 原因："+error.Message);}
-            BusyStatus("第 4/5 步：Harness 已回复，正在确认连接器和播放回执……");
+            bool manual=HarnessNeedsDesktop(launch);
+            if(manual){
+                Clipboard.SetText("请只回复下面这段文字，不加解释和标点：\r\n"+challenge);
+                verificationHint.Text=source+"：连接器已安装并保持启用。当前桌面账号不能供 headless 调用，验证短句已复制；请到已登录的桌面 Harness 粘贴发送，程序将继续核对回复和实际播放。";
+                ShowPage("connectionGuide");BusyStatus("第 4/5 步：等待你在桌面 Harness 发送已复制的验证短句……");
+            }else BusyStatus("第 4/5 步：Harness 已回复，正在确认连接器和播放回执……");
             await WaitForHarnessVerification(source,challenge);verificationHint.Text=source+"：自动识别、接入和真实播放验证成功。";ShowPage("connectionGuide");Status(verificationHint.Text);
         }
         async Task WaitForAiriVerification(){

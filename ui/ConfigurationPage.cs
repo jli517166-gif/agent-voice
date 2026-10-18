@@ -72,7 +72,13 @@ namespace AgentVoice {
                 await KeepModelPackage(path,Json.Text(lastTransfer,"name"));
                 Config=Store.Read();BindVoice();BindSettings();ApplyTheme();ApplyIcon();lastJob="";deleted=null;
                 string kind=PackageModeLabel(Json.Text(lastTransfer,"packageMode"));
-                Status(kind+"“"+Json.Text(lastTransfer,"name")+"”已导入并匹配本地 TTS 引擎 · 原配置备份："+Json.Text(lastTransfer,"backup"));
+                string success=kind+"“"+Json.Text(lastTransfer,"name")+"”已导入并匹配本地 TTS 引擎 · 原配置备份："+Json.Text(lastTransfer,"backup");
+                object rawWarnings;var warningItems=lastTransfer.TryGetValue("warnings",out rawWarnings)?rawWarnings as object[]:null;
+                if(warningItems!=null&&warningItems.Length>0){
+                    string warning=string.Join("\r\n",Array.ConvertAll(warningItems,Convert.ToString));
+                    Status(success+" · 有兼容性提醒，请查看弹窗。");
+                    MessageBox.Show(this,"音色包已经导入，但运行环境发生了兼容调整：\r\n\r\n"+warning+"\r\n\r\n建议立即运行“环境自检”并试听。","音色包兼容性提醒",MessageBoxButtons.OK,MessageBoxIcon.Warning);
+                }else Status(success);
             }catch(Exception error){failure=error;}
             try{if(running)await Service.Start();}catch(Exception error){if(failure!=null)throw new InvalidOperationException(failure.Message+"；服务恢复失败："+error.Message);throw;}
             await Poll();if(failure!=null)throw new InvalidOperationException(failure.Message,failure);

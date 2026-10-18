@@ -19,6 +19,7 @@ namespace AgentVoice {
             if(args.Contains("--selftest"))return UiChecks.Run(store,args);
             if(args.Contains("--scrolltest"))return ScrollChecks.Run(store,args);
             if(args.Contains("--flowtest"))return UiChecks.Flow(store,args);
+            if(args.Contains("--targettest"))return UiChecks.Target(store,args);
             if(args.Contains("--bundletest"))return UiChecks.Bundle(store,args);
             string key;using(var sha=SHA256.Create())key=BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(root.ToLowerInvariant()))).Replace("-","").Substring(0,24);
             string wakeName="Local\\AgentVoicePublicWake-"+key;
