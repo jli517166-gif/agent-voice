@@ -33,8 +33,8 @@ def extract(archive,destination,strip_root=False):
                 with source.open(item) as incoming,target.open('wb') as output:shutil.copyfileobj(incoming,output)
 
 class Repair:
-    def __init__(self,root):
-        self.store=Store(root);self.root=self.store.root
+    def __init__(self,root,offline=False):
+        self.offline=offline;self.store=Store(root);self.root=self.store.root
         runtime_paths.repair_bundled_runtime(self.root)
         self.work=self.root/'data/environment-repair';self.work.mkdir(parents=True,exist_ok=True)
         self.log=self.work/'install.log'
@@ -48,6 +48,7 @@ class Repair:
         env.update(PYTHONNOUSERSITE='1',PYTHONUTF8='1',PIP_CONFIG_FILE=os.devnull,PIP_REQUIRE_VIRTUALENV='false',PIP_CACHE_DIR=str(self.work/'pip-cache'),TMP=str(self.work/'tmp'),TEMP=str(self.work/'tmp'),HF_HOME=str(self.work/'hf-cache'),HF_HUB_DISABLE_TELEMETRY='1',MODELSCOPE_CACHE=str(self.work/'modelscope-cache'),TORCH_HOME=str(self.work/'torch-cache'),XDG_CACHE_HOME=str(self.work/'cache'),MPLCONFIGDIR=str(self.work/'matplotlib'),NLTK_DATA=str(self.root/'tts-engines/gpt-sovits/nltk_data'))
         (self.work/'tmp').mkdir(exist_ok=True)
         env['PATH']=str(self.root/'tools')+os.pathsep+env.get('PATH','')
+        if self.offline:env.update(HF_HUB_OFFLINE='1',TRANSFORMERS_OFFLINE='1',PIP_NO_INDEX='1')
         return env
     def run(self,command,timeout=1800):
         from pipeline import hidden_process
@@ -62,6 +63,9 @@ class Repair:
     def download(self,url,name,sha256=None):
         target=inside(self.root,self.work/'downloads'/name);target.parent.mkdir(parents=True,exist_ok=True)
         if target.is_file() and sha256 and hashlib.sha256(target.read_bytes()).hexdigest()==sha256:return target
+        if self.offline:
+            if target.is_file() and not sha256:return target
+            raise ValueError('离线资源缺少或校验失败：'+name+'；请导入完整环境包后重试，不会连接网络')
         temporary=target.with_name(target.name+'.part');last=0
         try:
             with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'AgentVoice-EnvironmentRepair/1'}),timeout=60) as incoming,temporary.open('wb') as output:
@@ -130,7 +134,9 @@ class Repair:
         base=[python,'-I','-X','utf8','-c',code,'install','--disable-pip-version-check','--no-user','--prefer-binary','--cache-dir',str(self.work/'pip-cache')]
         if target:base+=['--target',str(inside(self.root,target))]
         sources=[]
-        if find_links:
+        if self.offline:
+            sources=[(str(self.work/'wheels'),None)]
+        elif find_links:
             sources=[(link,None) for link in find_links]
         else:
             candidates=[index] if index else list(CATALOG.get('pipIndexes') or ['https://pypi.org/simple'])
@@ -295,7 +301,7 @@ class Repair:
             matcha_ok=name!='cosyvoice' or (source/'third_party/Matcha-TTS/matcha/utils/audio.py').is_file()
             rows.append({'id':name,'ok':not probe['missing'] and source_file.is_file() and not missing_model and resource_ok and matcha_ok,'python':str(python),'source':str(source),'model':str(model),'missingPackages':probe['missing'],'sourceMissing':not source_file.is_file(),'matchaMissing':not matcha_ok,'missingModelFiles':sorted(set(missing_model)),'resourcesMissing':not resource_ok,'probe':probe})
         return {'ok':all(r['ok'] for r in rows),'items':rows,'selected':selected,'systemNotice':'显卡驱动、系统 VC++／.NET 组件不能在软件文件夹里替代安装；最后深度自检会说明系统问题。','progress':str(self.work/'progress.json'),'log':str(self.log)}
-    def repair(self,engine):
+    def repair(self,engine,verify=True):
         with OperationLock(self.root):
             if self.log.is_file() and self.log.stat().st_size>10*1024**2:os.replace(self.log,self.log.with_suffix('.previous.log'))
             before=self.inspect(engine);cfg=self.store.get();updates={}
@@ -303,6 +309,8 @@ class Repair:
             for row in before['items']:
                 if row['ok']:continue
                 name=row['id'];self.progress('正在补齐 '+name)
+                if self.offline and name!='core' and any(row.get(field) for field in ('sourceMissing','matchaMissing','missingModelFiles','resourcesMissing')):
+                    raise ValueError('离线模式缺少 '+name+' 引擎源码、基础模型或发音资源，请先导入对应 TTS 包')
                 if name=='core':
                     candidate=Path(row['python']);python=candidate if candidate.is_file() and self.root in candidate.resolve().parents else self.python(self.root/'runtime/core')
                     missing=self.probe(python,CATALOG['core']['packages'])['missing'];self.pip(python,[CATALOG['core']['packages'][m] for m in missing]);updates['pythonService']=self.store.portable(python)
@@ -348,13 +356,13 @@ class Repair:
             if updates:self.store.update({'engines':updates})
             result=self.inspect(engine)
             result['system']=self.system()
-            if result['ok'] and result['selected']:
+            if verify and result['ok'] and result['selected']:
                 self.progress('正在验证推理源码与 CUDA')
                 from diagnostics import inspect_installation
                 deep=inspect_installation(self.store,deep=True)
                 result['runtimeChecks']=[c for c in deep['checks'] if c['name']=='CUDA 与推理依赖' and c['section'].split('/')[0] in result['selected']]
                 result['ok']=all(c['ok'] for c in result['runtimeChecks']) and bool(result['runtimeChecks'])
-            if result['ok'] and result['selected']:
+            if verify and result['ok'] and result['selected']:
                 result['synthesisChecks']=self.smoke(result['selected'])
                 unsupported=[x for x in result['synthesisChecks'] if not x['ok'] and any(marker in x.get('error','').lower() for marker in ('no kernel image','not compatible with the current pytorch','torchvision::nms','operator torchvision'))]
                 if unsupported:
@@ -370,8 +378,8 @@ class Repair:
             return result
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('action',choices=['inspect','repair']);p.add_argument('--root',required=True);p.add_argument('--engine',choices=['core','current','all','cosyvoice','gpt-sovits'],default='current');a=p.parse_args();helper=Repair(a.root)
-    try:result=helper.repair(a.engine) if a.action=='repair' else helper.inspect(a.engine)
+    p=argparse.ArgumentParser();p.add_argument('action',choices=['inspect','repair']);p.add_argument('--root',required=True);p.add_argument('--engine',choices=['core','current','all','cosyvoice','gpt-sovits'],default='current');p.add_argument('--offline',action='store_true');p.add_argument('--prepare-only',action='store_true');a=p.parse_args();helper=Repair(a.root,offline=a.offline)
+    try:result=helper.repair(a.engine,verify=not a.prepare_only) if a.action=='repair' else helper.inspect(a.engine)
     except Exception as exc:helper.progress(str(exc),'failed');result={'ok':False,'error':str(exc),'log':str(helper.log)}
     print(json.dumps(result,ensure_ascii=False))
 

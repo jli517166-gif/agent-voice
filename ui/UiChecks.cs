@@ -41,6 +41,13 @@ namespace AgentVoice {
         public async Task<object> VerifyBundle(string file,string directory){Directory.CreateDirectory(directory);var original=Json.Copy(Config);bool running=await Service.Running();if(running)await Service.Stop();try{if(!File.Exists(file))await ExportConfiguration(file,"lightweight");await ImportConfiguration(file);if(Config.voice.engine!=original.voice.engine||(Config.voice.engine=="gpt-sovits"&&Config.voice.gptVariant!=original.voice.gptVariant)||Json.Encode(Config.harness)!=Json.Encode(original.harness)||Config.token!=original.token)throw new InvalidOperationException("音色包改变了连接设置");return new{ok=true,engine=Config.voice.engine,variant=Config.voice.gptVariant,voiceImportExport=true};}finally{Store.Write(original);Config=original;BindVoice();}}
     }
     static class UiChecks {
+        public static int SetupVoice(SettingsStore store,string[] args){
+            string directory=args.Length>1?args[1]:store.Resolve("acceptance/setup-voice");Directory.CreateDirectory(directory);int exit=1;
+            using(var form=new MainForm(store,true)){
+                form.ShowInTaskbar=false;form.StartPosition=FormStartPosition.Manual;form.Location=new Point(-32000,-32000);
+                form.Shown+=async(s,e)=>{try{await form.VerifySetupPlayback();File.WriteAllText(Path.Combine(directory,"setup-voice-results.json"),Json.Encode(new{ok=true,realPlayback=true,userConfirmationTested=true}));exit=0;}catch(Exception error){File.WriteAllText(Path.Combine(directory,"setup-voice-error.txt"),error.ToString());}try{if(await form.Service.Running())await form.Service.Stop();}catch{}form.Close();};Application.Run(form);
+            }return exit;
+        }
         public static int Environment(SettingsStore store,string[] args){
             string directory=args.Length>1?args[1]:Path.Combine(store.Root,"acceptance","environment");Directory.CreateDirectory(directory);
             try{

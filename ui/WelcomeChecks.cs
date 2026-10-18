@@ -42,13 +42,41 @@ namespace AgentVoice {
                     if(!form.Surface.Ready||form.Surface.AnimationRunning)errors.Add("Changing reduced motion during intro did not stop animation");
                     form.Close();
                 }
-                using(var form=new MainForm(new SettingsStore(Path.Combine(directory,"bare-install")),true)){
+                using(var form=new MainForm(new SettingsStore(Path.Combine(directory,"bare-install-"+Guid.NewGuid().ToString("N"))),true)){
                     form.ShowInTaskbar=false;form.StartPosition=FormStartPosition.Manual;form.Location=new Point(-32000,-32000);form.Show();Application.DoEvents();
                     form.ApplyWelcomeChoice("setup");if(!form.Controls.Find("setupResourceSummary",true).Any(c=>c.Visible&&c.Text.Contains("待补齐")))errors.Add("Bare installation setup must show missing resources");
                     form.ApplyWelcomeChoice("home");form.ShowPage("setup");form.ShowPage("home");
+                    errors.AddRange(form.VerifySetupFlow(directory));
                 }
             }catch(Exception error){errors.Add(error.ToString());}
             File.WriteAllText(Path.Combine(directory,"welcome-results.json"),Json.Encode(new{ok=errors.Count==0,frames=5,layouts=3,choices=3,serviceAutoStart=false,errors=errors}));return errors.Count==0?0:1;
+        }
+    }
+    public sealed partial class MainForm {
+        internal List<string> VerifySetupFlow(string directory){
+            var errors=new List<string>();var original=Json.Copy(Config);string draft=body.Text;int controls=CountControls(this);
+            ShowPage("setup");for(int i=0;i<24;i++){GoSetup(i%8);Application.DoEvents();if(SetupStep!=i%8||setupPanels.Count(c=>c.Visible)!=1)errors.Add("Setup step navigation shows wrong panels");if(i<8)using(var shot=new Bitmap(Width,Height)){DrawToBitmap(shot,new Rectangle(0,0,Width,Height));shot.Save(Path.Combine(directory,"setup-step-"+i+".png"));}}
+            if(CountControls(this)!=controls||body.Text!=draft)errors.Add("Setup navigation leaked controls or lost input");
+            var initialSize=ClientSize;
+            foreach(var size in new[]{new Size(1080,750),new Size(900,620)}){
+                ClientSize=size;GoSetup(2);Application.DoEvents();
+                var viewport=pages["setup"].Controls.Find("setupScroller",true).Single() as ScenePanel;
+                foreach(var button in new Control[]{setupBack,setupNext,setupSkip}){
+                    var bounds=pages["setup"].RectangleToClient(button.RectangleToScreen(button.ClientRectangle));
+                    if(!pages["setup"].ClientRectangle.Contains(bounds)||bounds.IntersectsWith(pages["setup"].RectangleToClient(viewport.RectangleToScreen(viewport.ClientRectangle))))errors.Add("Setup navigation clipped or overlaps scrolling content at "+size);
+                }
+                if(viewport.VerticalScroll.Maximum-viewport.VerticalScroll.LargeChange+1<=0)errors.Add("Setup overflow has no reachable scrollbar at "+size);
+            }
+            ClientSize=initialSize;
+            GoSetup(2);setupSkip.PerformClick();if(SetupStep!=3||SetupPreference().setupStates["step2"]!="skipped")errors.Add("Skip must preserve an explicit skipped state");
+            setupBack.PerformClick();if(SetupStep!=2||new WelcomeState(Store).Read().setupStep!=2)errors.Add("Setup progress did not persist");
+            setupOffline.Checked=true;if(!new WelcomeState(Store).Read().offline)errors.Add("Offline preference not persisted");
+            try{ConfirmSetupVoice();errors.Add("Unplayed voice could be confirmed");}catch(InvalidOperationException){}
+            var p=SetupPreference();p.voiceEvidence=VoiceEvidence();p.voiceJobId="fixture";p.heardVoice=true;new WelcomeState(Store).Write(p);
+            Config.voice.speed=1.1;GoSetup(7);if(setupResult.Text.Contains("上次实际播放完成")||setupResult.Text.Contains("听感确认：已确认"))errors.Add("Changed voice reused stale playback evidence");
+            SetSetupConnections(new Dictionary<string,object>{{"verification",new Dictionary<string,object>{{"codex",new Dictionary<string,object>{{"state","waiting"}}}}}});if(setupHarnessSummary.Contains("播放验证通过"))errors.Add("Waiting challenge was treated as verified");
+            SetSetupConnections(null);if(!setupHarnessSummary.Contains("未验证"))errors.Add("Offline service retained a green connection");
+            Config=original;setupOffline.Checked=false;GoSetup(0);BindVoice();ShowPage("home");return errors;
         }
     }
 }

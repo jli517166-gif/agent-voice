@@ -12,6 +12,10 @@ namespace AgentVoice {
     static class Program {
         [DllImport("user32.dll")]static extern bool SetProcessDPIAware();
         [STAThread]static int Main(string[] args){
+            // WinForms targets the v4 CLR for compatibility; opt out of the
+            // legacy 260-character policy before the first filesystem call.
+            AppContext.SetSwitch("Switch.System.IO.UseLegacyPathHandling",false);
+            AppContext.SetSwitch("Switch.System.IO.BlockLongPaths",false);
             SetProcessDPIAware();Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);
             string root=AppPaths.CanonicalDirectory(AppDomain.CurrentDomain.BaseDirectory);
             var store=new SettingsStore(root);
@@ -22,6 +26,9 @@ namespace AgentVoice {
             if(args.Contains("--targettest"))return UiChecks.Target(store,args);
             if(args.Contains("--bundletest"))return UiChecks.Bundle(store,args);
             if(args.Contains("--welcometest"))return WelcomeChecks.Run(store,args);
+            if(args.Contains("--moduletest"))return ModuleChecks.Run(store,args);
+            if(args.Contains("--import-module"))return ModulePackages.ImportCommand(store,args);
+            if(args.Contains("--setupvoicetest"))return UiChecks.SetupVoice(store,args);
             if(args.Contains("--welcome-preview")){using(var preview=new WelcomeForm(false))Application.Run(preview);return 0;}
             string key;using(var sha=SHA256.Create())key=BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(root.ToLowerInvariant()))).Replace("-","").Substring(0,24);
             string wakeName="Local\\AgentVoicePublicWake-"+key;

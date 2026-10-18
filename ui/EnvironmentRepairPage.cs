@@ -91,12 +91,14 @@ namespace AgentVoice {
         }
         async Task RepairEnvironment(bool repair){
             string scope=new[]{"current","core","cosyvoice","gpt-sovits","all"}[repairScope.SelectedIndex];
+            bool offline=SetupPreference().offline;
+            if(repair&&offline&&!File.Exists(Store.Resolve(Config.engines.pythonService)))throw new InvalidOperationException("严格离线模式缺少主服务 Python，请在配置中心导入环境补齐包。");
             if(repair&&await Service.Running())throw new InvalidOperationException("请先在首页关闭语音服务，再补齐环境，避免修改运行中的依赖。");
             if(!repair&&!File.Exists(Store.Resolve(Config.engines.pythonService))){repairDetails.Text="缺少主服务 Python。点击“补齐缺失环境”会先在 runtime/core 创建独立 Python，再继续检查和补齐。";return;}
             if(repair){await EnvironmentBootstrap.EnsureCore(Store,BusyStatus);Config=Store.Read();}
             var progress=new Timer{Interval=1000};progress.Tick+=(s,e)=>{try{string p=Store.Resolve("data/environment-repair/progress.json");if(File.Exists(p))BusyStatus(Json.Text(Json.Object(File.ReadAllText(p)),"message"));}catch(IOException){}catch(ArgumentException){}};
             try{
-                progress.Start();string text=await Service.RunTool("environment_repair.py",(repair?"repair":"inspect")+" --root "+ServiceClient.Quote(Store.Root)+" --engine "+scope);var report=Json.Object(text);bool ok=Convert.ToBoolean(report["ok"]),verified=report.ContainsKey("verifiedUsable")&&Convert.ToBoolean(report["verifiedUsable"]);repairDetails.Text=EnvironmentReport(report);Config=Store.Read();BindSettings();Status(!ok?"仍有未通过项目，请按页面提示处理后重试。":!repair?"环境检查通过；补齐时还会进行真实合成验证。":verified?"环境补齐与真实合成验证均已通过。":"主服务环境补齐通过；请选择声音引擎完成真实合成验证。");
+                progress.Start();string text=await Service.RunTool("environment_repair.py",(repair?"repair":"inspect")+" --root "+ServiceClient.Quote(Store.Root)+" --engine "+scope+(offline?" --offline":""));var report=Json.Object(text);bool ok=Convert.ToBoolean(report["ok"]),verified=report.ContainsKey("verifiedUsable")&&Convert.ToBoolean(report["verifiedUsable"]);repairDetails.Text=EnvironmentReport(report);Config=Store.Read();BindSettings();Status(!ok?"仍有未通过项目，请按页面提示处理后重试。":!repair?"环境检查通过；补齐时还会进行真实合成验证。":verified?"环境补齐与真实合成验证均已通过。":"主服务环境补齐通过；请选择声音引擎完成真实合成验证。");
             }finally{progress.Stop();progress.Dispose();}
         }
         string EnvironmentReport(Dictionary<string,object> report){

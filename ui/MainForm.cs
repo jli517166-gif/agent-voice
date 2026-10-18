@@ -129,6 +129,7 @@ namespace AgentVoice {
             if(!harnessIndicators.ContainsKey(source))harnessIndicators[source]=new List<Label>();harnessIndicators[source].Add(label);return label;
         }
         void UpdateHarnessIndicators(Dictionary<string,object> states,bool online){
+            if(!online)SetSetupConnections(null);
             harnessStates=states;harnessOnline=online;
             var active=new List<string>();
             foreach(var pair in harnessIndicators){

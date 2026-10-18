@@ -30,6 +30,7 @@ namespace AgentVoice {
             catch(WebException error){if(error.Status==WebExceptionStatus.ConnectFailure)return false;if(error.Status==WebExceptionStatus.Timeout){try{int port=Store.Read().port;if(!IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners().Any(p=>p.Port==port))return false;}catch(NetworkInformationException){}}throw new InvalidOperationException("语音服务暂时未响应，未按离线方式改写配置。请稍后重试或恢复服务。",error);}
         }
         public async Task Start() {
+            if(File.Exists(ModulePackages.Pending(Store)))throw new InvalidOperationException("上次模块安装尚未恢复，请先打开配置中心恢复安装。");
             if(await Running())return;
             Settings cfg=Store.Read();string python=Store.Resolve(cfg.engines.pythonService);
             if(!File.Exists(python))throw new InvalidOperationException("请在本地引擎设置中选择主服务 Python 运行时。");

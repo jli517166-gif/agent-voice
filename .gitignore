@@ -18,6 +18,10 @@ voice-model-packages/
 *.safetensors
 *.cosyvoice.ttsmodel
 *.gpt-sovits.ttsmodel
+*.ttsengine
+*.ttsenvironment
+*.ttsengine.sha256
+*.ttsenvironment.sha256
 *.ckpt
 *.avconfig
 *.wav

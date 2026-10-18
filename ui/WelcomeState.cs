@@ -8,6 +8,10 @@ namespace AgentVoice {
         public int version=1;
         public bool seen=false,reduceMotion=false;
         public string lastChoice="",lastStep="setup";
+        public int setupStep=0;
+        public System.Collections.Generic.Dictionary<string,string> setupStates=new System.Collections.Generic.Dictionary<string,string>();
+        public string voiceEvidence="",voiceJobId="",voiceVerifiedAt="";
+        public bool heardVoice=false,offline=false;
     }
     public sealed class WelcomeState {
         public readonly string FilePath;

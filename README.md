@@ -5,13 +5,15 @@
 > [!IMPORTANT]
 > 本仓库**不包含本地 TTS 引擎源码、预训练权重、Python 运行环境、音色包和参考录音**。这些文件体积大，并可能受各自许可证或个人声音资产限制。首次使用可在设置中使用“补齐环境”下载，或按照《[安装手册](安装手册.md)》自行下载 CosyVoice 并放到规定目录。GitHub 不携带这些大文件。
 
+新配置流程支持四个独立模块：软件本体、TTS 引擎（`.ttsengine`）、环境补齐（`.ttsenvironment`）、音色（带引擎名的 `.ttsmodel`）。软件本体可先运行、跳过配置，再从“配置中心”继续；环境包由原生程序安装，不要求预装 Python。在线准备、严格离线、实际试听与可选连接的操作见《[模块安装与配置指南](模块安装与配置指南.md)》。
+
 ## 引擎选择
 
 CosyVoice 保留原有认可声音；新增 GPT 版本中推荐 v5 Turbo，ProPlus 用于按角色保存备选。F5、Chatterbox、VoxCPM、Qwen、MOSS 不再进入正式选择。当前本机集成版已经配置引擎；GitHub 源码仍不携带运行环境和权重。操作与兼容范围见《[TTS 使用手册](TTS使用手册.md)》。
 
 ## 主要功能
 
-- 首次启动提供原生 WinForms 开场与欢迎页：开始配置、导入音色配置或直接进入。开场可立即跳过，支持减少动画；配置中心可随时继续，已有声音参数不重置。设置中可重播开场。
+- 首次启动提供原生 WinForms 开场与欢迎页：开始配置、导入音色配置或直接进入。八步配置支持跳过、返回、保存进度；安装有校验、备份和中断恢复。文件就位、实际播放和听感确认分别记录，连接沿用真实回执验证。设置中可重播开场。
 
 - 本地 TTS 直接输出，默认使用 CosyVoice 3。
 - 正式集成三种选择：CosyVoice、GPT-SoVITS v5 Turbo、GPT-SoVITS ProPlus。所有声音直接由所选 TTS 输出。
@@ -38,8 +40,8 @@ CosyVoice 保留原有认可声音；新增 GPT 版本中推荐 v5 Turbo，ProPl
 
 - Windows 10/11 64 位。
 - NVIDIA 显卡和可用的 CUDA 驱动。
-- .NET Framework 4.x（用于编译和运行 WinForms 界面）。
-- Git、Git LFS、Miniconda 或兼容的 Python 环境管理工具。
+- .NET Framework 4.8（运行 WinForms 界面并使用长路径支持）。
+- 模块包安装不需要预装 Git、Conda 或 Python；手工准备引擎时按其上游要求安装工具。
 - 足够磁盘空间：CosyVoice 源码、环境和模型通常需要十几 GB。
 
 ## 快速开始

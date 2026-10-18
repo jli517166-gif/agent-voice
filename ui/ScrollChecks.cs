@@ -35,7 +35,9 @@ namespace AgentVoice {
                     if(patterned){Config.appearance.background=backdrop;Config.appearance.backgroundColor="#12313B";Config.appearance.textColor="#FAF4F8";}
                     ClientSize=size;ApplyTheme();await Task.Delay(120);
                     foreach(string id in pages.Keys.ToArray()){
-                        ShowPage(id);var viewport=pages[id];await Task.Delay(100);
+                        ShowPage(id);var viewport=pages[id];
+                        if(id=="setup"){GoSetup(2);viewport=(ScenePanel)pages[id].Controls.Find("setupScroller",true).Single();}
+                        await Task.Delay(100);
                         int range=viewport.VerticalScroll.Maximum-viewport.VerticalScroll.LargeChange+1;
                         if(range<=0){reports.Add(new{page=id,size=size.ToString(),patterned=patterned,scrollable=false});continue;}
                         Rectangle screen=content.RectangleToScreen(content.ClientRectangle);

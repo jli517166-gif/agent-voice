@@ -9,7 +9,8 @@
 ## 模块边界
 
 - `ui/`：WinForms 页面、交互与等待动画；环境修复页只调工具，不包含 pip 安装业务。
-- `ui/WelcomeForm.cs`、`WelcomeState.cs`、`SetupPage.cs`：静音开场、首次入口和可继续的配置中心；欢迎偏好独立存储，不触发服务、下载或设备验证。
+- `ui/WelcomeForm.cs`、`WelcomeState.cs`：静音开场和首次入口；欢迎偏好独立存储，不自动启动服务或下载。`SetupPage.cs`：八步可继续配置，只有明确点击操作才启动安装、试听与真实连接验证。
+- `ui/ModulePackages.cs`：无 Python 的原生模块校验、事务安装、路径重定位和中断恢复。`tools/module_packages.py`：分别制作软件本体、引擎、环境包，声音继续使用独立包。模块清单只允许修改自身路径，不能携带账号设置；导入通过不能替代目标硬件推理验收。
 - `service/engine-catalog.json`、`engine_registry.py`：正式引擎能力与选择；新增引擎必须写适配器和契约测试。
 - `engine_cosy.py`、`engine_gpt.py`：推理适配器；工作进程独立，切换必须取消旧任务并核对实际模型身份。
 - `jobs.py`：串行队列、分段生成、渐进播放、取消和 AIRI 投递；`pipeline.py`：实际推理、校验、重试与流式合并。
