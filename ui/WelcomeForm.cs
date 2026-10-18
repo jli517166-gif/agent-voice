@@ -1,5 +1,7 @@
-using System;
+﻿using System;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
@@ -9,20 +11,20 @@ namespace AgentVoice {
         public readonly WelcomeSurface Surface;
         public string Choice {get;private set;}
         public bool ReduceMotion {get{return Surface.ReduceMotion;}}
-        public WelcomeForm(bool reduced,bool animate=true){
+        public WelcomeForm(bool reduced,bool animate=true,bool sounds=false){
             Text="Agent Voice · 由你定调";AutoScaleMode=AutoScaleMode.Dpi;AutoScaleDimensions=new SizeF(96,96);
             ClientSize=new Size(1120,720);MinimumSize=new Size(840,580);StartPosition=FormStartPosition.CenterScreen;BackColor=WelcomeSurface.Navy;
-            Surface=new WelcomeSurface(reduced,animate){Dock=DockStyle.Fill};Controls.Add(Surface);
+            Surface=new WelcomeSurface(reduced,animate,sounds){Dock=DockStyle.Fill};Controls.Add(Surface);
             Surface.Choose+=value=>{Choice=value;DialogResult=DialogResult.OK;Close();};
             KeyPreview=true;KeyDown+=(s,e)=>{if(e.KeyCode==Keys.Escape){Surface.Skip();e.Handled=true;}};
             Shown+=(s,e)=>Surface.Start();
         }
     }
     public sealed class WelcomeSurface:Panel {
-        public static readonly Color Navy=Color.FromArgb(5,12,22),Cyan=Color.FromArgb(34,211,238),White=Color.FromArgb(239,247,252);
+        public static readonly Color Navy=Color.Black,Cyan=Color.FromArgb(34,211,238),White=Color.FromArgb(239,247,252);
         readonly Timer timer=new Timer{Interval=16};readonly Stopwatch watch=new Stopwatch();
-        readonly Font brand=new Font("Segoe UI",22,FontStyle.Bold,GraphicsUnit.Pixel),title=new Font("Microsoft YaHei UI",46,FontStyle.Bold,GraphicsUnit.Pixel),body=new Font("Microsoft YaHei UI",17,FontStyle.Regular,GraphicsUnit.Pixel),small=new Font("Microsoft YaHei UI",13,FontStyle.Regular,GraphicsUnit.Pixel);
-        readonly bool animate;double seconds;bool reduced;Font motionFont;
+        readonly Font brand=new Font("Segoe UI",22,FontStyle.Bold,GraphicsUnit.Pixel),title=new Font("Microsoft YaHei UI",54,FontStyle.Bold,GraphicsUnit.Pixel),body=new Font("Microsoft YaHei UI",17,FontStyle.Regular,GraphicsUnit.Pixel),small=new Font("Microsoft YaHei UI",13,FontStyle.Regular,GraphicsUnit.Pixel);
+        readonly bool animate,playSounds;readonly InterfaceSounds effects=new InterfaceSounds();double seconds;bool reduced;Font motionFont;Bitmap artwork;
         public event Action<string> Choose;
         public readonly WelcomeAction StartButton,ImportButton,HomeButton,SkipButton;
         public readonly CheckBox MotionChoice;
@@ -30,8 +32,9 @@ namespace AgentVoice {
         public bool Ready {get{return seconds>=3.4;}}
         internal bool AnimationRunning {get{return timer.Enabled;}}
         float ScaleFactor {get{return Math.Max(.1F,Math.Min(ClientSize.Width/1120F,ClientSize.Height/720F));}}
-        public WelcomeSurface(bool reduceMotion,bool play){
-            animate=play;reduced=reduceMotion;seconds=reduceMotion?3.4:0;
+        public WelcomeSurface(bool reduceMotion,bool play,bool sounds=false){
+            animate=play;playSounds=sounds;reduced=reduceMotion;seconds=reduceMotion?3.4:0;
+            string art=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"assets","keynote-voice.png");if(File.Exists(art))using(var source=Image.FromFile(art))artwork=new Bitmap(source);
             SetStyle(ControlStyles.UserPaint|ControlStyles.AllPaintingInWmPaint|ControlStyles.OptimizedDoubleBuffer|ControlStyles.ResizeRedraw,true);BackColor=Navy;
             AccessibleName="Agent Voice 首次配置";
             StartButton=Action("开始配置","setup",true);ImportButton=Action("导入已有配置","import",false);HomeButton=Action("直接进入  →","home",false);HomeButton.TextOnly=true;
@@ -42,7 +45,7 @@ namespace AgentVoice {
             LayoutControls();RefreshStage();
         }
         WelcomeAction Action(string text,string value,bool primary){var button=new WelcomeAction(this){Text=text,Primary=primary,TabIndex=value=="setup"?1:value=="import"?2:3};button.Click+=(s,e)=>{if(Ready&&Choose!=null)Choose(value);};Controls.Add(button);return button;}
-        public void Start(){if(!animate||reduced||Ready){if(reduced)Skip();return;}watch.Start();timer.Start();}
+        public void Start(){if(!animate||reduced||Ready){if(reduced)Skip();return;}if(playSounds)try{var store=new SettingsStore(AppDomain.CurrentDomain.BaseDirectory);int port=store.Read().port;bool listening=System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners().Any(endpoint=>endpoint.Port==port);if(!listening)effects.Play(store.Root,8);}catch(System.Net.NetworkInformation.NetworkInformationException){}watch.Start();timer.Start();}
         public void Skip(){seconds=3.4;timer.Stop();watch.Stop();RefreshStage();Invalidate(true);StartButton.Focus();}
         internal void Preview(double elapsed){timer.Stop();watch.Stop();seconds=Math.Max(0,Math.Min(3.4,elapsed));RefreshStage();Invalidate(true);}
         void RefreshStage(){
@@ -63,46 +66,17 @@ namespace AgentVoice {
         protected override void OnPaint(PaintEventArgs e){
             base.OnPaint(e);var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;g.TextRenderingHint=System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
             float scale=ScaleFactor;g.TranslateTransform((Width-1120*scale)/2,(Height-720*scale)/2);g.ScaleTransform(scale,scale);
-            if(Ready){
-                TextAt(g,"AGENT VOICE",brand,White,new RectangleF(52,38,360,40));
-                using(var pen=new Pen(Cyan,3))g.DrawLine(pen,100,242,138,242);
-                TextAt(g,"由你定调",title,White,new RectangleF(96,270,540,80));
-                TextAt(g,"选择引擎、音色和连接方式，\n也可以稍后配置。",body,Color.FromArgb(162,183,199),new RectangleF(100,353,500,65));
-                Wave(g,815,354,202,82,1,0);TextAt(g,"软件  /  引擎  /  音色  /  环境",small,Color.FromArgb(101,138,160),new RectangleF(686,490,380,32));
-                TextAt(g,"随时返回配置中心，按你的方式继续。",small,Color.FromArgb(101,130,150),new RectangleF(284,646,550,30));
-                return;
-            }
-            float time=(float)seconds;
-            if(time<.5F){float width=8+215*Ease(time/.5F);using(var glow=new Pen(Color.FromArgb(26,Cyan),9))g.DrawLine(glow,560-width,332,560+width,332);using(var pen=new Pen(Cyan,2))g.DrawLine(pen,560-width,332,560+width,332);}
-            else if(time<1.3F){float phase=(time-.5F)/.8F;Wave(g,560,332,224,90*(float)Math.Sin(phase*Math.PI),1,phase*6);}
-            else if(time<2.2F){float phase=Ease((time-1.3F)/.9F);Wave(g,560,332,224*(1-phase),38*(1-phase),1-phase,0);for(int i=0;i<4;i++){float angle=(float)(i*Math.PI/2-Math.PI/4),radius=154*(1-phase)+32;float x=560+(float)Math.Cos(angle)*radius,y=332+(float)Math.Sin(angle)*radius;Module(g,x,y,i,1);}}
-            else {
-                float merge=Ease((time-2.2F)/.6F),transition=Ease((time-2.8F)/.6F);float x=560+(52-560)*transition,y=332+(48-332)*transition;
-                if(transition<1)for(int i=0;i<4;i++)Module(g,560+(i%2==0?-22:22),280+(i<2?-22:22),i,1-transition);
-                float size=1-.45F*transition;var saved=g.Save();g.TranslateTransform(x,y);g.ScaleTransform(size,size);TextAt(g,"AGENT VOICE",title,Fade(White,merge),new RectangleF(-182*(1-transition),-22,600,80));g.Restore(saved);
-                if(time<2.8F)using(var pen=new Pen(Fade(Cyan,1-merge),2))g.DrawLine(pen,370+380*merge,292,370+380*merge,368);
-                if(transition>0){
-                    using(var pen=new Pen(Fade(Cyan,transition),3))g.DrawLine(pen,100,242,138,242);
-                    TextAt(g,"由你定调",title,Fade(White,transition),new RectangleF(96,270+(1-transition)*10,540,80));
-                    TextAt(g,"选择引擎、音色和连接方式，\n也可以稍后配置。",body,Fade(Color.FromArgb(162,183,199),transition),new RectangleF(100,353,500,65));
-                    Wave(g,815,354,202,82,transition,0);
-                }
-            }
-            if(time<2.8F)TextAt(g,"软件  ·  引擎  ·  音色  ·  环境",small,Color.FromArgb(102,141,164),new RectangleF(444,475,420,32));
+            float reveal=Ready?1:KeynoteArt.Ease(seconds/1.45),headline=Ready?1:KeynoteArt.Ease((seconds-.12)/.85);
+            float width=560*(.88F+.12F*reveal),height=315*(.08F+.92F*reveal);
+            KeynoteArt.Photo(g,artwork,new RectangleF(840-width/2,350-height/2,width,height),reveal);
+            KeynoteArt.Blocks(g,new RectangleF(605,460,440,90),Ready?KeynoteArt.Duration:seconds,Cyan);
+            TextAt(g,"Agent Voice",brand,White,new RectangleF(52,38,360,40));
+            TextAt(g,"让声音，\n有你的名字。",title,Fade(White,headline),new RectangleF(96-(1-headline)*28,208,500,151));
+            TextAt(g,"本地生成。自由选择。\n从一段声音，开始你的语音工作台。",body,Fade(Color.FromArgb(162,183,199),headline),new RectangleF(100,355,505,64));
+            TextAt(g,"软件  /  引擎  /  音色  /  环境",small,Color.FromArgb(101,138,160),new RectangleF(686,564,390,32));
+            if(Ready)TextAt(g,"随时返回配置中心，按你的方式继续。",small,Color.FromArgb(101,130,150),new RectangleF(284,646,550,30));
         }
-        void Module(Graphics g,float x,float y,int kind,float opacity){
-            using(var pen=new Pen(Fade(kind%2==0?Cyan:White,opacity),1.8F)){
-                if(kind==0){g.DrawRectangle(pen,x-17,y-13,34,26);g.DrawLine(pen,x-17,y-5,x+17,y-5);}
-                else if(kind==1){g.DrawRectangle(pen,x-12,y-12,24,24);for(int k=-1;k<=1;k++){g.DrawLine(pen,x+k*8,y-18,x+k*8,y-12);g.DrawLine(pen,x+k*8,y+12,x+k*8,y+18);}}
-                else if(kind==2){for(int k=-2;k<=2;k++)g.DrawLine(pen,x+k*6,y-(15-Math.Abs(k)*4),x+k*6,y+(15-Math.Abs(k)*4));}
-                else {g.DrawLine(pen,x-16,y+13,x,y-15);g.DrawLine(pen,x,y-15,x+16,y+13);g.DrawLine(pen,x+16,y+13,x-16,y+13);}
-            }
-        }
-        void Wave(Graphics g,float cx,float cy,float halfWidth,float amplitude,float opacity,float phase){
-            if(halfWidth<1)return;var points=new PointF[121];for(int i=0;i<points.Length;i++){float v=i/120F*2-1;float envelope=(float)Math.Exp(-v*v*5);float pulse=(float)(Math.Sin(v*16+phase)+.38*Math.Sin(v*31-phase));points[i]=new PointF(cx+v*halfWidth,cy+pulse*amplitude*envelope);}
-            using(var glow=new Pen(Fade(Cyan,opacity*.05F),13))g.DrawLines(glow,points);using(var glow=new Pen(Fade(Cyan,opacity*.12F),6))g.DrawLines(glow,points);using(var pen=new Pen(Fade(Cyan,opacity),2))g.DrawLines(pen,points);
-        }
-        protected override void Dispose(bool disposing){if(disposing){timer.Stop();timer.Dispose();watch.Stop();brand.Dispose();title.Dispose();body.Dispose();small.Dispose();if(motionFont!=null)motionFont.Dispose();}base.Dispose(disposing);}
+        protected override void Dispose(bool disposing){if(disposing){timer.Stop();timer.Dispose();effects.Dispose();watch.Stop();brand.Dispose();title.Dispose();body.Dispose();small.Dispose();if(motionFont!=null)motionFont.Dispose();if(artwork!=null)artwork.Dispose();}base.Dispose(disposing);}
     }
     public sealed class WelcomeAction:Control {
         readonly WelcomeSurface surface;readonly Font label=new Font("Microsoft YaHei UI",16,FontStyle.Regular,GraphicsUnit.Pixel);bool hover,pressed;

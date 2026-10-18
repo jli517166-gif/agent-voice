@@ -19,13 +19,14 @@ namespace AgentVoice {
         readonly List<SetupAnimation> setupAnimations=new List<SetupAnimation>();
         readonly List<Button[]> setupNavigation=new List<Button[]>();
         readonly List<CheckBox> setupMotionChoices=new List<CheckBox>();
+        readonly List<CheckBox> setupSoundChoices=new List<CheckBox>();
         Label setupResources,setupResult,setupSystem,setupPlayback;
         ComboBox setupEngineChoice;CheckBox setupOffline;Button setupBack,setupNext,setupSkip;
         internal int SetupStep {get;private set;}
         WelcomePreferences SetupPreference(){var p=new WelcomeState(Store).Read();if(p.setupStates==null)p.setupStates=new Dictionary<string,string>();return p;}
         void SetupStatus(string key,string value){var p=SetupPreference();p.setupStates[key]=value;new WelcomeState(Store).Write(p);RefreshSetup();}
         internal void ApplyWelcomeChoice(string choice){if(choice=="setup")ShowPage("setup");else if(choice=="import"){ShowPage("configuration");importConfigurationButton.PerformClick();}else ShowPage("home");}
-        void ReplayWelcome(){var state=new WelcomeState(Store);var p=state.Read();using(var welcome=new WelcomeForm(p.reduceMotion)){if(welcome.ShowDialog(this)!=DialogResult.OK)return;state.Choose(welcome.Choice,welcome.ReduceMotion);ApplyWelcomeChoice(welcome.Choice);}}
+        void ReplayWelcome(){var state=new WelcomeState(Store);var p=state.Read();string choice;using(var welcome=new WelcomeForm(p.reduceMotion,true,p.interfaceSounds)){if(welcome.ShowDialog(this)!=DialogResult.OK)return;choice=welcome.Choice;state.Choose(choice,welcome.ReduceMotion);}ApplyWelcomeChoice(choice);}
         bool IsSetupPage(string id){return Array.IndexOf(setupIds,id)>=0;}
         internal void GoSetup(int step){SetupStep=Math.Max(0,Math.Min(7,step));var p=SetupPreference();p.setupStep=SetupStep;p.lastStep="setup";new WelcomeState(Store).Write(p);Navigate(setupIds[SetupStep],false);RefreshSetup();}
         void BuildSetup(){
@@ -39,7 +40,7 @@ namespace AgentVoice {
             Add(engine,Hint("点击下一步会保存所选引擎；跳过则保留原设置。"));
             Add(engine,Row(AsyncBtn("导入 TTS 包",async()=>await ChooseModule("engine")),EntryBtn("定位已有引擎","保留自定义路径，再返回配置中心继续。",()=>ShowPage("engine")),EntryBtn("引擎说明","查看能力、许可和安装位置。",()=>ServiceClient.Open(Store.Resolve("TTS使用手册.md")))));
             var environment=SetupCard(2,"让环境就位","联网补齐，或导入为这台电脑准备的离线包。","运行环境");Add(environment,Hint("环境包是运行时与依赖；TTS 包是源码和基础模型；音色稍后导入。"));
-            setupOffline=new CheckBox{Text="严格离线：只使用本地资源，不连接下载源",AutoSize=true,Checked=SetupPreference().offline,Name="setupOffline"};setupOffline.CheckedChanged+=(s,e)=>{var p=SetupPreference();p.offline=setupOffline.Checked;new WelcomeState(Store).Write(p);};Add(environment,setupOffline);
+            setupOffline=new CheckBox{Text="严格离线（不联网）",AutoSize=true,Checked=SetupPreference().offline,Name="setupOffline"};tips.SetToolTip(setupOffline,"只使用本地资源，缺少文件时明确提示，不会自动转为联网下载。");setupOffline.CheckedChanged+=(s,e)=>{var p=SetupPreference();p.offline=setupOffline.Checked;new WelcomeState(Store).Write(p);};Add(environment,setupOffline);
             Add(environment,Row(Primary(AsyncBtn("导入环境补齐包",async()=>await ChooseModule("environment"))),AsyncBtn("检查当前环境",async()=>await PrepareSetupEnvironment(false,false)),AsyncBtn("补齐当前引擎",async()=>await PrepareSetupEnvironment(true,false)),AsyncBtn("导出资源清单",ExportSetupRequirements),EntryBtn("定位已有环境","手动选择已有 Python 与引擎。",()=>ShowPage("engine"))));
             Add(environment,Hint("离线包按所含 GPU 运行时档位使用，不替代驱动。新显卡需要兼容档位或离线 wheel。安装备份保存在 data/module-backups，缺项会明确报错，不会静默联网。"));
             Add(environment,Row(EntryBtn("打开系统安装文件","如环境包附带官方 VC++ 安装器，可在此手动安装；程序不会自动提权。",()=>{string path=Store.Resolve("tools/system-prerequisites");Directory.CreateDirectory(path);ServiceClient.Open(path);})));
@@ -57,20 +58,24 @@ namespace AgentVoice {
         }
         ScenePanel SetupCard(int step,string title,string note,string actionTitle){
             var route=NewPage(setupIds[step]);route.AutoScroll=false;route.Name="setupRoute_"+step;setupPanels.Add(route);
-            var layout=new BufferedTable{Dock=DockStyle.Fill,RowCount=3,ColumnCount=1,BackColor=Color.Transparent,Margin=new Padding(0)};
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute,154));layout.RowStyles.Add(new RowStyle(SizeType.Percent,100));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,76));route.Controls.Add(layout);
+            var layout=new BufferedTable{Dock=DockStyle.Fill,RowCount=2,ColumnCount=2,BackColor=Color.Transparent,Margin=new Padding(0)};
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,44));layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,56));layout.RowStyles.Add(new RowStyle(SizeType.Percent,100));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,76));route.Controls.Add(layout);
             var banner=new SetupAnimation(step,title,note){Host=this,Dock=DockStyle.Fill,Name="setupAnimation_"+step};banner.Motion(SetupPreference().reduceMotion);setupAnimations.Add(banner);layout.Controls.Add(banner,0,0);
-            var scroller=new ScenePanel{Host=this,Dock=DockStyle.Fill,AutoScroll=true,Name="setupScroller_"+step,Margin=new Padding(0,10,0,0)};layout.Controls.Add(scroller,0,1);var card=Card(Stack(scroller),actionTitle);
+            var scroller=new ScenePanel{Host=this,Dock=DockStyle.Fill,AutoScroll=true,Name="setupScroller_"+step,Margin=new Padding(16,74,0,0)};layout.Controls.Add(scroller,1,0);var card=Card(Stack(scroller),actionTitle);
             var back=Btn("← 上一步",()=>GoSetup(step-1));back.Name="setupBack_"+step;back.Enabled=step>0;
-            var next=Primary(AsyncBtn(step==7?"进入工作台":"下一步 →",async()=>{if(step==1)await SelectSetupEngine();if(step==7)ShowPage("home");else GoSetup(step+1);}));next.Name="setupNext_"+step;
+            var next=Primary(step==1?AsyncBtn("下一步 →",async()=>{await SelectSetupEngine();GoSetup(2);}):Btn(step==7?"进入工作台":"下一步 →",()=>{if(step==7)ShowPage("home");else GoSetup(step+1);}));next.Name="setupNext_"+step;
             var skip=Btn("跳过本步",()=>{SetupStatus("step"+step,"skipped");GoSetup(step+1);});skip.Name="setupSkip_"+step;skip.Visible=step<7;
             var save=Btn("保存并稍后继续",()=>{var p=SetupPreference();p.setupStep=step;new WelcomeState(Store).Write(p);ShowPage("home");});save.Name="setupSave_"+step;
             var actions=new BufferedFlow{Dock=DockStyle.Fill,WrapContents=false,BackColor=Color.Transparent,Padding=new Padding(4,15,0,0)};
-            actions.Controls.AddRange(new Control[]{back,next,skip,save});layout.Controls.Add(actions,0,2);setupNavigation.Add(new[]{back,next,skip,save});
+            actions.Controls.AddRange(new Control[]{back,next,skip,save});layout.Controls.Add(actions,0,1);layout.SetColumnSpan(actions,2);setupNavigation.Add(new[]{back,next,skip,save});
             var motion=new CheckBox{Text="减少动画",AutoSize=true,Name="setupMotion_"+step,Checked=SetupPreference().reduceMotion,Margin=new Padding(4,10,0,0)};
-            motion.CheckedChanged+=(s,e)=>{var p=SetupPreference();if(p.reduceMotion==motion.Checked)return;p.reduceMotion=motion.Checked;new WelcomeState(Store).Write(p);foreach(var item in setupMotionChoices)item.Checked=p.reduceMotion;foreach(var animation in setupAnimations)animation.Motion(p.reduceMotion);};
-            setupMotionChoices.Add(motion);Add(card,motion);return card;
+            motion.CheckedChanged+=(s,e)=>{var p=SetupPreference();if(p.reduceMotion==motion.Checked)return;p.reduceMotion=motion.Checked;new WelcomeState(Store).Write(p);foreach(var item in setupMotionChoices)item.Checked=p.reduceMotion;foreach(var animation in setupAnimations)animation.Motion(p.reduceMotion);if(homeHero!=null)homeHero.Motion(p.reduceMotion);};
+            motion.Font=new Font(Font.FontFamily,8.5F);motion.Margin=new Padding(14,10,0,0);setupMotionChoices.Add(motion);actions.Controls.Add(motion);
+            var sounds=new CheckBox{Text="电音音效",AutoSize=true,Checked=SetupPreference().interfaceSounds,Name="setupSounds_"+step,Font=new Font(Font.FontFamily,8.5F),Margin=new Padding(12,10,0,0)};
+            tips.SetToolTip(sounds,"仅用于服务关闭时的页面切换。开启语音服务后暂停界面音效，避免干扰朗读。");
+            sounds.CheckedChanged+=(s,e)=>SetInterfaceSounds(sounds.Checked);setupSoundChoices.Add(sounds);actions.Controls.Add(sounds);return card;
         }
+        void SetInterfaceSounds(bool enabled){var p=SetupPreference();if(p.interfaceSounds==enabled)return;p.interfaceSounds=enabled;new WelcomeState(Store).Write(p);foreach(var item in setupSoundChoices)item.Checked=enabled;if(!enabled)interfaceSounds.Stop();}
         string VoiceEvidence(){
             string model=Config.voice.engine=="cosyvoice"?(string.IsNullOrEmpty(Config.voice.baseModel)?Config.engines.cosyModel:Config.voice.baseModel):(string.IsNullOrEmpty(Config.voice.gptModel)?Config.engines.gptModel:Config.voice.gptModel);
             string modelFile=Path.Combine(Store.Resolve(model),Config.voice.engine=="cosyvoice"?"llm.pt":Config.voice.gptVariant=="v5turbo"?"gsv-v5-pretrained/s2Gv5turbo.pth":"v2Pro/s2Gv2ProPlus.pth");

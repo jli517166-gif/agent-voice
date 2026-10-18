@@ -59,7 +59,7 @@ namespace AgentVoice {
                 GoSetup(i%8);Application.DoEvents();
                 if(SetupStep!=i%8||setupPanels.Count(c=>c.Visible)!=1||page!=setupIds[i%8]||pages.Count(route=>route.Value.Visible)!=1)errors.Add("Setup must show exactly one independent route");
                 if(setupAnimations.Where((a,n)=>n!=i%8).Any(a=>a.AnimationRunning))errors.Add("Hidden step animation still running");
-                if(i<8){foreach(double frame in new[]{0,.65,1.8}){setupAnimations[i].Preview(frame);using(var shot=new Bitmap(Width,Height)){DrawToBitmap(shot,new Rectangle(0,0,Width,Height));shot.Save(Path.Combine(directory,"setup-step-"+i+"-"+frame.ToString("0.00",System.Globalization.CultureInfo.InvariantCulture)+".png"));}}}
+                if(i<8){foreach(double frame in new[]{0,.85,KeynoteArt.Duration}){setupAnimations[i].Preview(frame);using(var shot=new Bitmap(Width,Height)){DrawToBitmap(shot,new Rectangle(0,0,Width,Height));shot.Save(Path.Combine(directory,"setup-step-"+i+"-"+frame.ToString("0.00",System.Globalization.CultureInfo.InvariantCulture)+".png"));}}}
             }
             if(setupPanels.Distinct().Count()!=8||setupAnimations.Select(a=>a.Illustration).Distinct().Count()!=8||Controls.Find("setupStepChoice",true).Length!=0)errors.Add("Wizard needs eight distinct pages and illustrations without step dropdown");
             if(CountControls(this)!=controls||body.Text!=draft)errors.Add("Setup navigation leaked controls or lost input");
@@ -68,20 +68,22 @@ namespace AgentVoice {
                 ClientSize=size;
                 for(int step=0;step<8;step++){
                     GoSetup(step);Application.DoEvents();var route=setupPanels[step];var viewport=route.Controls.Find("setupScroller_"+step,true).Single() as ScenePanel;
-                    foreach(var button in setupNavigation[step].Where(b=>b.Visible)){
+                    foreach(var button in setupNavigation[step][0].Parent.Controls.Cast<Control>().Where(b=>b.Visible)){
                         var bounds=route.RectangleToClient(button.RectangleToScreen(button.ClientRectangle));
                         if(!route.ClientRectangle.Contains(bounds)||bounds.IntersectsWith(route.RectangleToClient(viewport.RectangleToScreen(viewport.ClientRectangle))))errors.Add("Setup navigation clipped or overlaps content at "+size+" step "+step);
                     }
                     if(step==2&&viewport.VerticalScroll.Maximum-viewport.VerticalScroll.LargeChange+1<=0)errors.Add("Setup overflow has no reachable scrollbar at "+size);
                 }
-                GoSetup(2);using(var shot=new Bitmap(Width,Height)){DrawToBitmap(shot,new Rectangle(0,0,Width,Height));shot.Save(Path.Combine(directory,"setup-size-"+size.Width+".png"));}
+                GoSetup(2);setupAnimations[2].Preview(KeynoteArt.Duration);using(var shot=new Bitmap(Width,Height)){DrawToBitmap(shot,new Rectangle(0,0,Width,Height));shot.Save(Path.Combine(directory,"setup-size-"+size.Width+".png"));}
             }
             ClientSize=initialSize;
             setupMotionChoices[2].Checked=true;if(setupAnimations.Any(a=>a.AnimationRunning)||!SetupPreference().reduceMotion)errors.Add("Reduced motion did not stop all step animations");
             setupMotionChoices[2].Checked=false;
             GoSetup(3);GoSetup(2);var animationWatch=System.Diagnostics.Stopwatch.StartNew();
-            while(animationWatch.ElapsedMilliseconds<2100){Application.DoEvents();System.Threading.Thread.Sleep(10);}
+            while(animationWatch.ElapsedMilliseconds<3100){Application.DoEvents();System.Threading.Thread.Sleep(10);}
             if(setupAnimations.Any(a=>a.AnimationRunning))errors.Add("Step animation did not settle within its finite duration");
+            if(InterfaceSounds.Allowed(true,true,false)||InterfaceSounds.Allowed(true,false,true)||InterfaceSounds.Allowed(false,false,false)||!InterfaceSounds.Allowed(true,false,false))errors.Add("Interface sounds are not isolated from speech and tests");
+            SetInterfaceSounds(false);if(SetupPreference().interfaceSounds||setupSoundChoices.Any(c=>c.Checked))errors.Add("Sound setting not disabled everywhere");SetInterfaceSounds(true);if(!SetupPreference().interfaceSounds||setupSoundChoices.Any(c=>!c.Checked))errors.Add("Sound setting not enabled everywhere");
             var listener=new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback,0);listener.Start();Config.port=((System.Net.IPEndPoint)listener.LocalEndpoint).Port;listener.Stop();Store.Write(Config);
             GoSetup(1);setupEngineChoice.SelectedIndex=1;setupNext.PerformClick();var nextWatch=System.Diagnostics.Stopwatch.StartNew();
             while(operation&&nextWatch.ElapsedMilliseconds<8000){Application.DoEvents();System.Threading.Thread.Sleep(10);}

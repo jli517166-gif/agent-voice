@@ -90,7 +90,7 @@ def application_package(build,output):
     paths=[entry for relative in roots for entry in inventory(build,relative)]
     paths.extend((p.name,p) for p in build.glob('*.md'))
     # Public stock graphics only; no bundled-voice manifest or user imagery.
-    if (build/'assets').is_dir():paths.extend((n,p) for n,p in inventory(build,'assets') if n.startswith('assets/') and p.suffix.lower() in {'.png','.ico','.svg'})
+    if (build/'assets').is_dir():paths.extend((n,p) for n,p in inventory(build,'assets') if n.startswith('assets/') and (p.suffix.lower() in {'.png','.ico','.svg'} or re.fullmatch(r'assets/sfx/step-[0-8]\.wav',n)))
     output.parent.mkdir(parents=True,exist_ok=True)
     temporary=output.with_name(output.name+'.partial')
     if temporary.exists():raise ValueError('存在未完成的软件包，请检查后重试')

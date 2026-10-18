@@ -25,8 +25,12 @@ namespace AgentVoice {
         Dictionary<string,object> harnessStates;
         bool harnessOnline;
         string modelStatus="not_loaded";
-        ScenePanel shell,content,statusBar;
-        BufferedTable workspace;
+        ScenePanel shell,content,statusBar,sidebar;
+        BufferedTable workspace,outer;
+        Bitmap keynoteArtwork;bool keynoteArtworkLoaded;
+        SetupAnimation homeHero;
+        readonly InterfaceSounds interfaceSounds=new InterfaceSounds();readonly bool testingMode;
+        public Image KeynoteArtwork {get{if(!keynoteArtworkLoaded){keynoteArtworkLoaded=true;string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"assets","keynote-voice.png");if(!File.Exists(path))path=Store.Resolve("assets/keynote-voice.png");if(File.Exists(path))using(var source=Image.FromFile(path))keynoteArtwork=new Bitmap(source);}return keynoteArtwork;}}
         Label footer,connection,voiceHint,harnessSummary,pageTitle,statusSystem,statusEngine,statusVoice,statusOutput;
         NotifyIcon tray;
         readonly ToolTip tips=new ToolTip{AutomaticDelay=350,AutoPopDelay=10000,ReshowDelay=100,ShowAlways=true};
@@ -47,13 +51,13 @@ namespace AgentVoice {
         ListBox profileList;
         SavedVoice deleted;
         public MainForm(SettingsStore store,bool testing=false){
-            Store=store;Service=new ServiceClient(store);Config=store.Read();
+            Store=store;Service=new ServiceClient(store);Config=store.Read();testingMode=testing;
             Text="Agent Voice · 本地语音工作台";Font=new Font("Microsoft YaHei UI",10F);AutoScaleMode=AutoScaleMode.Dpi;
             ClientSize=new Size(1180,800);MinimumSize=new Size(900,620);StartPosition=FormStartPosition.CenterScreen;
             SetStyle(ControlStyles.OptimizedDoubleBuffer|ControlStyles.AllPaintingInWmPaint|ControlStyles.ResizeRedraw,true);
             shell=new ScenePanel{Host=this,Dock=DockStyle.Fill};Controls.Add(shell);
-            var outer=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=2,RowCount=1,BackColor=Color.Transparent,Padding=new Padding(18)};outer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,198));outer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));shell.Controls.Add(outer);
-            var sidebar=new ScenePanel{Host=this,Card=true,Dock=DockStyle.Fill,Padding=new Padding(12),Margin=new Padding(0,0,16,0)};outer.Controls.Add(sidebar,0,0);
+            outer=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=2,RowCount=1,BackColor=Color.Transparent,Padding=new Padding(18)};outer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,198));outer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));shell.Controls.Add(outer);
+            sidebar=new ScenePanel{Host=this,Card=true,Dock=DockStyle.Fill,Padding=new Padding(12),Margin=new Padding(0,0,16,0)};outer.Controls.Add(sidebar,0,0);
             var sideLayout=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=1,RowCount=3,BackColor=Color.Transparent};sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,70));sideLayout.RowStyles.Add(new RowStyle(SizeType.Percent,100));sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,92));sidebar.Controls.Add(sideLayout);
             var brand=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,BackColor=Color.Transparent,Padding=new Padding(5,8,0,0)};brand.Controls.Add(new Label{Text="AGENT VOICE",Font=new Font("Segoe UI",10.5F,FontStyle.Bold),AutoSize=true,Margin=new Padding(0,0,0,3)});brand.Controls.Add(new Label{Text="本地语音工作台",Font=new Font(Font.FontFamily,8.5F),AutoSize=true,Margin=new Padding(0)});sideLayout.Controls.Add(brand,0,0);
             var navigation=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoScroll=true,BackColor=Color.Transparent,Padding=new Padding(0,4,0,4)};sideLayout.Controls.Add(navigation,0,1);
@@ -92,6 +96,7 @@ namespace AgentVoice {
         void StatusError(string text){if(!IsDisposed){footer.Text="操作失败："+text.Replace("\r"," ").Replace("\n"," ");footer.AccessibleDescription=text;StyleStatus(true);}}
         void BusyStatus(string text){Status(text);if(busyOverlay!=null)busyOverlay.SetMessage(text);Application.DoEvents();}
         void ShowBusy(string text){
+            interfaceSounds.Stop();
             if(busyOverlay!=null){busyOverlay.SetMessage(text);return;}
             var snapshot=new Bitmap(Math.Max(1,shell.ClientSize.Width),Math.Max(1,shell.ClientSize.Height));shell.DrawToBitmap(snapshot,new Rectangle(Point.Empty,snapshot.Size));
             string animation=Store.Resolve(Config.appearance.loadingAnimation);if(!File.Exists(animation))animation=DefaultMascotPath();busyOverlay=new BusyOverlay(text,snapshot,animation);shell.Controls.Add(busyOverlay);busyOverlay.BringToFront();busyOverlay.Focus();
@@ -110,13 +115,16 @@ namespace AgentVoice {
         void Navigate(string id,bool remember){
             if(id=="setup")id=setupIds[SetupStep];
             if(!pages.ContainsKey(id))return;if(page==id&&pages[id].Visible)return;
+            bool changed=page!=id;
             if(IsSetupPage(id))SetupStep=Array.IndexOf(setupIds,id);
             if(id=="home")pageHistory.Clear();
             else if(remember){if(pageHistory.Count==64)pageHistory.RemoveAt(0);pageHistory.Add(page);}
             SendMessage(content.Handle,0x000B,IntPtr.Zero,IntPtr.Zero);content.SuspendLayout();
-            try{foreach(var pair in pages)pair.Value.Visible=pair.Key==id;pages[id].BringToFront();page=id;bool wizard=IsSetupPage(id);backButton.Visible=id!="home"&&!wizard;pageTitle.Text=wizard?"开始配置  /  "+(SetupStep+1).ToString("00"):PageName(id);statusBar.Visible=!wizard;workspace.RowStyles[1].Height=wizard?0:54;if(wizard)RefreshSetup();for(int n=0;n<setupAnimations.Count;n++)setupAnimations[n].RouteVisible(wizard&&n==SetupStep);foreach(var pair in navigationButtons)StyleButton(pair.Value,pair.Key==id||(pair.Key=="setup"&&wizard));}
+            try{foreach(var pair in pages)pair.Value.Visible=pair.Key==id;pages[id].BringToFront();page=id;bool wizard=IsSetupPage(id),stage=wizard||id=="home";sidebar.Visible=!wizard;outer.ColumnStyles[0].Width=wizard?0:198;workspace.RowStyles[0].Height=stage?0:62;backButton.Visible=id!="home"&&!wizard;pageTitle.Text=wizard?"开始配置  /  "+(SetupStep+1).ToString("00"):PageName(id);statusBar.Visible=!stage;workspace.RowStyles[1].Height=stage?0:54;if(wizard)RefreshSetup();for(int n=0;n<setupAnimations.Count;n++)setupAnimations[n].RouteVisible(wizard&&n==SetupStep);if(homeHero!=null)homeHero.RouteVisible(id=="home");foreach(var pair in navigationButtons)StyleButton(pair.Value,pair.Key==id||(pair.Key=="setup"&&wizard));}
             finally{content.ResumeLayout(true);SendMessage(content.Handle,0x000B,new IntPtr(1),IntPtr.Zero);content.Invalidate(true);}
+            if(changed)PlayInterfaceSound(IsSetupPage(id)?SetupStep:8);
         }
+        void PlayInterfaceSound(int step){bool listening=true;try{listening=System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners().Any(p=>p.Port==Config.port);}catch(System.Net.NetworkInformation.NetworkInformationException){}if(InterfaceSounds.Allowed(SetupPreference().interfaceSounds,testingMode,listening))interfaceSounds.Play(Store.Root,step);}
         string PageName(string id){var names=new Dictionary<string,string>{{"home","首页"},{"voices","声音方案"},{"configuration","音色包"},{"training","基础训练"},{"advancedTraining","高级训练"},{"settings","设置"},{"appearance","外观"},{"engine","本地引擎"},{"connections","连接设备"},{"harness","Harness"},{"airi","AIRI 桌宠"},{"connectionGuide","连接帮助"},{"advanced","声音细调"},{"cleanup","音频清理"},{"cosyReference","参考声音"}};return names.ContainsKey(id)?names[id]:"agent语音";}
         ScenePanel NewPage(string id){var p=new ScenePanel{Host=this,Dock=DockStyle.Fill,AutoScroll=true,Padding=new Padding(0,8,0,12),Visible=false};pages.Add(id,p);content.Controls.Add(p);return p;}
         FlowLayoutPanel Stack(ScenePanel p){var stack=new BufferedFlow{Dock=DockStyle.Top,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,BackColor=Color.Transparent,Padding=new Padding(0,0,16,10)};p.Controls.Add(stack);p.SizeChanged+=(s,e)=>{foreach(Control c in stack.Controls){int width=Math.Max(300,p.ClientSize.Width-22);c.MinimumSize=new Size(width,0);c.Width=width;}};return stack;}
@@ -164,7 +172,7 @@ namespace AgentVoice {
             Status("已从音色模型包库导入并应用："+Path.GetFileName(path));
         }
         void BuildHome(){
-            var home=NewPage("home");var homeStack=Stack(home);
+            var home=NewPage("home");var homeStack=Stack(home);homeHero=new SetupAnimation(8,"Agent Voice",""){Host=this,Height=146,Name="homeKeynote",Margin=new Padding(0,0,0,14)};homeHero.Motion(SetupPreference().reduceMotion);homeStack.Controls.Add(homeHero);
             var grid=new BufferedTable{Height=900,ColumnCount=2,RowCount=2,BackColor=Color.Transparent,Margin=new Padding(0)};
             grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));grid.RowStyles.Add(new RowStyle(SizeType.Absolute,900));grid.RowStyles.Add(new RowStyle(SizeType.Absolute,0));
             var left=new ScenePanel{Host=this,Dock=DockStyle.Fill,Margin=new Padding(0,0,6,0)};var right=new ScenePanel{Host=this,Dock=DockStyle.Fill,Margin=new Padding(6,0,0,0)};grid.Controls.Add(left,0,0);grid.Controls.Add(right,1,0);var leftStack=Stack(left);var rightStack=Stack(right);
@@ -256,6 +264,7 @@ namespace AgentVoice {
         protected override void OnFormClosing(FormClosingEventArgs e){if(!exiting&&tray!=null){e.Cancel=true;Hide();return;}poll.Stop();tips.Dispose();if(tray!=null){tray.Visible=false;tray.Dispose();}if(background!=null)background.Dispose();if(scaledBackground!=null)scaledBackground.Dispose();if(defaultBackdrop!=null)defaultBackdrop.Dispose();base.OnFormClosing(e);}
         string DefaultMascotPath(){return Path.Combine(Store.Root,".agents","plugins","agent-voice-control","assets","voice-core.png");}
         public void PaintScene(Graphics g,Control control){
+            if(background==null&&(page=="home"||IsSetupPage(page))&&BackColor.ToArgb()==Color.FromArgb(5,16,29).ToArgb()){g.Clear(Color.Black);return;}
             Bitmap scene=background==null?DefaultScene():null;
             if(background!=null&&(scaledBackground==null||scaledBackground.Size!=ClientSize)){
                 if(scaledBackground!=null)scaledBackground.Dispose();
@@ -286,5 +295,6 @@ namespace AgentVoice {
         void ApplyTheme(){var a=Config.appearance;Accent=ColorTranslator.FromHtml(a.accent);BackColor=ColorTranslator.FromHtml(a.backgroundColor);ForeColor=ColorTranslator.FromHtml(a.textColor);CardColor=BackColor.GetBrightness()<.4F?Mix(BackColor,Color.White,4):Mix(BackColor,Color.White,55);string image=Store.Resolve(a.background);if(background!=null){background.Dispose();background=null;}if(scaledBackground!=null){scaledBackground.Dispose();scaledBackground=null;}if(defaultBackdrop!=null){defaultBackdrop.Dispose();defaultBackdrop=null;}if(File.Exists(image))using(var source=Image.FromFile(image))background=new Bitmap(source);WalkTheme(shell);StyleStatus(false);UpdateHarnessIndicators(harnessStates,harnessOnline);UpdateTopStatus(harnessOnline);Invalidate(true);}
         void WalkTheme(Control parent){foreach(Control c in parent.Controls){c.ForeColor=ForeColor;if(c is Button)StyleButton((Button)c,(navigationButtons.ContainsKey(page)&&navigationButtons[page]==c)||(IsSetupPage(page)&&c==navigationButtons["setup"]));else if(c is TextBox||c is ComboBox||c is ListBox||c is NumericUpDown){c.BackColor=CardColor;c.ForeColor=ForeColor;}if(c is ComboBox)((ComboBox)c).FlatStyle=FlatStyle.Flat;WalkTheme(c);}}
         void ApplyIcon(){string path=Store.Resolve(Config.appearance.icon);try{if(!File.Exists(path)){string mascot=DefaultMascotPath();if(File.Exists(mascot))path=Icons.Make(mascot,Path.Combine(Store.Root,"data","appearance"));}if(!File.Exists(path))return;using(var icon=new Icon(path)){Icon=(Icon)icon.Clone();if(tray!=null)tray.Icon=Icon;}}catch(Exception exc){Status(exc.Message);}}
+        protected override void Dispose(bool disposing){if(disposing){interfaceSounds.Dispose();if(keynoteArtwork!=null){keynoteArtwork.Dispose();keynoteArtwork=null;}}base.Dispose(disposing);}
     }
 }

@@ -25,6 +25,7 @@ voice-model-packages/
 *.ckpt
 *.avconfig
 *.wav
+!assets/sfx/step-?.wav
 *.flac
 *.mp3
 *.m4a
@@ -50,6 +51,7 @@ tests/airi_after_import.py
 
 # Editors and operating system
 .vs/
+.frontend-slides/
 .vscode/
 .idea/
 .DS_Store

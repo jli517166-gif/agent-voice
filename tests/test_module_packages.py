@@ -37,10 +37,11 @@ class ModulePackageTests(unittest.TestCase):
             result=helper.repair('cosyvoice',verify=False)
         smoke.assert_not_called();self.assertTrue(result['ok']);self.assertFalse(result['verifiedUsable'])
     def test_application_package_omits_runtime_voice_and_bundled_preset(self):
-        for name in ['agent语音.exe','service/server.py','tools/tool.py','integrations/connector.mjs','docs/guide.md','.agents/plugin.json','assets/icon.png','assets/bundled-voice.json','data/settings.json','runtime/core/python.exe','voices/private.wav']:self.put(name)
+        for name in ['agent语音.exe','service/server.py','tools/tool.py','integrations/connector.mjs','docs/guide.md','.agents/plugin.json','assets/icon.png','assets/sfx/step-0.wav','assets/private.wav','assets/bundled-voice.json','data/settings.json','runtime/core/python.exe','voices/private.wav']:self.put(name)
         output=self.root/'app.zip';application_package(self.root,output)
         with zipfile.ZipFile(output) as archive:names=archive.namelist()
         self.assertIn('Agent语音/agent语音.exe',names)
+        self.assertIn('Agent语音/assets/sfx/step-0.wav',names);self.assertNotIn('Agent语音/assets/private.wav',names)
         for denied in ['data/','runtime/','voices/','bundled-voice.json']:self.assertFalse(any(denied in name for name in names))
 
 if __name__=='__main__':unittest.main()

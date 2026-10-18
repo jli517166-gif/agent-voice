@@ -12,6 +12,7 @@ namespace AgentVoice {
         public System.Collections.Generic.Dictionary<string,string> setupStates=new System.Collections.Generic.Dictionary<string,string>();
         public string voiceEvidence="",voiceJobId="",voiceVerifiedAt="";
         public bool heardVoice=false,offline=false;
+        public bool interfaceSounds=true;
     }
     public sealed class WelcomeState {
         public readonly string FilePath;
