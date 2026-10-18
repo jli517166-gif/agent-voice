@@ -1,4 +1,4 @@
-import copy,json,shutil,socket,sys,tempfile,unittest,wave,zipfile
+import copy,json,shutil,socket,sys,tempfile,time,unittest,wave,zipfile
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'service'))
 from state import Store,atomic_json
@@ -23,7 +23,15 @@ class TtsBundleTests(unittest.TestCase):
         self.store.update({'voice':{'engine':'cosyvoice','baseModel':'tts-engines/cosyvoice/models/fixture-model','reference':'reference.wav','referenceText':'认真说话。','advancedEnabled':False},'appearance':{'accent':'#112233'},'phrases':['不应改变']})
         self.before=self.store.get();self.package=Path(self.temp.name).resolve()/'声音-轻量.cosyvoice.ttsmodel';self.full=Path(self.temp.name).resolve()/'声音-完整.cosyvoice.ttsmodel'
         export_model(self.root,self.package,package_mode='lightweight');export_model(self.root,self.full,package_mode='full')
-    def tearDown(self):self.temp.cleanup()
+    def tearDown(self):
+        # Windows file scanners can briefly recreate or retain an entry after
+        # rmtree has enumerated the directory (WinError 145).  Retry cleanup;
+        # persistent leaks still fail the test instead of being hidden.
+        for attempt in range(5):
+            try:self.temp.cleanup();return
+            except OSError:
+                if attempt==4:raise
+                time.sleep(.1*(attempt+1))
     def rewrite(self,source,change):
         with zipfile.ZipFile(source) as a:files={n:a.read(n) for n in a.namelist()}
         manifest=json.loads(files['manifest.json']);change(manifest,files);files['manifest.json']=json.dumps(manifest).encode()
