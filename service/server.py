@@ -10,7 +10,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
 from state import Store, validate_voice
-from pipeline import Pipeline
+from pipeline import Pipeline,requires_reload
 from jobs import Jobs,Cancelled
 from harness import CodexTail, HarnessPresence, normalize
 from verification import Verification
@@ -268,9 +268,12 @@ class Handler(BaseHTTPRequestHandler):
                             file=self.server.store.resolve(voice['reference'])
                             if not file.is_file() or file.stat().st_size>40*1024**2:raise ValueError('参考录音不存在或超过 40 MB')
                     config=self.server.store.update(data)
-                    if config['voice']!=previous['voice'] or config['engines']!=previous['engines']:
+                    reload_voice=requires_reload(previous['voice'],config['voice']) or config['engines']!=previous['engines']
+                    if reload_voice:
                         self.server.activate_voice()
-                    if any(config[k]!=previous[k] for k in ('voice','engines','harness','airi')):
+                    # Runtime controls (speed and volume) do not invalidate a
+                    # real Harness/AIRI connection or its playback receipt.
+                    if reload_voice or any(config[k]!=previous[k] for k in ('harness','airi')):
                         self.server.verification.clear()
                 return self.reply(200,{"ok":True,"config":config})
             if path=="/api/cleanup":return self.reply(200,self.server.jobs.cleanup(data.get("all") is True))

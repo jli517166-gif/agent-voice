@@ -34,7 +34,11 @@ class Adapter:
         self.client.ensure_ready(check)
 
     def synthesize(self,text,voice,target,check):
-        return self.client.synthesize(text,target,voice['style'],(voice['speed']-1)*100,check,seed=1986+voice.get('_retryAttempt',0))
+        # Decimal UI values such as 0.70 are not exact binary floats.  Without
+        # rounding, the supported lower boundary becomes -30.000000000000004
+        # and the worker rejects it as outside [-30, 30].
+        speed_percent=max(-30.0,min(30.0,round((voice['speed']-1)*100,6)))
+        return self.client.synthesize(text,target,voice['style'],speed_percent,check,seed=1986+voice.get('_retryAttempt',0))
     @property
     def gpu(self):return getattr(self.client,'gpu',None)
     def alive(self):

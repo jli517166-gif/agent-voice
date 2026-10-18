@@ -12,6 +12,21 @@ from state import atomic_json
 
 HERE=Path(__file__).resolve().parent
 
+# Only these values affect the loaded TTS worker/model.  Runtime controls such
+# as speed and volume are copied into each queued job and must not tear down a
+# healthy model or cancel work that is already in progress.
+MODEL_VOICE_FIELDS=(
+    'engine','baseModel','gptModel','gptVariant','reference','referenceText',
+    'instruction','leadingSilence','style','advancedEnabled',
+)
+
+def model_voice(voice):
+    value=effective_voice(voice)
+    return {key:copy.deepcopy(value.get(key)) for key in MODEL_VOICE_FIELDS}
+
+def requires_reload(previous,current):
+    return model_voice(previous)!=model_voice(current)
+
 def effective_voice(voice):
     """Bypass tuning without destroying the user's saved values or reference."""
     value=copy.deepcopy(voice)
@@ -42,7 +57,7 @@ class Pipeline:
             if not p:continue
             try:s=p.stat();stats.append((str(p),s.st_size,s.st_mtime_ns))
             except FileNotFoundError:pass
-        return json.dumps([voice,cfg['engines'],stats],sort_keys=True)
+        return json.dumps([model_voice(voice),cfg['engines'],stats],sort_keys=True)
 
     def snapshot(self,voice):
         adapter=self.adapter;alive=adapter is not None and adapter.alive()

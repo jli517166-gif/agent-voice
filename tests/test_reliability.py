@@ -67,22 +67,22 @@ class EngineSwitchTests(unittest.TestCase):
         def prepare(voice,check):
             entered.set()
             while not release.wait(.01):check()
-            check();voices.append(voice['speed']);f.actor.loaded=True
+            check();voices.append(voice['referenceText']);f.actor.loaded=True
         f.actor.prepare=prepare;f.actor.close=Mock()
         old=[f.request('/speak',{'text':'旧声音排队任务'})['jobId'] for _ in range(4)]
-        f.request('/api/config',{'voice':{'speed':1.1}})
+        f.request('/api/config',{'voice':{'referenceText':'新的参考台词'}})
         self.assertTrue(entered.wait(2));health=f.request('/health');self.assertFalse(health['ready']);self.assertTrue(health['switching'])
         queued=f.request('/speak',{'text':'切换中排队使用新模型'})['jobId']
         self.assertEqual(f.server.jobs.jobs[queued]['state'],'queued')
         release.set();deadline=time.monotonic()+3
         while f.server.jobs.switching and time.monotonic()<deadline:time.sleep(.01)
-        self.assertEqual(voices,[1.1]);f.actor.close.assert_called_once()
+        self.assertEqual(voices,['新的参考台词']);f.actor.close.assert_called_once()
         self.assertTrue(all(f.server.jobs.jobs[i]['state']=='cancelled' for i in old))
-        self.assertEqual(f.wait(queued)['state'],'completed');self.assertEqual(f.actor.calls[-1][1]['speed'],1.1)
+        self.assertEqual(f.wait(queued)['state'],'completed');self.assertEqual(f.actor.calls[-1][1]['referenceText'],'新的参考台词')
         self.assertTrue(f.request('/health')['ready'])
     def test_failed_activation_reports_error_and_does_not_keep_old_model_ready(self):
         f=self.fixture;f.actor.prepare=Mock(side_effect=RuntimeError('missing runtime resource'))
-        f.request('/api/config',{'voice':{'speed':1.1}});deadline=time.monotonic()+2
+        f.request('/api/config',{'voice':{'referenceText':'新的参考台词'}});deadline=time.monotonic()+2
         while f.server.jobs.switching and time.monotonic()<deadline:time.sleep(.01)
         state=f.request('/health');self.assertFalse(state['ready']);self.assertEqual(state['serviceState'],'error');self.assertIn('新声音加载失败',state['error'])
     def test_rapid_changes_only_finish_latest_selection(self):
@@ -90,14 +90,40 @@ class EngineSwitchTests(unittest.TestCase):
         def prepare(voice,check):
             entered.set()
             while not release.wait(.01):check()
-            check();completed.append(voice['speed']);f.actor.loaded=True
+            check();completed.append(voice['referenceText']);f.actor.loaded=True
         f.actor.prepare=prepare
-        f.request('/api/config',{'voice':{'speed':1.1}});self.assertTrue(entered.wait(2))
-        f.request('/api/config',{'voice':{'speed':1.2}});release.set();deadline=time.monotonic()+3
+        f.request('/api/config',{'voice':{'referenceText':'第一次切换'}});self.assertTrue(entered.wait(2))
+        f.request('/api/config',{'voice':{'referenceText':'第二次切换'}});release.set();deadline=time.monotonic()+3
         while f.server.jobs.switching and time.monotonic()<deadline:time.sleep(.01)
-        self.assertEqual(completed,[1.2]);self.assertIsNone(f.server.jobs.last_error)
+        self.assertEqual(completed,['第二次切换']);self.assertIsNone(f.server.jobs.last_error)
+
+    def test_speed_is_hot_configuration_and_never_cancels_or_reloads(self):
+        f=self.fixture;f.actor.close=Mock();f.actor.prepare=Mock()
+        old=[f.request('/speak',{'text':'调整前任务'+str(i)})['jobId'] for i in range(3)]
+        response=f.request('/api/config',{'voice':{'speed':1.2}})
+        new=f.request('/speak',{'text':'调整后任务'})['jobId']
+        self.assertEqual(response['config']['voice']['speed'],1.2)
+        self.assertTrue(all(f.wait(i)['state']=='completed' for i in old+[new]))
+        self.assertEqual([call[1]['speed'] for call in f.actor.calls],[1,1,1,1.2])
+        f.actor.close.assert_not_called();f.actor.prepare.assert_not_called()
+        self.assertFalse(f.server.jobs.switching)
+
+    def test_runtime_controls_do_not_change_loaded_model_signature(self):
+        from pipeline import Pipeline,requires_reload
+        voice=self.fixture.store.get()['voice'];changed=copy.deepcopy(voice)
+        changed.update(speed=1.3,volume=.4,assetScope='private')
+        self.assertFalse(requires_reload(voice,changed))
+        self.assertEqual(Pipeline(self.fixture.store).signature(voice),Pipeline(self.fixture.store).signature(changed))
+        changed['referenceText']='另一段参考台词'
+        self.assertTrue(requires_reload(voice,changed))
 
 class WorkerIdentityTests(unittest.TestCase):
+    def test_cosy_speed_boundaries_are_exactly_clamped_for_worker_validation(self):
+        from engine_cosy import Adapter
+        adapter=Adapter.__new__(Adapter);adapter.client=Mock()
+        for speed,expected in ((.7,-30.0),(1.3,30.0),(.85,-15.0)):
+            adapter.synthesize('测试',{'style':'chat','speed':speed},Path('out.wav'),lambda:None)
+            self.assertEqual(adapter.client.synthesize.call_args.args[3],expected)
     def test_worker_model_and_variant_must_match_actual_selection(self):
         from local_tts import LocalTtsClient
         from tts_process import TtsProcess
