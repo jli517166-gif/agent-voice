@@ -11,6 +11,8 @@ CosyVoice 保留原有认可声音；新增 GPT 版本中推荐 v5 Turbo，ProPl
 
 ## 主要功能
 
+- 首次启动提供原生 WinForms 开场与欢迎页：开始配置、导入音色配置或直接进入。开场可立即跳过，支持减少动画；配置中心可随时继续，已有声音参数不重置。设置中可重播开场。
+
 - 本地 TTS 直接输出，默认使用 CosyVoice 3。
 - 正式集成三种选择：CosyVoice、GPT-SoVITS v5 Turbo、GPT-SoVITS ProPlus。所有声音直接由所选 TTS 输出。
 - 首页切换引擎、模型和档位，设置共用参考录音与逐字台词；每套声音方案保存完整 TTS 参数。

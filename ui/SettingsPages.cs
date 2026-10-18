@@ -12,6 +12,7 @@ namespace AgentVoice {
         void BuildSettings(){
             var hub=Stack(NewPage("settings"));
             var common=Card(hub,"常用设置");Add(common,Hint("最常用的输出、连接和界面选项。"));
+            Add(common,Row(EntryBtn("配置中心","继续准备环境、声音与连接。",()=>ShowPage("setup")),EntryBtn("重播开场","重播开场并重新选择欢迎页入口；不重置声音设置。",ReplayWelcome)));
             Add(common,HubRow(HubEntry("连接设备","连接 Harness 或 AIRI，并做真实播放验证。","connections",true),HubEntry("外观","设置背景、配色和程序图标。","appearance",false)));
             var system=Card(hub,"系统与维护");Add(system,Hint("运行环境和低频高级选项集中在这里，日常使用通常无需修改。"));
             Add(system,HubRow(HubEntry("补齐环境","检查缺少的依赖、源码与基础模型，在软件内下载并补齐。","environmentRepair",true)));
