@@ -7,6 +7,7 @@ import argparse,copy,json,os,shutil,stat,sys,time,zipfile
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'service'))
 from release_audit import audit,digest
+import runtime_paths
 
 SKIP_DIRS={'.git','__pycache__','.cache','.pytest_cache','.mypy_cache'}
 ROOTS={'service','integrations','tools','assets','.agents','docs','runtime','tts-engines','voices','voice-model-packages'}
@@ -68,6 +69,9 @@ def stage(build,installation,model,reference,spec,target,commit):
     for name in ('ffmpeg.exe','ffprobe.exe'):
         shutil.copy2(installation/'tools'/name,target/'tools'/name)
     (target/'release-info.json').write_text(json.dumps({'format':'agent-voice-portable','version':1,'commit':commit,'defaultVoice':'Fairy','includedEngines':['cosyvoice','gpt-sovits-v5turbo','gpt-sovits-proplus'],'userDataIncluded':False},ensure_ascii=False,indent=2),'utf-8')
+    # Repair the copy, never the source installation. After extraction the
+    # launcher and environment repair relocate it again to its final directory.
+    runtime_paths.repair_bundled_runtime(target)
     print(json.dumps({'phase':'staged','directory':str(target)},ensure_ascii=False),flush=True)
 
 def release_files(root):

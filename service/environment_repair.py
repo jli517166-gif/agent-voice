@@ -1,6 +1,7 @@
 """App-local environment repair with a real end-to-end synthesis check."""
 import argparse,copy,hashlib,json,os,platform,shutil,subprocess,sys,time,urllib.request,uuid,zipfile
 from pathlib import Path
+import runtime_paths
 from state import Store,atomic_json
 from operation_lock import OperationLock
 from engine_registry import spec,gpt_required,worker_config
@@ -33,7 +34,9 @@ def extract(archive,destination,strip_root=False):
 
 class Repair:
     def __init__(self,root):
-        self.store=Store(root);self.root=self.store.root;self.work=self.root/'data/environment-repair';self.work.mkdir(parents=True,exist_ok=True)
+        self.store=Store(root);self.root=self.store.root
+        runtime_paths.repair_bundled_runtime(self.root)
+        self.work=self.root/'data/environment-repair';self.work.mkdir(parents=True,exist_ok=True)
         self.log=self.work/'install.log'
     def progress(self,message,stage='working',**extra):
         atomic_json(self.work/'progress.json',dict(stage=stage,message=message,time=time.time(),**extra))
