@@ -55,19 +55,38 @@ namespace AgentVoice {
     public sealed partial class MainForm {
         internal List<string> VerifySetupFlow(string directory){
             var errors=new List<string>();var original=Json.Copy(Config);string draft=body.Text;int controls=CountControls(this);
-            ShowPage("setup");for(int i=0;i<24;i++){GoSetup(i%8);Application.DoEvents();if(SetupStep!=i%8||setupPanels.Count(c=>c.Visible)!=1)errors.Add("Setup step navigation shows wrong panels");if(i<8)using(var shot=new Bitmap(Width,Height)){DrawToBitmap(shot,new Rectangle(0,0,Width,Height));shot.Save(Path.Combine(directory,"setup-step-"+i+".png"));}}
+            ShowPage("setup");for(int i=0;i<24;i++){
+                GoSetup(i%8);Application.DoEvents();
+                if(SetupStep!=i%8||setupPanels.Count(c=>c.Visible)!=1||page!=setupIds[i%8]||pages.Count(route=>route.Value.Visible)!=1)errors.Add("Setup must show exactly one independent route");
+                if(setupAnimations.Where((a,n)=>n!=i%8).Any(a=>a.AnimationRunning))errors.Add("Hidden step animation still running");
+                if(i<8){foreach(double frame in new[]{0,.65,1.8}){setupAnimations[i].Preview(frame);using(var shot=new Bitmap(Width,Height)){DrawToBitmap(shot,new Rectangle(0,0,Width,Height));shot.Save(Path.Combine(directory,"setup-step-"+i+"-"+frame.ToString("0.00",System.Globalization.CultureInfo.InvariantCulture)+".png"));}}}
+            }
+            if(setupPanels.Distinct().Count()!=8||setupAnimations.Select(a=>a.Illustration).Distinct().Count()!=8||Controls.Find("setupStepChoice",true).Length!=0)errors.Add("Wizard needs eight distinct pages and illustrations without step dropdown");
             if(CountControls(this)!=controls||body.Text!=draft)errors.Add("Setup navigation leaked controls or lost input");
             var initialSize=ClientSize;
             foreach(var size in new[]{new Size(1080,750),new Size(900,620)}){
-                ClientSize=size;GoSetup(2);Application.DoEvents();
-                var viewport=pages["setup"].Controls.Find("setupScroller",true).Single() as ScenePanel;
-                foreach(var button in new Control[]{setupBack,setupNext,setupSkip}){
-                    var bounds=pages["setup"].RectangleToClient(button.RectangleToScreen(button.ClientRectangle));
-                    if(!pages["setup"].ClientRectangle.Contains(bounds)||bounds.IntersectsWith(pages["setup"].RectangleToClient(viewport.RectangleToScreen(viewport.ClientRectangle))))errors.Add("Setup navigation clipped or overlaps scrolling content at "+size);
+                ClientSize=size;
+                for(int step=0;step<8;step++){
+                    GoSetup(step);Application.DoEvents();var route=setupPanels[step];var viewport=route.Controls.Find("setupScroller_"+step,true).Single() as ScenePanel;
+                    foreach(var button in setupNavigation[step].Where(b=>b.Visible)){
+                        var bounds=route.RectangleToClient(button.RectangleToScreen(button.ClientRectangle));
+                        if(!route.ClientRectangle.Contains(bounds)||bounds.IntersectsWith(route.RectangleToClient(viewport.RectangleToScreen(viewport.ClientRectangle))))errors.Add("Setup navigation clipped or overlaps content at "+size+" step "+step);
+                    }
+                    if(step==2&&viewport.VerticalScroll.Maximum-viewport.VerticalScroll.LargeChange+1<=0)errors.Add("Setup overflow has no reachable scrollbar at "+size);
                 }
-                if(viewport.VerticalScroll.Maximum-viewport.VerticalScroll.LargeChange+1<=0)errors.Add("Setup overflow has no reachable scrollbar at "+size);
+                GoSetup(2);using(var shot=new Bitmap(Width,Height)){DrawToBitmap(shot,new Rectangle(0,0,Width,Height));shot.Save(Path.Combine(directory,"setup-size-"+size.Width+".png"));}
             }
             ClientSize=initialSize;
+            setupMotionChoices[2].Checked=true;if(setupAnimations.Any(a=>a.AnimationRunning)||!SetupPreference().reduceMotion)errors.Add("Reduced motion did not stop all step animations");
+            setupMotionChoices[2].Checked=false;
+            GoSetup(3);GoSetup(2);var animationWatch=System.Diagnostics.Stopwatch.StartNew();
+            while(animationWatch.ElapsedMilliseconds<2100){Application.DoEvents();System.Threading.Thread.Sleep(10);}
+            if(setupAnimations.Any(a=>a.AnimationRunning))errors.Add("Step animation did not settle within its finite duration");
+            var listener=new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback,0);listener.Start();Config.port=((System.Net.IPEndPoint)listener.LocalEndpoint).Port;listener.Stop();Store.Write(Config);
+            GoSetup(1);setupEngineChoice.SelectedIndex=1;setupNext.PerformClick();var nextWatch=System.Diagnostics.Stopwatch.StartNew();
+            while(operation&&nextWatch.ElapsedMilliseconds<8000){Application.DoEvents();System.Threading.Thread.Sleep(10);}
+            if(operation||SetupStep!=2||Config.voice.engine!="gpt-sovits"||Store.Read().voice.gptVariant!="v5turbo")errors.Add("Next did not save selected TTS before advancing");
+            GoSetup(1);setupEngineChoice.SelectedIndex=2;setupSkip.PerformClick();if(Config.voice.gptVariant!="v5turbo")errors.Add("Skip unexpectedly applied a new engine variant");
             GoSetup(2);setupSkip.PerformClick();if(SetupStep!=3||SetupPreference().setupStates["step2"]!="skipped")errors.Add("Skip must preserve an explicit skipped state");
             setupBack.PerformClick();if(SetupStep!=2||new WelcomeState(Store).Read().setupStep!=2)errors.Add("Setup progress did not persist");
             setupOffline.Checked=true;if(!new WelcomeState(Store).Read().offline)errors.Add("Offline preference not persisted");
@@ -76,7 +95,7 @@ namespace AgentVoice {
             Config.voice.speed=1.1;GoSetup(7);if(setupResult.Text.Contains("上次实际播放完成")||setupResult.Text.Contains("听感确认：已确认"))errors.Add("Changed voice reused stale playback evidence");
             SetSetupConnections(new Dictionary<string,object>{{"verification",new Dictionary<string,object>{{"codex",new Dictionary<string,object>{{"state","waiting"}}}}}});if(setupHarnessSummary.Contains("播放验证通过"))errors.Add("Waiting challenge was treated as verified");
             SetSetupConnections(null);if(!setupHarnessSummary.Contains("未验证"))errors.Add("Offline service retained a green connection");
-            Config=original;setupOffline.Checked=false;GoSetup(0);BindVoice();ShowPage("home");return errors;
+            Config=original;Store.Write(original);setupOffline.Checked=false;GoSetup(0);BindVoice();ShowPage("home");if(setupAnimations.Any(a=>a.AnimationRunning))errors.Add("Leaving setup did not stop animation timers");return errors;
         }
     }
 }

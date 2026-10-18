@@ -42,7 +42,7 @@ namespace AgentVoice {
                 using(var g=Graphics.FromImage(large)){
                     g.Clear(Color.Transparent);g.ScaleTransform(scale,scale);g.SmoothingMode=SmoothingMode.AntiAlias;g.PixelOffsetMode=PixelOffsetMode.None;
                     float inset=Math.Max(.5F,border/2F);var rect=new RectangleF(inset,inset,size.Width-inset*2,size.Height-inset*2);
-                    using(var shape=Shapes.Rounded(rect,Math.Min(12,Math.Max(6,size.Height/2F-inset)))){
+                    using(var shape=Shapes.Rounded(rect,Math.Min(9,Math.Max(6,size.Height/2F-inset)))){
                         using(var brush=new SolidBrush(fill))g.FillPath(brush,shape);
                         if(border>0)using(var pen=new Pen(stroke,border)){pen.Alignment=PenAlignment.Center;g.DrawPath(pen,shape);}
                     }
@@ -80,7 +80,7 @@ namespace AgentVoice {
             Invalidate(true);
         }
         protected override void OnPaintBackground(PaintEventArgs e){if(Host==null){base.OnPaintBackground(e);return;}Host.PaintScene(e.Graphics,this);}
-        protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);if(Card&&Host!=null){e.Graphics.SmoothingMode=SmoothingMode.AntiAlias;var rect=new Rectangle(1,1,Width-3,Height-3);using(var path=Shapes.Rounded(rect,18)){using(var fill=new SolidBrush(Host.CardColor))e.Graphics.FillPath(fill,path);using(var pen=new Pen(Color.FromArgb(118,Host.Accent),1.2F))e.Graphics.DrawPath(pen,path);}}}
+        protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);if(Card&&Host!=null){e.Graphics.SmoothingMode=SmoothingMode.AntiAlias;var rect=new Rectangle(1,1,Width-3,Height-3);using(var path=Shapes.Rounded(rect,12))using(var fill=new SolidBrush(Host.CardColor))e.Graphics.FillPath(fill,path);}}
         static Color Shift(Color color,int amount){return Color.FromArgb(color.A,Math.Max(0,Math.Min(255,color.R+amount)),Math.Max(0,Math.Min(255,color.G+amount)),Math.Max(0,Math.Min(255,color.B+amount)));}
     }
     public sealed class BufferedTable:TableLayoutPanel {
