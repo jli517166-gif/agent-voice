@@ -167,7 +167,7 @@ namespace AgentVoice {
         bool speechOperation;
         void BuildHomeWeb(){
             var home=NewPage("home");home.AutoScroll=false;
-            var title=new Label{Text="文字，有了声音。",Font=new Font(Font.FontFamily,28F,FontStyle.Bold),AutoSize=true,BackColor=Color.Transparent,ForeColor=ForeColor};title.SetBounds(38,20,620,54);home.Controls.Add(title);
+            var title=new Label{Text="文字，有了声音。",Font=new Font(Font.FontFamily,26F,FontStyle.Bold),AutoSize=true,BackColor=Color.Transparent,ForeColor=ForeColor};title.SetBounds(38,12,620,70);home.Controls.Add(title);
             var lead=Hint("手动朗读与自动朗读，在这里统一控制。");lead.SetBounds(40,72,520,24);home.Controls.Add(lead);
             serviceToggle=Primary(AsyncBtn("开启服务",async()=>{if(await Service.Running()){await Service.Stop();Status("服务已关闭。");}else{await SaveDraft();await Service.Start();Status("服务已启动。");}await Poll();}));serviceToggle.AutoSize=false;serviceToggle.SetBounds(868,46,96,34);home.Controls.Add(serviceToggle);
             var voice=new ScenePanel{Host=this,Card=true,Location=new Point(38,120),Size=new Size(658,104),Padding=new Padding(16,10,16,10)};home.Controls.Add(voice);
@@ -188,7 +188,7 @@ namespace AgentVoice {
             var queueEmpty=Hint("暂时没有朗读任务。\r\n来自客户端的完整句子\r\n会按顺序出现在这里。");queueEmpty.SetBounds(0,46,185,120);queue.Controls.Add(queueEmpty);
             var deck=new ScenePanel{Host=this,Card=true,Location=new Point(0,516),Size=new Size(978,88),Padding=new Padding(16,10,16,10)};home.Controls.Add(deck);
             var stop=Btn("停止",async()=>await StopSpeech());stop.SetBounds(0,20,96,38);deck.Controls.Add(stop);
-            playButton=LiveSpeechButton("重播上一条",PlayLast);playButton.AutoSize=false;playButton.SetBounds(112,20,120,38);deck.Controls.Add(playButton);
+            playButton=LiveSpeechButton("重播上一条",PlayLast);playButton.AutoSize=false;playButton.SetBounds(112,20,142,38);deck.Controls.Add(playButton);
             generate=Primary(LiveSpeechButton("生成并播放",async()=>await Generate(body.Text,true)));generate.AutoSize=false;generate.SetBounds(788,20,150,38);deck.Controls.Add(generate);BuildVoiceEditor();BuildCosyReference();
         }
         void BuildHome(){
