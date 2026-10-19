@@ -1,0 +1,82 @@
+[
+  {
+    "overflowX": false,
+    "route": "#setup-0",
+    "screens": 1,
+    "scrollY": 0,
+    "titleX": 124.23958587646484,
+    "titleY": 203.625
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-1",
+    "screens": 1,
+    "scrollY": 0,
+    "titleX": 679.1875,
+    "titleY": 195.6041717529297
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-2",
+    "screens": 1,
+    "scrollY": 0,
+    "titleX": 124.23958587646484,
+    "titleY": 140.1354217529297
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-3",
+    "screens": 1,
+    "scrollY": 0,
+    "titleX": 124.23958587646484,
+    "titleY": 146.3125
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-4",
+    "screens": 1,
+    "scrollY": 0,
+    "titleX": 124.23958587646484,
+    "titleY": 182.30209350585935
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-5",
+    "screens": 1,
+    "scrollY": 0,
+    "titleX": 647.4166870117188,
+    "titleY": 153.8125
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-6",
+    "screens": 1,
+    "scrollY": 0,
+    "titleX": 463.5625,
+    "titleY": 153.6041717529297
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-7",
+    "screens": 1,
+    "scrollY": 0,
+    "titleX": 124.23958587646484,
+    "titleY": 153.46875
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-8",
+    "screens": 1,
+    "scrollY": 0,
+    "titleX": 87.39583587646484,
+    "titleY": 174.8125
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-9",
+    "screens": 1,
+    "scrollY": 0,
+    "titleX": 124.23958587646484,
+    "titleY": 189.03125
+  }
+]

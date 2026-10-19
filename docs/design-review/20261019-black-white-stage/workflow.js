@@ -38,7 +38,7 @@ const specs = {
   },
   computer: {
     name: "电脑检查",
-    title: "确认这台电脑。",
+    title: "检查这台电脑。",
     image: "computer.webp",
     steps: ["检查系统与显卡", "检查驱动与目录权限", "整理兼容性结果"],
     failure: "显卡驱动未满足当前引擎要求。",
@@ -46,7 +46,7 @@ const specs = {
   },
   engine: {
     name: "准备引擎",
-    title: "引擎，就位。",
+    title: "准备引擎文件。",
     image: "folder.webp",
     path: true,
     steps: ["确认来源与引擎版本", "检查空间并准备资源", "校验清单与模型哈希"],
@@ -55,7 +55,7 @@ const specs = {
   },
   environment: {
     name: "补齐环境",
-    title: "补齐缺少的部分。",
+    title: "补齐运行环境。",
     image: "tools.webp",
     path: true,
     steps: [
@@ -170,6 +170,7 @@ function close(restore = true) {
   cancelTimers();
   q(".task-scene")?.remove();
   taskMode(false);
+  q("#window").style.removeProperty("--task-reading-top");
   q("#window")
     .querySelectorAll(".celebration-piece")
     .forEach((n) => n.remove());
@@ -200,6 +201,19 @@ function run(kind, options = {}) {
           : ""),
     outcome: options.outcome || outcome.value,
   };
+  // Keep these two preparation flows at their originating heading, then keep it
+  // fixed through progress/retry instead of recentering when the body changes.
+  const sourceHeading = q(".scene-heading"),
+    host = q("#window");
+  if (["engine", "environment"].includes(kind) && sourceHeading) {
+    const top =
+      sourceHeading.getBoundingClientRect().top -
+      host.getBoundingClientRect().top;
+    host.style.setProperty(
+      "--task-reading-top",
+      Math.max(54, Math.min(170, top)) + "px",
+    );
+  }
   taskMode(true);
   draw();
 }
@@ -228,11 +242,11 @@ function draw() {
     phase = a.phase,
     title =
       phase === "success"
-        ? "完成了 · 演示"
+        ? a.spec.name + "已完成 · 演示"
         : phase === "failure"
-          ? "这一步需要处理。"
+          ? a.spec.name + "未通过。"
           : phase === "manual"
-            ? "在客户端继续。"
+            ? a.spec.name + "需要你继续。"
             : a.spec.title;
   let scene = q(".task-scene");
   if (!scene) {

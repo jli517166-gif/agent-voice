@@ -34,29 +34,81 @@
 }
 #window .task-scene {
   inset: 0;
-  background: #101117;
+  background:
+    radial-gradient(ellipse at 62% 95%, #69607132, transparent 64%),
+    linear-gradient(120deg, #0d0f15, #24232e);
   isolation: isolate;
+  animation: task-fade 180ms ease-out;
 }
 #window .task-scene:before {
   content: "";
   position: absolute;
   inset: 0;
   background: linear-gradient(145deg, #f9f6fc, #f0e4f2);
-  clip-path: polygon(68% 0, 100% 0, 100% 100%, 56% 100%);
+  mask-image: linear-gradient(90deg, transparent 55%, #000 94%);
   z-index: -1;
   pointer-events: none;
 }
 #window .task-main {
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.75fr);
-  gap: 10%;
-  padding: 48px 8% 28px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.8fr);
+  gap: 7%;
+  align-items: start;
+  padding: var(--task-reading-top, 108px) 8% 20px;
   min-height: 0;
 }
 #window .task-copy {
   overflow-wrap: anywhere;
 }
 #window .task-copy h2 {
-  font-size: clamp(30px, 3.5vw, 44px);
+  font-size: clamp(36px, 4.1vw, 60px);
+  line-height: 1.26;
+  margin: 0 0 20px;
+}
+#window .task-kicker {
+  margin: 0 0 16px;
+  line-height: 16px;
+  position: absolute;
+  top: -38px;
+  left: 0;
+}
+#window .task-body {
+  min-height: 240px;
+}
+#window .task-body > p:first-child {
+  min-height: 44px;
+  font-size: 14px;
+}
+#window .task-copy {
+  align-self: start;
+  position: relative;
+}
+#window .task-image {
+  width: 100%;
+  max-width: 300px;
+  height: 260px;
+  aspect-ratio: auto;
+  margin-top: 40px;
+  background: transparent;
+  border-radius: 0;
+  overflow: visible;
+  border: 0;
+  box-shadow: none;
+}
+#window .task-image img {
+  width: 100%;
+  height: 100%;
+  mix-blend-mode: multiply;
+  animation: none;
+}
+#window .task-footer {
+  background: #13131b;
+  border-color: #b9a4ce22;
+}
+#window .task-footer .ui-button.subtle {
+  color: #cac1d7;
+}
+#window .task-copy h2 {
+  color: #faf7ff;
 }
 #window .task-footer {
   position: relative;
@@ -74,15 +126,212 @@
   }
   #window .task-main {
     display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
     gap: 20px;
-    padding: 25px 8%;
+    padding: var(--task-reading-top, 62px) 7% 20px;
   }
   #window .task-copy h2 {
-    font-size: 29px;
+    font-size: clamp(29px, 6.8vw, 44px);
+  }
+  #window .task-image {
+    display: none;
+  }
+  #window .task-body {
+    min-height: 250px;
   }
   #window .task-footer {
     min-height: 82px;
     padding: 17px 8%;
+  }
+}
+
+/* Quiet scenery: only the subject makes one finite move, after the headline. */
+.reference-setup[data-composition] .brand {
+  color: #f4effb;
+}
+.reference-setup[data-composition] .scene-heading h1 {
+  color: #faf7ff;
+  text-shadow: none;
+}
+.reference-setup[data-composition] .scene-heading .lead {
+  color: #c4bfcd;
+  max-width: 34em;
+}
+.reference-setup[data-composition] .screen-content {
+  padding-top: 16px;
+  padding-bottom: 4px;
+}
+.reference-setup[data-composition]:has(.art-stage[data-playing="true"])
+  .screen-content {
+  scrollbar-width: none;
+}
+.reference-setup[data-composition="resources"] .option {
+  min-height: 64px;
+  padding: 10px 16px;
+}
+.reference-setup[data-composition] .scene-heading {
+  margin-bottom: 0;
+}
+.reference-setup[data-composition] .position {
+  color: #c5bdcf;
+}
+.reference-setup[data-composition] .footer .back,
+.reference-setup[data-composition] .footer .quiet,
+.reference-setup[data-composition] .footer #skip {
+  color: #c4b8d0;
+  border-color: transparent;
+}
+.reference-setup[data-composition] .field-reveal,
+.reference-setup[data-composition] .scene-room * {
+  animation: none !important;
+}
+.reference-setup[data-composition] .art-field:before,
+.reference-setup[data-composition] .art-field:after {
+  display: none;
+}
+.reference-setup[data-composition] .art-field {
+  display: none;
+}
+.reference-setup[data-composition] .art-stage {
+  clip-path: none !important;
+}
+.reference-setup[data-composition] .composition-aperture {
+  mix-blend-mode: normal;
+}
+.reference-setup[data-composition] .scene-room {
+  background: linear-gradient(135deg, #fcfaff, #eee4f3 68%, #d7c6e3);
+  border: 1px solid #fff5;
+  border-radius: 46% 32% 42% 28%;
+  box-shadow:
+    inset 0 2px #fff8,
+    18px 26px 45px #0002;
+}
+.reference-setup[data-composition] .scene-room[data-scene="1"] {
+  border-radius: 26px 62px 26px 26px;
+}
+.reference-setup[data-composition] .scene-room[data-scene="3"] {
+  border-radius: 56px 24px 46px 24px;
+}
+.reference-setup[data-composition] .scene-room[data-scene="4"] {
+  border-radius: 28px 48px 28px 48px;
+}
+.reference-setup[data-composition] .scene-room[data-scene="5"] {
+  border-radius: 48% 48% 28% 28%;
+}
+.reference-setup[data-composition="listening"] .scene-room {
+  border-radius: 50%;
+  background: linear-gradient(180deg, #fff7, #c7b3dd12);
+}
+.reference-setup[data-composition="conversation"] .scene-room {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.reference-setup[data-composition] .scene-reveal:not(.still) {
+  animation: room-light 350ms 150ms ease-out both;
+}
+@keyframes room-light {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.reference-setup[data-composition] .art-stage img,
+#window .task-image:not([data-kind="airi"]) img {
+  mask-image: radial-gradient(ellipse, #000 48%, transparent 75%);
+}
+.reference-setup[data-composition="engines"] .art-field,
+.reference-setup[data-composition="conversation"] .art-field {
+  display: none;
+}
+@media (max-width: 780px) {
+  .reference-setup[data-composition] .art-field {
+    display: none;
+  }
+  .reference-setup[data-composition] .art-stage {
+    opacity: 0.65;
+  }
+  .reference-setup[data-composition] .scene-room {
+    opacity: 0.65;
+  }
+  .reference-setup[data-composition] .scene-heading {
+    margin-bottom: 22px;
+  }
+}
+.reference-setup[data-composition] .subject-reflection,
+.reference-setup[data-composition] .glass-lens,
+.reference-setup[data-composition] .surface-glint {
+  display: none;
+}
+.reference-setup[data-composition] .art-reveal .hero-object {
+  animation-duration: 650ms;
+  animation-delay: 220ms;
+}
+.reference-setup[data-composition] .art-reveal .support-object {
+  animation-duration: 550ms;
+  animation-delay: 300ms;
+}
+.reference-setup[data-composition]
+  .art-reveal
+  :is(.voice-signature i, .listening-wave i) {
+  animation-duration: 700ms;
+  animation-delay: 260ms;
+}
+.reference-setup[data-composition] .focus-reveal .focus-word:after {
+  animation: focus-line 420ms 140ms ease-out both;
+}
+.reference-setup .focus-reveal h1 {
+  animation: reading-arrive 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.reference-setup .focus-reveal .lead {
+  animation: reading-arrive 380ms 90ms ease-out both;
+}
+.reference-setup .focus-reveal .scene-controls {
+  animation: reading-arrive 360ms 160ms ease-out both;
+}
+@keyframes reading-arrive {
+  from {
+    opacity: 0.15;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes focus-line {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes task-fade {
+  from {
+    opacity: 0.7;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.reduced .focus-word:after,
+.reduced .focus-reveal h1,
+.reduced .focus-reveal .lead,
+.reduced .focus-reveal .scene-controls {
+  animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .focus-word:after,
+  #window .task-scene,
+  .focus-reveal h1,
+  .focus-reveal .lead,
+  .focus-reveal .scene-controls {
+    animation: none !important;
   }
 }
 

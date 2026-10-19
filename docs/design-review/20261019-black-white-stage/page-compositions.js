@@ -13,6 +13,25 @@ const names = [
   "ready",
 ];
 export function composePage(screen, step, host) {
+  const actions = [
+    "开始配置",
+    "选择引擎",
+    "准备引擎文件",
+    "准备引擎",
+    "补齐环境",
+    "进入试听",
+    "连接客户端",
+    "接入并验证",
+    "继续",
+    "进入工作台",
+  ];
+  document.querySelector("#next span").textContent = actions[step];
+  if (step === 8)
+    document.querySelector("#next span").textContent =
+      screen.querySelector('[role="switch"]')?.getAttribute("aria-checked") ===
+      "true"
+        ? "连接并验证 AIRI"
+        : "继续，暂不联动";
   const name = names[step];
   if (!name) return;
   const grid = screen.querySelector(".step-grid,.intro-content");
@@ -26,15 +45,34 @@ export function composePage(screen, step, host) {
   [...copy.children].forEach((n) =>
     (n.matches(".eyebrow,h1,.lead") ? heading : controls).append(n),
   );
-  grid.replaceChildren(heading, host, controls);
+  const reading = document.createElement("div");
+  reading.className = "scene-copy";
+  reading.append(heading, controls);
+  grid.replaceChildren(reading, host);
   grid.classList.add("scene-grid");
   const titles = {
-    1: "先了解<br>这台电脑。",
-    4: "准备好<br>运行环境。",
-    5: "选择<br>你的声音。",
-    7: "连接你的对话。",
+    0: '声音，<br><span class="focus-word">现在开始。</span>',
+    1: '检查<span class="focus-word">这台电脑。</span>',
+    2: '选择<span class="focus-word">语音引擎。</span>',
+    3: '准备<span class="focus-word">引擎文件。</span>',
+    4: '补齐<span class="focus-word">运行环境。</span>',
+    5: '选择<span class="focus-word">你的音色。</span>',
+    6: '播放<span class="focus-word">一段试听。</span>',
+    7: '连接<span class="focus-word">对话客户端。</span>',
+    9: '回顾<span class="focus-word">本次配置。</span>',
   };
   if (titles[step]) heading.querySelector("h1").innerHTML = titles[step];
+  const leads = {
+    1: "先检查系统、显卡和存储，确认这台电脑能运行所选引擎。",
+    2: "选一种生成声音的方式，之后可以随时更换。",
+    3: "下载引擎文件，或使用你已经准备好的引擎包。",
+    4: "检查缺少的依赖，选择在线补齐或导入离线环境包。",
+    5: "导入训练好的音色包，或用自己的参考录音配置声音。",
+    6: "播放一段测试内容，确认声音和输出是否符合预期。",
+    7: "选择要自动朗读的客户端，再完成连接与播放验证。",
+    9: "确认本次选择。跳过的项目，可以进入软件后继续配置。",
+  };
+  if (leads[step]) heading.querySelector(".lead").textContent = leads[step];
   if (step === 2 || step === 7) {
     controls.querySelectorAll(".option").forEach((button, i) => {
       const pane = document.createElement("span");
@@ -53,7 +91,7 @@ export function composePage(screen, step, host) {
       .classList.add("conversation-choices");
     const help = controls.querySelector(".after-options");
     help.classList.add("scene-help");
-    grid.append(help);
+    controls.append(help);
   }
   if (step === 9) {
     const label = document.createElement("p");
@@ -67,22 +105,4 @@ export function composePage(screen, step, host) {
       line.prepend(field);
     });
   }
-}
-
-// All surfaces use the same porcelain and lilac light; only their silhouette changes.
-export function compositionField(step, rect, dx = 0, dy = 0) {
-  const { x, y, width: w, height: h } = rect;
-  const a = x + dx,
-    b = y + dy;
-  if ([0, 1, 2, 6, 7].includes(step)) {
-    const cx = a + w / 2,
-      cy = b + h / 2,
-      rx = w / 2,
-      ry = h / 2;
-    return `path("M ${cx - rx} ${cy} A ${rx} ${ry} 0 1 0 ${cx + rx} ${cy} A ${rx} ${ry} 0 1 0 ${cx - rx} ${cy} Z")`;
-  }
-  if (step === 3)
-    return `polygon(${a + w * 0.12}px ${b}px,${a + w}px ${b}px,${a + w * 0.88}px ${b + h}px,${a}px ${b + h}px)`;
-  const r = Math.min(step === 5 ? w / 2 : 32, h / 2);
-  return `path("M ${a + r} ${b} H ${a + w - r} Q ${a + w} ${b} ${a + w} ${b + r} V ${b + h - r} Q ${a + w} ${b + h} ${a + w - r} ${b + h} H ${a + r} Q ${a} ${b + h} ${a} ${b + h - r} V ${b + r} Q ${a} ${b} ${a + r} ${b} Z")`;
 }

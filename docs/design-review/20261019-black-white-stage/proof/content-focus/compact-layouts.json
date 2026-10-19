@@ -1,0 +1,82 @@
+[
+  {
+    "overflowX": false,
+    "route": "#setup-0",
+    "screens": 1,
+    "scrollY": 0,
+    "titleVisible": true,
+    "titleY": 140
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-1",
+    "screens": 1,
+    "scrollY": 0,
+    "titleVisible": true,
+    "titleY": 110
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-2",
+    "screens": 1,
+    "scrollY": 0,
+    "titleVisible": true,
+    "titleY": 110
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-3",
+    "screens": 1,
+    "scrollY": 0,
+    "titleVisible": true,
+    "titleY": 110
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-4",
+    "screens": 1,
+    "scrollY": 0,
+    "titleVisible": true,
+    "titleY": 110
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-5",
+    "screens": 1,
+    "scrollY": 0,
+    "titleVisible": true,
+    "titleY": 110
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-6",
+    "screens": 1,
+    "scrollY": 0,
+    "titleVisible": true,
+    "titleY": 110
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-7",
+    "screens": 1,
+    "scrollY": 0,
+    "titleVisible": true,
+    "titleY": 110
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-8",
+    "screens": 1,
+    "scrollY": 0,
+    "titleVisible": true,
+    "titleY": 338.8020935058594
+  },
+  {
+    "overflowX": false,
+    "route": "#setup-9",
+    "screens": 1,
+    "scrollY": 0,
+    "titleVisible": true,
+    "titleY": 110
+  }
+]

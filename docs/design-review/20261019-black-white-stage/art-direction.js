@@ -1,6 +1,6 @@
 // Agent Voice design review, independent from the installed program.
-import { composePage, compositionField } from "./page-compositions.js";
-import { createMaterialRoom, materialPlane } from "./scene-materials.js";
+import { composePage } from "./page-compositions.js";
+import { createMaterialRoom } from "./scene-materials.js";
 const direction = [
   { main: "headphone", small: "music", name: "声音入场" },
   { main: "computer", small: "setting", name: "电脑与运行条件" },
@@ -130,7 +130,7 @@ function mount() {
     surface.className = "composition-surface";
     surface.setAttribute("aria-hidden", "true");
     win.append(surface);
-    room = createMaterialRoom(step, direction[step].main);
+    room = createMaterialRoom(step);
     aperture = document.createElement("div");
     aperture.className = "composition-aperture";
     surface.append(floor, aperture);
@@ -168,7 +168,6 @@ function mount() {
     lastGeometry = geometry;
     if (step !== 8) {
       // Use the host's own stage, rather than repeating AIRI's full-window curve.
-      const surfaceRect = surface.getBoundingClientRect();
       const apertureRect = aperture.getBoundingClientRect();
       const box = {
         x: r.left - apertureRect.left - shift,
@@ -185,25 +184,6 @@ function mount() {
       room.style.top = box.y + "px";
       room.style.width = box.width + "px";
       room.style.height = box.height + "px";
-      const worldBox = {
-        ...box,
-        x: box.x + apertureRect.left - surfaceRect.left,
-        y: box.y + apertureRect.top - surfaceRect.top,
-      };
-      if (mobile) {
-        floor.style.clipPath = compositionField(step, worldBox);
-        art.style.clipPath = compositionField(step, { ...box, x: 0, y: 0 });
-      } else {
-        const area = { width: surfaceRect.width, height: surfaceRect.height };
-        floor.style.clipPath = materialPlane(step, worldBox, area);
-        art.style.clipPath = materialPlane(
-          step,
-          worldBox,
-          area,
-          -worldBox.x,
-          -worldBox.y,
-        );
-      }
       return;
     }
     art.style.inset = "auto";
@@ -250,6 +230,7 @@ function mount() {
   }
   let timer = 0,
     animations = [];
+  const firstPaint = document.body.classList.contains("ui-booting");
   function freeze() {
     clearTimeout(timer);
     animations.forEach((a) => {
@@ -261,12 +242,14 @@ function mount() {
   }
   function play() {
     freeze();
+    const replaying = art.classList.contains("art-reveal");
     art.classList.remove("art-reveal");
     floor.classList.remove("field-reveal");
     room?.classList.remove("scene-reveal");
-    void art.getBoundingClientRect();
+    screen.classList.remove("focus-reveal");
+    if (replaying) void art.getBoundingClientRect();
     const reduced =
-      (step !== 8 && screen.dataset.animate === "false") ||
+      (step !== 8 && screen.dataset.animate === "false" && !firstPaint) ||
       document.body.classList.contains("reduced") ||
       matchMedia("(prefers-reduced-motion:reduce)").matches;
     art.classList.toggle("still", reduced);
@@ -275,10 +258,12 @@ function mount() {
     art.classList.add("art-reveal");
     floor.classList.add("field-reveal");
     room?.classList.add("scene-reveal");
+    if (!reduced) screen.classList.add("focus-reveal");
     animations = [
       ...art.getAnimations({ subtree: true }),
       ...floor.getAnimations(),
       ...(room?.getAnimations({ subtree: true }) || []),
+      ...screen.getAnimations({ subtree: true }),
     ];
     if (reduced) {
       freeze();
@@ -287,7 +272,7 @@ function mount() {
     const slow = new URLSearchParams(location.search).get("slow") === "1";
     if (slow) animations.forEach((a) => (a.playbackRate = 0.5));
     art.dataset.playing = "true";
-    timer = setTimeout(freeze, slow ? 3200 : 1600);
+    timer = setTimeout(freeze, slow ? 3200 : step === 8 ? 1600 : 1100);
   }
   const onAction = (e) => {
     const a = e.target.closest("[data-action]")?.dataset.action;
