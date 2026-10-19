@@ -4,10 +4,29 @@ if (new URLSearchParams(location.search).get("diagnostics") === "1") {
   const panel = document.createElement("details");
   panel.id = "renderDiagnostics";
   panel.style.cssText =
-    "position:fixed;right:12px;top:8px;z-index:50;max-width:520px;max-height:45vh;overflow:auto;background:#14121fec;color:#ddd2ed;padding:8px 12px;font:11px monospace;border:1px solid #89739a66;border-radius:8px";
+    "position:fixed;right:12px;bottom:8px;z-index:50;max-width:520px;max-height:45vh;overflow:auto;background:#14121fec;color:#ddd2ed;padding:8px 12px;font:11px monospace;border:1px solid #89739a66;border-radius:8px";
   panel.innerHTML =
-    '<summary>渲染诊断</summary><pre id="renderMetrics" style="white-space:pre-wrap"></pre>';
+    '<summary>渲染诊断</summary><label>文字动画检查 <select id="textFrame"><option value="auto">正常播放</option>' +
+    [...new Set([...Array.from({ length: 26 }, (_, i) => i * 40), 180, 650])]
+      .sort((a, b) => a - b)
+      .map((ms) => `<option value="${ms}">${ms} ms</option>`)
+      .join("") +
+    '</select></label><pre id="renderMetrics" style="white-space:pre-wrap"></pre>';
   document.body.append(panel);
+  // Real animation scrubber for regression checks. Enabled only in diagnostics.
+  const frames = panel.querySelector("#textFrame");
+  frames.addEventListener("change", () => {
+    const screen = win.querySelector(".screen");
+    if (!screen) return;
+    const all = screen.getAnimations({ subtree: true });
+    for (const animation of all) {
+      if (frames.value === "auto") animation.play();
+      else {
+        animation.pause();
+        animation.currentTime = +frames.value;
+      }
+    }
+  });
   const state = {
     maxScreens: 0,
     overlapSamples: 0,
@@ -91,6 +110,7 @@ if (new URLSearchParams(location.search).get("diagnostics") === "1") {
     true,
   );
   window.addEventListener("design-route", () => {
+    frames.value = "auto";
     if (pendingRoute !== null) {
       state.routeMs.push(
         Math.round((performance.now() - pendingRoute) * 100) / 100,

@@ -1,0 +1,452 @@
+[
+  {
+    "size": [
+      390,
+      800
+    ],
+    "step": 0,
+    "label": "声音，现在开始。",
+    "lineWidth": "241.219px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "声音，现在开始。",
+    "titleWidth": 241.21875
+  },
+  {
+    "size": [
+      390,
+      800
+    ],
+    "step": 1,
+    "label": "检查这台电脑。",
+    "lineWidth": "199.865px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "检查这台电脑。",
+    "titleWidth": 199.86459350585935
+  },
+  {
+    "size": [
+      390,
+      800
+    ],
+    "step": 2,
+    "label": "选择语音引擎。",
+    "lineWidth": "199.865px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "选择语音引擎。",
+    "titleWidth": 199.86459350585935
+  },
+  {
+    "size": [
+      390,
+      800
+    ],
+    "step": 3,
+    "label": "准备引擎文件。",
+    "lineWidth": "199.865px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "准备引擎文件。",
+    "titleWidth": 199.86459350585935
+  },
+  {
+    "size": [
+      390,
+      800
+    ],
+    "step": 4,
+    "label": "补齐运行环境。",
+    "lineWidth": "199.865px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "补齐运行环境。",
+    "titleWidth": 199.86459350585935
+  },
+  {
+    "size": [
+      390,
+      800
+    ],
+    "step": 5,
+    "label": "选择你的音色。",
+    "lineWidth": "199.865px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "选择你的音色。",
+    "titleWidth": 199.86459350585935
+  },
+  {
+    "size": [
+      390,
+      800
+    ],
+    "step": 6,
+    "label": "播放一段试听。",
+    "lineWidth": "199.865px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "播放一段试听。",
+    "titleWidth": 199.86459350585935
+  },
+  {
+    "size": [
+      390,
+      800
+    ],
+    "step": 7,
+    "label": "连接对话客户端。",
+    "lineWidth": "228.417px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "连接对话客户端。",
+    "titleWidth": 228.4166717529297
+  },
+  {
+    "size": [
+      390,
+      800
+    ],
+    "step": 8,
+    "label": "让桌宠开口。",
+    "lineWidth": "205.708px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "让桌宠开口。",
+    "titleWidth": 205.70834350585935
+  },
+  {
+    "size": [
+      390,
+      800
+    ],
+    "step": 9,
+    "label": "回顾本次配置。",
+    "lineWidth": "199.865px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "回顾本次配置。",
+    "titleWidth": 199.86459350585935
+  },
+  {
+    "size": [
+      1280,
+      918
+    ],
+    "step": 0,
+    "label": "声音，现在开始。",
+    "lineWidth": "378.062px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "声音，现在开始。",
+    "titleWidth": 378.0625
+  },
+  {
+    "size": [
+      1280,
+      918
+    ],
+    "step": 1,
+    "label": "检查这台电脑。",
+    "lineWidth": "352.865px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "检查这台电脑。",
+    "titleWidth": 352.8645935058594
+  },
+  {
+    "size": [
+      1280,
+      918
+    ],
+    "step": 2,
+    "label": "选择语音引擎。",
+    "lineWidth": "352.865px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "选择语音引擎。",
+    "titleWidth": 352.8645935058594
+  },
+  {
+    "size": [
+      1280,
+      918
+    ],
+    "step": 3,
+    "label": "准备引擎文件。",
+    "lineWidth": "352.865px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "准备引擎文件。",
+    "titleWidth": 352.8645935058594
+  },
+  {
+    "size": [
+      1280,
+      918
+    ],
+    "step": 4,
+    "label": "补齐运行环境。",
+    "lineWidth": "352.865px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "补齐运行环境。",
+    "titleWidth": 352.8645935058594
+  },
+  {
+    "size": [
+      1280,
+      918
+    ],
+    "step": 5,
+    "label": "选择你的音色。",
+    "lineWidth": "352.865px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "选择你的音色。",
+    "titleWidth": 352.8645935058594
+  },
+  {
+    "size": [
+      1280,
+      918
+    ],
+    "step": 6,
+    "label": "播放一段试听。",
+    "lineWidth": "352.865px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "播放一段试听。",
+    "titleWidth": 352.8645935058594
+  },
+  {
+    "size": [
+      1280,
+      918
+    ],
+    "step": 7,
+    "label": "连接对话客户端。",
+    "lineWidth": "403.281px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "连接对话客户端。",
+    "titleWidth": 403.28125
+  },
+  {
+    "size": [
+      1280,
+      918
+    ],
+    "step": 8,
+    "label": "让桌宠开口。",
+    "lineWidth": "466.417px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "让桌宠开口。",
+    "titleWidth": 466.4166870117187
+  },
+  {
+    "size": [
+      1280,
+      918
+    ],
+    "step": 9,
+    "label": "回顾本次配置。",
+    "lineWidth": "372.167px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "回顾本次配置。",
+    "titleWidth": 372.1666870117187
+  },
+  {
+    "size": [
+      2560,
+      1600
+    ],
+    "step": 0,
+    "label": "声音，现在开始。",
+    "lineWidth": "413.51px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "声音，现在开始。",
+    "titleWidth": 413.5104370117187
+  },
+  {
+    "size": [
+      2560,
+      1600
+    ],
+    "step": 1,
+    "label": "检查这台电脑。",
+    "lineWidth": "399.729px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "检查这台电脑。",
+    "titleWidth": 399.7291870117187
+  },
+  {
+    "size": [
+      2560,
+      1600
+    ],
+    "step": 2,
+    "label": "选择语音引擎。",
+    "lineWidth": "399.729px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "选择语音引擎。",
+    "titleWidth": 399.7291870117187
+  },
+  {
+    "size": [
+      2560,
+      1600
+    ],
+    "step": 3,
+    "label": "准备引擎文件。",
+    "lineWidth": "399.729px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "准备引擎文件。",
+    "titleWidth": 399.7291870117187
+  },
+  {
+    "size": [
+      2560,
+      1600
+    ],
+    "step": 4,
+    "label": "补齐运行环境。",
+    "lineWidth": "399.729px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "补齐运行环境。",
+    "titleWidth": 399.7291870117187
+  },
+  {
+    "size": [
+      2560,
+      1600
+    ],
+    "step": 5,
+    "label": "选择你的音色。",
+    "lineWidth": "399.729px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "选择你的音色。",
+    "titleWidth": 399.7291870117187
+  },
+  {
+    "size": [
+      2560,
+      1600
+    ],
+    "step": 6,
+    "label": "播放一段试听。",
+    "lineWidth": "399.729px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "播放一段试听。",
+    "titleWidth": 399.7291870117187
+  },
+  {
+    "size": [
+      2560,
+      1600
+    ],
+    "step": 7,
+    "label": "连接对话客户端。",
+    "lineWidth": "456.833px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "连接对话客户端。",
+    "titleWidth": 456.8333435058594
+  },
+  {
+    "size": [
+      2560,
+      1600
+    ],
+    "step": 8,
+    "label": "让桌宠开口。",
+    "lineWidth": "517.208px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "让桌宠开口。",
+    "titleWidth": 517.2083740234375
+  },
+  {
+    "size": [
+      2560,
+      1600
+    ],
+    "step": 9,
+    "label": "回顾本次配置。",
+    "lineWidth": "372.167px",
+    "overflowX": false,
+    "parts": 2,
+    "screens": 1,
+    "scrollY": 0,
+    "title": "回顾本次配置。",
+    "titleWidth": 372.1666870117187
+  }
+]

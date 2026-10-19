@@ -106,3 +106,26 @@ export function composePage(screen, step, host) {
     });
   }
 }
+
+// Animate semantic phrases inside fixed masks, never the heading's layout box.
+// Preserve the original nodes so AIRI keeps its pink accent and all text stays exact.
+export function prepareText(screen) {
+  const heading = screen.querySelector("h1");
+  if (!heading || heading.dataset.motionReady === "true") return;
+  heading.setAttribute("aria-label", heading.textContent);
+  let index = 0;
+  for (const node of [...heading.childNodes]) {
+    if (node.nodeType === 1 && node.tagName === "BR") continue;
+    if (!node.textContent.trim()) continue;
+    const mask = document.createElement("span");
+    mask.className = "title-piece";
+    mask.dataset.part = index++ ? "subject" : "action";
+    mask.setAttribute("aria-hidden", "true");
+    const ink = document.createElement("span");
+    ink.className = "title-ink";
+    node.replaceWith(mask);
+    ink.append(node);
+    mask.append(ink);
+  }
+  heading.dataset.motionReady = "true";
+}

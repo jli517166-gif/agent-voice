@@ -61,17 +61,7 @@
   position: relative;
   display: inline-block;
 }
-.focus-word::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -0.09em;
-  height: 2px;
-  background: linear-gradient(90deg, #c5b0ef, #c5b0ef22);
-  transform-origin: left;
-  opacity: 0.8;
-}
+
 .reference-setup[data-composition] .scene-heading .lead {
   color: #c4bfcd;
   font-size: 15px;
@@ -85,6 +75,9 @@
   height: 260px;
   margin: 40px 0 0;
   align-self: start;
+  background: transparent;
+  box-shadow: none;
+  clip-path: none;
 }
 .reference-setup[data-composition] .option-list {
   max-width: none;

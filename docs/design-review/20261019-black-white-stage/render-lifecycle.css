@@ -281,57 +281,12 @@
   animation-duration: 700ms;
   animation-delay: 260ms;
 }
-.reference-setup[data-composition] .focus-reveal .focus-word:after {
-  animation: focus-line 420ms 140ms ease-out both;
-}
-.reference-setup .focus-reveal h1 {
-  animation: reading-arrive 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.reference-setup .focus-reveal .lead {
-  animation: reading-arrive 380ms 90ms ease-out both;
-}
-.reference-setup .focus-reveal .scene-controls {
-  animation: reading-arrive 360ms 160ms ease-out both;
-}
-@keyframes reading-arrive {
-  from {
-    opacity: 0.15;
-    transform: translateY(9px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-@keyframes focus-line {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
 @keyframes task-fade {
   from {
     opacity: 0.7;
   }
   to {
     opacity: 1;
-  }
-}
-.reduced .focus-word:after,
-.reduced .focus-reveal h1,
-.reduced .focus-reveal .lead,
-.reduced .focus-reveal .scene-controls {
-  animation: none !important;
-}
-@media (prefers-reduced-motion: reduce) {
-  .focus-word:after,
-  #window .task-scene,
-  .focus-reveal h1,
-  .focus-reveal .lead,
-  .focus-reveal .scene-controls {
-    animation: none !important;
   }
 }
 

@@ -1,5 +1,5 @@
 // Agent Voice design review, independent from the installed program.
-import { composePage } from "./page-compositions.js";
+import { composePage, prepareText } from "./page-compositions.js";
 import { createMaterialRoom } from "./scene-materials.js";
 const direction = [
   { main: "headphone", small: "music", name: "声音入场" },
@@ -106,6 +106,7 @@ function mount() {
   host.classList.add("art-host");
   host.removeAttribute("aria-hidden");
   composePage(screen, step, host);
+  prepareText(screen);
   const floor = document.createElement("div");
   floor.className = "art-field";
   floor.setAttribute("aria-hidden", "true");
@@ -231,9 +232,10 @@ function mount() {
   let timer = 0,
     animations = [];
   const firstPaint = document.body.classList.contains("ui-booting");
-  function freeze() {
+  function freeze(keepInspection = false) {
     clearTimeout(timer);
     animations.forEach((a) => {
+      if (keepInspection && a.playState === "paused") return;
       try {
         a.finish();
       } catch {}
@@ -272,7 +274,10 @@ function mount() {
     const slow = new URLSearchParams(location.search).get("slow") === "1";
     if (slow) animations.forEach((a) => (a.playbackRate = 0.5));
     art.dataset.playing = "true";
-    timer = setTimeout(freeze, slow ? 3200 : step === 8 ? 1600 : 1100);
+    timer = setTimeout(
+      () => freeze(true),
+      slow ? 3600 : step === 8 ? 1600 : 1400,
+    );
   }
   const onAction = (e) => {
     const a = e.target.closest("[data-action]")?.dataset.action;
