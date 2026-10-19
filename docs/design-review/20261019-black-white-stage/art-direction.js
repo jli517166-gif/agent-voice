@@ -15,7 +15,7 @@ const direction = [
 ];
 let current = null;
 const image = (name, cls) =>
-  `<img class="${cls}" src="assets/${name.includes(".") ? name : name + ".webp"}" alt="" draggable="false">`;
+  `<img class="${cls}" src="assets/${name.includes(".") ? name : name + ".webp"}" alt="" draggable="false" decoding="async">`;
 const ticks = () =>
   Array.from(
     { length: 19 },
@@ -23,6 +23,7 @@ const ticks = () =>
       `<i style="--i:${i};--h:${8 + Math.sin(((i + 1) / 20) * Math.PI) * Math.abs(Math.sin(i * 0.72)) * 42}px"></i>`,
   ).join("");
 function visualMarkup(step) {
+  if (step === 2 || step === 7) return ""; // These pages use their actual choice tiles.
   const p = direction[step];
   let extra = "";
   if (step === 0) extra = '<div class="intro-staff">' + ticks() + "</div>";
@@ -135,6 +136,15 @@ function mount() {
     surface.append(floor, aperture);
     aperture.append(room, art);
   }
+  let layoutFrame = 0,
+    lastGeometry = "";
+  function scheduleLayout() {
+    if (!layoutFrame)
+      layoutFrame = requestAnimationFrame(() => {
+        layoutFrame = 0;
+        fitField();
+      });
+  }
   function fitField() {
     const s = win.getBoundingClientRect(),
       r = host.getBoundingClientRect(),
@@ -142,6 +152,20 @@ function mount() {
       h = s.height,
       shift = screen.getBoundingClientRect().left - s.left;
     const mobile = innerWidth <= 780;
+    const geometry = [
+      s.x,
+      s.y,
+      s.width,
+      s.height,
+      r.x,
+      r.y,
+      r.width,
+      r.height,
+      shift,
+      innerWidth,
+    ].join(",");
+    if (geometry === lastGeometry) return;
+    lastGeometry = geometry;
     if (step !== 8) {
       // Use the host's own stage, rather than repeating AIRI's full-window curve.
       const surfaceRect = surface.getBoundingClientRect();
@@ -192,25 +216,20 @@ function mount() {
       art.style.clipPath = `inset(0px -${r.width * 0.12}px 0px -${r.width * 0.12}px round 27px)`;
       return;
     }
-    const a = art.getBoundingClientRect();
+    // All layout reads precede writes; derive the local clip without a forced reflow.
+    const left = r.left - s.left - shift + r.width * -0.12,
+      top = r.top - s.top + r.height * -0.09;
     const shape = (x, y) =>
       `path("M ${x + w * 0.59} ${y} H ${x + w} V ${y + h} H ${x + w * 0.33} C ${x + w * 0.46} ${y + h * 0.79}, ${x + w * 0.43} ${y + h * 0.41}, ${x + w * 0.59} ${y} Z")`;
     floor.style.clipPath = shape(0, 0);
-    art.style.clipPath = shape(s.left - a.left, s.top - a.top);
+    art.style.clipPath = shape(-left, -top);
   }
-  const sizing = new ResizeObserver(fitField);
+  const sizing = new ResizeObserver(scheduleLayout);
   sizing.observe(win);
   if (step !== 8) sizing.observe(host);
   const scrollArea = screen.querySelector(".screen-content");
-  scrollArea?.addEventListener("scroll", fitField, { passive: true });
+  scrollArea?.addEventListener("scroll", scheduleLayout, { passive: true });
   fitField();
-  screen.getAnimations().forEach((a) =>
-    a.finished
-      .then(() => {
-        if (art.isConnected) fitField();
-      })
-      .catch(() => {}),
-  );
   if (step === 7) {
     const on = [...screen.querySelectorAll('[role="checkbox"]')].map(
       (n) => n.getAttribute("aria-checked") === "true",
@@ -247,9 +266,11 @@ function mount() {
     room?.classList.remove("scene-reveal");
     void art.getBoundingClientRect();
     const reduced =
+      (step !== 8 && screen.dataset.animate === "false") ||
       document.body.classList.contains("reduced") ||
       matchMedia("(prefers-reduced-motion:reduce)").matches;
     art.classList.toggle("still", reduced);
+    floor.classList.toggle("still", reduced);
     room?.classList.toggle("still", reduced);
     art.classList.add("art-reveal");
     floor.classList.add("field-reveal");
@@ -274,11 +295,15 @@ function mount() {
       play();
   };
   screen.addEventListener("click", onAction);
-  play();
+  if (document.body.classList.contains("ui-booting"))
+    window.addEventListener("ui-ready", play, { once: true });
+  else play();
   const cleanup = () => {
     freeze();
     sizing.disconnect();
-    scrollArea?.removeEventListener("scroll", fitField);
+    cancelAnimationFrame(layoutFrame);
+    window.removeEventListener("ui-ready", play);
+    scrollArea?.removeEventListener("scroll", scheduleLayout);
     animations.forEach((a) => a.cancel());
     screen.removeEventListener("click", onAction);
     floor.remove();
@@ -287,17 +312,19 @@ function mount() {
     surface?.remove();
   };
   cleanup.freeze = freeze;
+  cleanup.layout = scheduleLayout;
   current = cleanup;
 }
 window.addEventListener("design-route", mount);
 window.addEventListener("design-dispose", teardown);
+window.addEventListener("design-suspend", () => current?.freeze?.());
 window.addEventListener("pagehide", teardown);
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") current?.freeze?.();
 });
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) current?.freeze?.();
-  else mount();
+  else current?.layout?.();
 });
 function modal(title, content) {
   document.querySelector("#modalTitle").textContent = title;

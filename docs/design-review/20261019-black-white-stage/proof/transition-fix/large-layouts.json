@@ -1,0 +1,72 @@
+[
+  {
+    "figures": 1,
+    "images": true,
+    "overflow": false,
+    "route": "#setup-0",
+    "screens": 1
+  },
+  {
+    "figures": 1,
+    "images": true,
+    "overflow": false,
+    "route": "#setup-1",
+    "screens": 1
+  },
+  {
+    "figures": 1,
+    "images": true,
+    "overflow": false,
+    "route": "#setup-2",
+    "screens": 1
+  },
+  {
+    "figures": 1,
+    "images": true,
+    "overflow": false,
+    "route": "#setup-3",
+    "screens": 1
+  },
+  {
+    "figures": 1,
+    "images": true,
+    "overflow": false,
+    "route": "#setup-4",
+    "screens": 1
+  },
+  {
+    "figures": 1,
+    "images": true,
+    "overflow": false,
+    "route": "#setup-5",
+    "screens": 1
+  },
+  {
+    "figures": 1,
+    "images": true,
+    "overflow": false,
+    "route": "#setup-6",
+    "screens": 1
+  },
+  {
+    "figures": 1,
+    "images": true,
+    "overflow": false,
+    "route": "#setup-7",
+    "screens": 1
+  },
+  {
+    "figures": 1,
+    "images": true,
+    "overflow": false,
+    "route": "#setup-8",
+    "screens": 1
+  },
+  {
+    "figures": 1,
+    "images": true,
+    "overflow": false,
+    "route": "#setup-9",
+    "screens": 1
+  }
+]

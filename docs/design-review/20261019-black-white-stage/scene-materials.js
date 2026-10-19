@@ -20,6 +20,11 @@ export function createMaterialRoom(step, subject) {
   room.className = "scene-room";
   room.dataset.scene = step;
   room.setAttribute("aria-hidden", "true");
+  if (step === 2) return room;
+  if (step === 7) {
+    room.innerHTML = `<div class="scene-bloom"></div>${scenes[step]}`;
+    return room;
+  }
   room.innerHTML = `<div class="scene-bloom"></div>${scenes[step]}${lens}<img class="subject-reflection" src="assets/${subject}.webp" alt="" draggable="false"><div class="surface-glint"></div>`;
   return room;
 }

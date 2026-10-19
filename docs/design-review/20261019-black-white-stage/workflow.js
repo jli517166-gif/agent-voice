@@ -159,9 +159,17 @@ function cancelTimers() {
   timers.forEach(clearTimeout);
   timers = [];
 }
+function taskMode(enabled) {
+  q("#window").classList.toggle("task-active", enabled);
+  q("#window")
+    .querySelectorAll(":scope > .top,:scope > .screen-area,:scope > .footer")
+    .forEach((n) => (n.inert = enabled));
+  if (enabled) window.dispatchEvent(new Event("design-suspend"));
+}
 function close(restore = true) {
   cancelTimers();
   q(".task-scene")?.remove();
+  taskMode(false);
   q("#window")
     .querySelectorAll(".celebration-piece")
     .forEach((n) => n.remove());
@@ -192,6 +200,7 @@ function run(kind, options = {}) {
           : ""),
     outcome: options.outcome || outcome.value,
   };
+  taskMode(true);
   draw();
 }
 function pathMarkup() {
@@ -214,7 +223,6 @@ function success() {
   return `<p>当前步骤的完成反馈示例。${["connection", "airi"].includes(active.kind) ? "实际实现仍需核对随机正文、来源与播放回执。" : "实际实现仍需校验真实资源和执行结果。"}</p><ul class="receipt-list">${active.spec.steps.map((s) => `<li>${s} · 演示通过</li>`).join("")}</ul>${active.path ? `<div class="task-path">${safe(active.path)}</div>` : ""}<p class="task-demo-note">未执行真实操作，不是本机验收结果。</p>`;
 }
 function draw() {
-  q(".task-scene")?.remove();
   if (!active) return;
   const a = active,
     phase = a.phase,
@@ -226,14 +234,33 @@ function draw() {
           : phase === "manual"
             ? "在客户端继续。"
             : a.spec.title;
-  const scene = document.createElement("section");
-  scene.className = "task-scene";
-  scene.setAttribute("role", "dialog");
-  scene.setAttribute("aria-modal", "true");
-  scene.setAttribute("aria-labelledby", "taskTitle");
-  scene.innerHTML = `<div class="task-main"><div class="task-copy"><div class="task-kicker">${safe(a.options.name || a.spec.name)} · 设计反馈</div><h2 id="taskTitle">${title}</h2><div aria-live="polite">${{ ready, running: progress, failure: failed, manual, success }[phase]()}</div></div><div class="task-image" data-kind="${a.kind}" data-running="${phase === "running"}"><img src="assets/${a.spec.image}" alt=""></div></div><footer class="task-footer"><button class="ui-button subtle" data-task="cancel">${phase === "running" ? "取消执行" : "返回"}</button><div class="inline-row">${phase === "ready" ? `<button class="ui-button" data-task="example">使用示例${a.spec.path ? "位置" : ""}</button><button class="ui-button main" data-task="start">开始${a.spec.name} · 演示</button>` : phase === "running" ? '<span class="compact-hint">执行中，可随时取消</span>' : phase === "failure" ? '<button class="ui-button main" data-task="retry">预览重试通过</button>' : phase === "manual" ? '<button class="ui-button main" data-task="manualComplete">预览回执通过</button>' : '<button class="ui-button main" data-task="complete">完成并返回</button>'}</div></footer>`;
-  q("#window").append(scene);
-  scene.onclick = onTask;
+  let scene = q(".task-scene");
+  if (!scene) {
+    scene = document.createElement("section");
+    scene.className = "task-scene";
+    scene.setAttribute("role", "dialog");
+    scene.setAttribute("aria-modal", "true");
+    scene.setAttribute("aria-labelledby", "taskTitle");
+    scene.innerHTML = `<div class="task-main"><div class="task-copy"><div class="task-kicker"></div><h2 id="taskTitle"></h2><div class="task-body" aria-live="polite"></div></div><div class="task-image" data-kind="${a.kind}"><img src="assets/${a.spec.image}" alt="" decoding="async"></div></div><footer class="task-footer"></footer>`;
+    q("#window").append(scene);
+    scene.onclick = onTask;
+  }
+  scene.setAttribute("aria-busy", String(phase === "running"));
+  scene.querySelector(".task-kicker").textContent =
+    (a.options.name || a.spec.name) + " · 设计反馈";
+  scene.querySelector("#taskTitle").textContent = title;
+  scene.querySelector(".task-body").innerHTML = {
+    ready,
+    running: progress,
+    failure: failed,
+    manual,
+    success,
+  }[phase]();
+  scene.querySelector(".task-image").dataset.running = String(
+    phase === "running",
+  );
+  scene.querySelector(".task-footer").innerHTML =
+    `<button class="ui-button subtle" data-task="cancel">${phase === "running" ? "取消执行" : "返回"}</button><div class="inline-row">${phase === "ready" ? `<button class="ui-button" data-task="example">使用示例${a.spec.path ? "位置" : ""}</button><button class="ui-button main" data-task="start">开始${a.spec.name} · 演示</button>` : phase === "running" ? '<span class="compact-hint">执行中，可随时取消</span>' : phase === "failure" ? '<button class="ui-button main" data-task="retry">预览重试通过</button>' : phase === "manual" ? '<button class="ui-button main" data-task="manualComplete">预览回执通过</button>' : '<button class="ui-button main" data-task="complete">完成并返回</button>'}</div>`;
   const input = q("#taskPath");
   if (input)
     input.oninput = () => {

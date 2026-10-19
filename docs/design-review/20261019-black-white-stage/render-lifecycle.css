@@ -1,0 +1,92 @@
+/* First paint and task isolation. Does not change the AIRI page's settled design. */
+.ui-booting #window {
+  visibility: hidden;
+}
+.ui-booting .viewport:before {
+  content: "正在准备界面…";
+  color: #b8acc7;
+  font:
+    14px "Microsoft YaHei UI",
+    sans-serif;
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  translate: -50% -50%;
+}
+.reference-setup[data-composition] .option {
+  backdrop-filter: none;
+}
+.scene-room {
+  clip-path: inset(-8% -6% -20% -6%);
+}
+.scene-room[data-scene="6"] {
+  clip-path: inset(-3% -32% -15% -32%);
+}
+.task-active > .top,
+.task-active > .screen-area,
+.task-active > .footer,
+.task-active > .art-field,
+.task-active > .art-stage,
+.task-active > .reference-ribbons,
+.task-active > .composition-surface {
+  visibility: hidden;
+  pointer-events: none;
+}
+#window .task-scene {
+  inset: 0;
+  background: #101117;
+  isolation: isolate;
+}
+#window .task-scene:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(145deg, #f9f6fc, #f0e4f2);
+  clip-path: polygon(68% 0, 100% 0, 100% 100%, 56% 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+#window .task-main {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.75fr);
+  gap: 10%;
+  padding: 48px 8% 28px;
+  min-height: 0;
+}
+#window .task-copy {
+  overflow-wrap: anywhere;
+}
+#window .task-copy h2 {
+  font-size: clamp(30px, 3.5vw, 44px);
+}
+#window .task-footer {
+  position: relative;
+  flex: none;
+  min-height: 94px;
+  padding: 20px 8%;
+}
+#window .task-path {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 780px) {
+  #window .task-scene:before {
+    display: none;
+  }
+  #window .task-main {
+    display: flex;
+    gap: 20px;
+    padding: 25px 8%;
+  }
+  #window .task-copy h2 {
+    font-size: 29px;
+  }
+  #window .task-footer {
+    min-height: 82px;
+    padding: 17px 8%;
+  }
+}
+
+.art-field.still,
+.reference-setup[data-composition] .screen[data-animate="false"] .option {
+  animation: none !important;
+}
