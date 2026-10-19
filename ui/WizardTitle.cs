@@ -14,8 +14,8 @@ namespace AgentVoice {
         double time=Duration;
         bool reduced;
         internal WizardTitle(){
-            SetStyle(ControlStyles.UserPaint|ControlStyles.OptimizedDoubleBuffer|ControlStyles.AllPaintingInWmPaint|ControlStyles.ResizeRedraw,true);
-            BackColor=Color.FromArgb(11,13,18);ForeColor=Color.FromArgb(243,245,248);
+            SetStyle(ControlStyles.UserPaint|ControlStyles.OptimizedDoubleBuffer|ControlStyles.AllPaintingInWmPaint|ControlStyles.ResizeRedraw|ControlStyles.SupportsTransparentBackColor,true);
+            BackColor=Color.Transparent;ForeColor=Color.FromArgb(243,245,248);
             Font=new Font("Microsoft YaHei UI",28,FontStyle.Bold);
             AccessibleRole=AccessibleRole.StaticText;AccessibleName="配置页标题";
             timer.Tick+=(s,e)=>{time=Math.Min(Duration,watch.Elapsed.TotalSeconds);if(time>=Duration)timer.Stop();Invalidate();};

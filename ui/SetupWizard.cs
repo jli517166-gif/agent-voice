@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -83,12 +83,13 @@ namespace AgentVoice {
         void PlayCue(){bool listening=true;try{listening=System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners().Any(p=>p.Port==Flow.Config.port);}catch(System.Net.NetworkInformation.NetworkInformationException){}if(InterfaceSounds.Allowed(Sound.Checked,testing,listening))sounds.Play(AppDomain.CurrentDomain.BaseDirectory,Math.Max(0,Step-1));}
         void BuildPage(string title,string note,int step){
             var page=new Panel{Dock=DockStyle.Fill,BackColor=BackColor,Visible=false,Name="onboardingPage_"+step};pages.Add(page);stage.Controls.Add(page);
-            var layout=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=2,RowCount=3,BackColor=BackColor,Padding=new Padding(46,0,46,0)};layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,56));layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,44));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,112));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,60));layout.RowStyles.Add(new RowStyle(SizeType.Percent,100));page.Controls.Add(layout);
-            int textCol=step%2==1?1:0,artCol=1-textCol;
+            string background=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"assets","onboarding","step-"+step+".png");if(File.Exists(background)){page.BackgroundImage=Image.FromFile(background);page.BackgroundImageLayout=ImageLayout.Stretch;}
+            var layout=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=2,RowCount=3,BackColor=Color.Transparent,Padding=new Padding(46,0,46,0)};layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,56));layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,44));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,112));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,60));layout.RowStyles.Add(new RowStyle(SizeType.Percent,100));page.Controls.Add(layout);
+            int textCol=(step==1||step==5)?1:0,artCol=1-textCol;
             var titleView=new WizardTitle{Text=title,Dock=DockStyle.Fill,Name="onboardingTitle_"+step};titles.Add(titleView);layout.Controls.Add(titleView,0,0);layout.SetColumnSpan(titleView,2);
             layout.Controls.Add(new Label{Text=note,Dock=DockStyle.Fill,TextAlign=ContentAlignment.MiddleLeft,ForeColor=Color.FromArgb(157,160,177),Margin=new Padding(2,0,10,6)},textCol,1);
-            var a=new WizardArt(step){Dock=DockStyle.Fill,Name="onboardingArt_"+step};art.Add(a);layout.Controls.Add(a,artCol,2);
-            var viewport=new Panel{Dock=DockStyle.Fill,AutoScroll=true,BackColor=BackColor,Name="onboardingScroll_"+step};layout.Controls.Add(viewport,textCol,2);var flow=new BufferedFlow{Dock=DockStyle.Top,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,BackColor=BackColor,Padding=new Padding(2,8,22,12)};choices.Add(flow);viewport.Controls.Add(flow);viewport.SizeChanged+=(s,e)=>{foreach(Control c in flow.Controls){int width=Math.Max(220,viewport.ClientSize.Width-30);if(c is Label){((Label)c).MaximumSize=new Size(width,0);c.MinimumSize=new Size(width,0);}c.Width=width;}};
+            var a=new WizardArt(step){Dock=DockStyle.Fill,Name="onboardingArt_"+step,Visible=false};art.Add(a);layout.Controls.Add(a,artCol,2);
+            var viewport=new Panel{Dock=DockStyle.Fill,AutoScroll=true,BackColor=Color.Transparent,Name="onboardingScroll_"+step};layout.Controls.Add(viewport,textCol,2);var flow=new BufferedFlow{Dock=DockStyle.Top,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,BackColor=Color.Transparent,Padding=new Padding(2,8,22,12)};choices.Add(flow);viewport.Controls.Add(flow);viewport.SizeChanged+=(s,e)=>{foreach(Control c in flow.Controls){int width=Math.Max(220,viewport.ClientSize.Width-30);if(c is Label){((Label)c).MaximumSize=new Size(width,0);c.MinimumSize=new Size(width,0);}c.Width=width;}};
         }
         Label AddCopy(int step,string value,bool prominent){var label=new Label{Text=value,AutoSize=true,MaximumSize=new Size(880,0),Width=800,Margin=new Padding(0,5,0,12),ForeColor=prominent?ForeColor:Color.FromArgb(157,160,177),Font=new Font(Font.FontFamily,prominent?10:9)};choices[step].Controls.Add(label);return label;}
         void Actions(int step,params AnimeButton[] buttons){var row=new BufferedFlow{AutoSize=true,WrapContents=true,BackColor=BackColor,Margin=new Padding(0,3,0,5)};foreach(var b in buttons)row.Controls.Add(b);choices[step].Controls.Add(row);}
