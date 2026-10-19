@@ -1,103 +1,62 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace AgentVoice {
     static class WelcomeChecks {
-        public static int Run(SettingsStore store,string[] args){
-            string directory=args.Length>1?Path.GetFullPath(args[1]):store.Resolve("acceptance/welcome");Directory.CreateDirectory(directory);var errors=new List<string>();
+        static IEnumerable<Control> All(Control root){foreach(Control c in root.Controls){yield return c;foreach(var child in All(c))yield return child;}}
+        static void Pump(int milliseconds){var watch=Stopwatch.StartNew();while(watch.ElapsedMilliseconds<milliseconds){Application.DoEvents();Thread.Sleep(5);}}
+        public static int Run(SettingsStore ignored,string[] args){
+            string directory=args.Length>1?Path.GetFullPath(args[1]):ignored.Resolve("acceptance/onboarding");Directory.CreateDirectory(directory);var errors=new List<string>();
             try{
-                var fixture=new SettingsStore(Path.Combine(directory,"preference-fixture-"+Guid.NewGuid().ToString("N")));var state=new WelcomeState(fixture);
-                string voicePath=fixture.FilePath;Directory.CreateDirectory(Path.GetDirectoryName(voicePath));File.WriteAllText(voicePath,"untouched voice settings");byte[] voiceBefore=File.ReadAllBytes(voicePath);
-                if(state.Read().seen)errors.Add("Fresh installation must show the welcome screen");
-                using(var form=new WelcomeForm(false,false)){
-                    form.ShowInTaskbar=false;form.StartPosition=FormStartPosition.Manual;form.Location=new Point(-32000,-32000);form.Show();Application.DoEvents();
-                    if(form.Surface.Ready||form.Surface.StartButton.Visible||!form.Surface.SkipButton.Visible)errors.Add("Intro must allow skip without exposing hidden actions");
-                    foreach(double time in new[]{0,.9,1.7,2.5,3.4}){form.Surface.Preview(time);Application.DoEvents();using(var shot=new Bitmap(form.Surface.Width,form.Surface.Height)){form.Surface.DrawToBitmap(shot,form.Surface.ClientRectangle);shot.Save(Path.Combine(directory,"frame-"+time.ToString("0.0",System.Globalization.CultureInfo.InvariantCulture)+".png"));}}
-                    foreach(var size in new[]{new Size(1120,720),new Size(1680,1080),new Size(840,580)}){
-                        form.ClientSize=size;form.Surface.Preview(3.4);Application.DoEvents();
-                        var controls=form.Surface.Controls.Cast<Control>().Where(c=>c.Visible).ToArray();
-                        foreach(var control in controls)if(!form.Surface.ClientRectangle.Contains(control.Bounds))errors.Add("Clipped welcome control: "+control.Text+" @ "+size);
-                        for(int i=0;i<controls.Length;i++)for(int j=i+1;j<controls.Length;j++)if(controls[i].Bounds.IntersectsWith(controls[j].Bounds))errors.Add("Overlapping welcome controls @ "+size);
-                        using(var shot=new Bitmap(form.Surface.Width,form.Surface.Height)){form.Surface.DrawToBitmap(shot,form.Surface.ClientRectangle);shot.Save(Path.Combine(directory,"welcome-"+size.Width+".png"));}
+                var fixture=new SettingsStore(Path.Combine(directory,"fixture-"+Guid.NewGuid().ToString("N")));var settings=fixture.Read();var listener=new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback,0);listener.Start();settings.port=((System.Net.IPEndPoint)listener.LocalEndpoint).Port;listener.Stop();fixture.Write(settings);var state=new WelcomeState(fixture);string before=File.ReadAllText(fixture.FilePath);
+                if(!SetupWizard.NeedsSetup(state.Read()))errors.Add("Fresh installation bypasses setup");
+                using(var wizard=new SetupWizard(fixture,true)){
+                    wizard.ShowInTaskbar=false;wizard.StartPosition=FormStartPosition.Manual;wizard.Location=new Point(-32000,-32000);wizard.Show();Application.DoEvents();
+                    if(Application.OpenForms.Cast<Form>().Any(f=>f is MainForm))errors.Add("Workspace constructed before onboarding finished");
+                    if(wizard.PageCount!=9||wizard.Controls.Find("nav_home",true).Length>0)errors.Add("First-boot workflow mixed with workspace navigation");
+                    foreach(var size in new[]{new Size(1120,780),new Size(900,640),new Size(1440,900)}){
+                        wizard.ClientSize=size;
+                        for(int step=0;step<9;step++){
+                            wizard.Go(step,false);Application.DoEvents();
+                            if(wizard.Step!=step||wizard.VisiblePageCount!=1||wizard.RunningArtCount>1)errors.Add("Multiple steps or timers visible: "+step);
+                            foreach(var c in new Control[]{wizard.Next,wizard.Back,wizard.Later,wizard.Skip,wizard.Motion,wizard.Sound}.Where(c=>c.Visible)){
+                                var rect=wizard.RectangleToClient(c.RectangleToScreen(c.ClientRectangle));if(!wizard.ClientRectangle.Contains(rect))errors.Add("Clipped primary navigation: "+c.Text+" @ "+size);
+                            }
+                            foreach(var a in wizard.Controls.Find("onboardingArt_"+step,true).OfType<WizardArt>())a.Preview(WizardArt.Duration);
+                            if(size.Width==1120||step==3){using(var shot=SetupWizard.CaptureFrame(wizard))shot.Save(Path.Combine(directory,"setup-"+step+"-"+size.Width+".png"));}if(size.Width==1120&&step==2)File.WriteAllText(Path.Combine(directory,"header-layout.json"),Json.Encode(All(wizard).Where(c=>c is Label&&c.Visible).Select(c=>new{text=c.Text,bounds=c.Bounds.ToString(),parent=c.Parent.Bounds.ToString(),screen=wizard.RectangleToClient(c.RectangleToScreen(c.ClientRectangle)).ToString()}).ToArray()));
+                        }
                     }
-                    form.Surface.Preview(.2);form.Surface.SkipButton.PerformClick();if(!form.Surface.Ready||form.Surface.AnimationRunning)errors.Add("Skipping intro must stop the timer immediately");
-                    form.Close();if(form.Choice!=null||state.Read().seen)errors.Add("Closing welcome must not commit a choice");
+                    wizard.Motion.Checked=true;wizard.Go(2);if(wizard.TransitionRunning||wizard.RunningArtCount>0)errors.Add("Reduced motion starts an animation");
+                    wizard.Motion.Checked=false;wizard.Go(1,false);wizard.Go(2);if(!wizard.TransitionRunning)errors.Add("Page transition did not run");wizard.Go(3);Pump(700);if(wizard.TransitionRunning||wizard.RunningArtCount>1)errors.Add("Interrupted transition leaked timers");Pump(450);if(wizard.RunningArtCount!=0)errors.Add("Step illustration did not settle");
+                    wizard.Motion.Checked=true;wizard.Go(2,false);wizard.Engine.SelectedIndex=1;wizard.Next.PerformClick();var saveWatch=Stopwatch.StartNew();while(wizard.PendingAction!=null&&!wizard.PendingAction.IsCompleted&&saveWatch.ElapsedMilliseconds<12000)Pump(20);Pump(30);if(wizard.Busy||wizard.Step!=3||fixture.Read().voice.engine!="gpt-sovits"||fixture.Read().voice.gptVariant!="v5turbo")throw new InvalidOperationException("Engine next: step="+wizard.Step+", busy="+wizard.Busy+", error="+wizard.LastFailure+", trace="+wizard.AdvanceTrace);
+                    wizard.Go(2,false);wizard.Engine.SelectedIndex=2;wizard.Skip.PerformClick();if(fixture.Read().voice.gptVariant!="v5turbo")errors.Add("Skipping applied unconfirmed engine");wizard.Back.PerformClick();if(wizard.Step!=2||state.Read().onboardingStep!=2)errors.Add("Back did not persist progress");
+                    wizard.Offline.Checked=true;if(!state.Read().offline)errors.Add("Offline setting not persisted");
+                    try{wizard.Flow.Confirm();errors.Add("Unplayed voice was confirmed");}catch(InvalidOperationException){}
+                    var p=state.Read();p.voiceEvidence=wizard.Flow.Evidence();p.voiceJobId="fixture";p.heardVoice=true;state.Write(p);var changed=fixture.Read();changed.voice.speed=1.1;fixture.Write(changed);if(wizard.Flow.Evidence()==p.voiceEvidence)errors.Add("Changed voice reused old evidence");
+                    wizard.Sound.Checked=false;if(state.Read().interfaceSounds)errors.Add("Sound setting not persisted");
+                    wizard.Later.PerformClick();if(SetupWizard.NeedsSetup(state.Read())||!state.Read().onboardingDeferred||state.Read().onboardingComplete)errors.Add("Explicit defer semantics invalid");
                 }
-                foreach(string choice in new[]{"setup","import","home"})using(var form=new WelcomeForm(true,false)){
-                    form.ShowInTaskbar=false;form.StartPosition=FormStartPosition.Manual;form.Location=new Point(-32000,-32000);form.Show();Application.DoEvents();
-                    if(!form.Surface.Ready||form.Surface.AnimationRunning)errors.Add("Reduced motion must skip animation");
-                    var button=choice=="setup"?form.Surface.StartButton:choice=="import"?form.Surface.ImportButton:form.Surface.HomeButton;button.PerformClick();
-                    if(form.Choice!=choice)errors.Add("Wrong welcome destination: "+choice);state.Choose(choice,form.ReduceMotion);
-                    var persisted=new WelcomeState(fixture).Read();if(!persisted.seen||!persisted.reduceMotion||persisted.lastChoice!=choice)errors.Add("Welcome choice was not persisted");
+                var p2=state.Read();p2.onboardingDeferred=false;p2.onboardingComplete=false;p2.onboardingStep=6;state.Write(p2);
+                using(var resumed=new SetupWizard(fixture,true)){if(resumed.Step!=6)errors.Add("Closing interrupted setup loses step");resumed.Dispose();}
+                if(!SetupWizard.NeedsSetup(state.Read()))errors.Add("Interrupted setup marked as finished");
+                fixture.Write(settings);before=File.ReadAllText(fixture.FilePath);
+                using(var completed=new SetupWizard(fixture,true)){completed.Go(8,false);completed.Finish(false);}
+                if(SetupWizard.NeedsSetup(state.Read())||!state.Read().onboardingComplete||state.Read().onboardingDeferred)errors.Add("Finish does not enter daily mode");
+                if(before!=File.ReadAllText(fixture.FilePath))errors.Add("Navigation changed voice settings");
+                using(var workspace=new MainForm(fixture,true)){workspace.ShowInTaskbar=false;workspace.StartPosition=FormStartPosition.Manual;workspace.Location=new Point(-32000,-32000);workspace.Show();Application.DoEvents();if(workspace.Controls.Find("onboardingStage",true).Length>0||workspace.Controls.Find("homeKeynote",true).Length>0||workspace.Controls.Find("nav_setup",true).Length>0)errors.Add("Workspace contains first-boot design");using(var shot=SetupWizard.CaptureFrame(workspace))shot.Save(Path.Combine(directory,"workspace.png"));}
+                // Render choreography at half-speed sample times without delaying the tests.
+                using(var beforeFrame=new Bitmap(400,220))using(var afterFrame=new Bitmap(400,220)){
+                    using(var g=Graphics.FromImage(beforeFrame))g.Clear(Color.FromArgb(15,40,65));using(var g=Graphics.FromImage(afterFrame))g.Clear(Color.FromArgb(35,70,100));foreach(double time in new[]{0,.12,.24,.36,.48})using(var frame=new Bitmap(400,220)){using(var g=Graphics.FromImage(frame))WizardTransition.PaintFrame(g,beforeFrame,afterFrame,new Rectangle(0,0,400,220),time,1);frame.Save(Path.Combine(directory,"transition-half-speed-"+(time*2).ToString("0.00",System.Globalization.CultureInfo.InvariantCulture)+".png"));}
                 }
-                if(!voiceBefore.SequenceEqual(File.ReadAllBytes(voicePath)))errors.Add("Welcome preferences modified the voice configuration");
-                using(var form=new WelcomeForm(false,true)){
-                    form.ShowInTaskbar=false;form.StartPosition=FormStartPosition.Manual;form.Location=new Point(-32000,-32000);form.Show();Application.DoEvents();
-                    if(!form.Surface.AnimationRunning)errors.Add("Normal first run did not start animation");
-                    form.Surface.MotionChoice.Checked=true;
-                    if(!form.Surface.Ready||form.Surface.AnimationRunning)errors.Add("Changing reduced motion during intro did not stop animation");
-                    form.Close();
-                }
-                using(var form=new MainForm(new SettingsStore(Path.Combine(directory,"bare-install-"+Guid.NewGuid().ToString("N"))),true)){
-                    form.ShowInTaskbar=false;form.StartPosition=FormStartPosition.Manual;form.Location=new Point(-32000,-32000);form.Show();Application.DoEvents();
-                    form.ApplyWelcomeChoice("setup");if(!form.Controls.Find("setupResourceSummary",true).Any(c=>c.Visible&&c.Text.Contains("待补齐")))errors.Add("Bare installation setup must show missing resources");
-                    form.ApplyWelcomeChoice("home");form.ShowPage("setup");form.ShowPage("home");
-                    errors.AddRange(form.VerifySetupFlow(directory));
-                }
-            }catch(Exception error){errors.Add(error.ToString());}
-            File.WriteAllText(Path.Combine(directory,"welcome-results.json"),Json.Encode(new{ok=errors.Count==0,frames=5,layouts=3,choices=3,serviceAutoStart=false,errors=errors}));return errors.Count==0?0:1;
-        }
-    }
-    public sealed partial class MainForm {
-        internal List<string> VerifySetupFlow(string directory){
-            var errors=new List<string>();var original=Json.Copy(Config);string draft=body.Text;int controls=CountControls(this);
-            ShowPage("setup");for(int i=0;i<24;i++){
-                GoSetup(i%8);Application.DoEvents();
-                if(SetupStep!=i%8||setupPanels.Count(c=>c.Visible)!=1||page!=setupIds[i%8]||pages.Count(route=>route.Value.Visible)!=1)errors.Add("Setup must show exactly one independent route");
-                if(setupAnimations.Where((a,n)=>n!=i%8).Any(a=>a.AnimationRunning))errors.Add("Hidden step animation still running");
-                if(i<8){foreach(double frame in new[]{0,.85,KeynoteArt.Duration}){setupAnimations[i].Preview(frame);using(var shot=new Bitmap(Width,Height)){DrawToBitmap(shot,new Rectangle(0,0,Width,Height));shot.Save(Path.Combine(directory,"setup-step-"+i+"-"+frame.ToString("0.00",System.Globalization.CultureInfo.InvariantCulture)+".png"));}}}
-            }
-            if(setupPanels.Distinct().Count()!=8||setupAnimations.Select(a=>a.Illustration).Distinct().Count()!=8||Controls.Find("setupStepChoice",true).Length!=0)errors.Add("Wizard needs eight distinct pages and illustrations without step dropdown");
-            if(CountControls(this)!=controls||body.Text!=draft)errors.Add("Setup navigation leaked controls or lost input");
-            var initialSize=ClientSize;
-            foreach(var size in new[]{new Size(1080,750),new Size(900,620)}){
-                ClientSize=size;
-                for(int step=0;step<8;step++){
-                    GoSetup(step);Application.DoEvents();var route=setupPanels[step];var viewport=route.Controls.Find("setupScroller_"+step,true).Single() as ScenePanel;
-                    foreach(var button in setupNavigation[step][0].Parent.Controls.Cast<Control>().Where(b=>b.Visible)){
-                        var bounds=route.RectangleToClient(button.RectangleToScreen(button.ClientRectangle));
-                        if(!route.ClientRectangle.Contains(bounds)||bounds.IntersectsWith(route.RectangleToClient(viewport.RectangleToScreen(viewport.ClientRectangle))))errors.Add("Setup navigation clipped or overlaps content at "+size+" step "+step);
-                    }
-                    if(step==2&&viewport.VerticalScroll.Maximum-viewport.VerticalScroll.LargeChange+1<=0)errors.Add("Setup overflow has no reachable scrollbar at "+size);
-                }
-                GoSetup(2);setupAnimations[2].Preview(KeynoteArt.Duration);using(var shot=new Bitmap(Width,Height)){DrawToBitmap(shot,new Rectangle(0,0,Width,Height));shot.Save(Path.Combine(directory,"setup-size-"+size.Width+".png"));}
-            }
-            ClientSize=initialSize;
-            setupMotionChoices[2].Checked=true;if(setupAnimations.Any(a=>a.AnimationRunning)||!SetupPreference().reduceMotion)errors.Add("Reduced motion did not stop all step animations");
-            setupMotionChoices[2].Checked=false;
-            GoSetup(3);GoSetup(2);var animationWatch=System.Diagnostics.Stopwatch.StartNew();
-            while(animationWatch.ElapsedMilliseconds<3100){Application.DoEvents();System.Threading.Thread.Sleep(10);}
-            if(setupAnimations.Any(a=>a.AnimationRunning))errors.Add("Step animation did not settle within its finite duration");
-            if(InterfaceSounds.Allowed(true,true,false)||InterfaceSounds.Allowed(true,false,true)||InterfaceSounds.Allowed(false,false,false)||!InterfaceSounds.Allowed(true,false,false))errors.Add("Interface sounds are not isolated from speech and tests");
-            SetInterfaceSounds(false);if(SetupPreference().interfaceSounds||setupSoundChoices.Any(c=>c.Checked))errors.Add("Sound setting not disabled everywhere");SetInterfaceSounds(true);if(!SetupPreference().interfaceSounds||setupSoundChoices.Any(c=>!c.Checked))errors.Add("Sound setting not enabled everywhere");
-            var listener=new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback,0);listener.Start();Config.port=((System.Net.IPEndPoint)listener.LocalEndpoint).Port;listener.Stop();Store.Write(Config);
-            GoSetup(1);setupEngineChoice.SelectedIndex=1;setupNext.PerformClick();var nextWatch=System.Diagnostics.Stopwatch.StartNew();
-            while(operation&&nextWatch.ElapsedMilliseconds<8000){Application.DoEvents();System.Threading.Thread.Sleep(10);}
-            if(operation||SetupStep!=2||Config.voice.engine!="gpt-sovits"||Store.Read().voice.gptVariant!="v5turbo")errors.Add("Next did not save selected TTS before advancing");
-            GoSetup(1);setupEngineChoice.SelectedIndex=2;setupSkip.PerformClick();if(Config.voice.gptVariant!="v5turbo")errors.Add("Skip unexpectedly applied a new engine variant");
-            GoSetup(2);setupSkip.PerformClick();if(SetupStep!=3||SetupPreference().setupStates["step2"]!="skipped")errors.Add("Skip must preserve an explicit skipped state");
-            setupBack.PerformClick();if(SetupStep!=2||new WelcomeState(Store).Read().setupStep!=2)errors.Add("Setup progress did not persist");
-            setupOffline.Checked=true;if(!new WelcomeState(Store).Read().offline)errors.Add("Offline preference not persisted");
-            try{ConfirmSetupVoice();errors.Add("Unplayed voice could be confirmed");}catch(InvalidOperationException){}
-            var p=SetupPreference();p.voiceEvidence=VoiceEvidence();p.voiceJobId="fixture";p.heardVoice=true;new WelcomeState(Store).Write(p);
-            Config.voice.speed=1.1;GoSetup(7);if(setupResult.Text.Contains("上次实际播放完成")||setupResult.Text.Contains("听感确认：已确认"))errors.Add("Changed voice reused stale playback evidence");
-            SetSetupConnections(new Dictionary<string,object>{{"verification",new Dictionary<string,object>{{"codex",new Dictionary<string,object>{{"state","waiting"}}}}}});if(setupHarnessSummary.Contains("播放验证通过"))errors.Add("Waiting challenge was treated as verified");
-            SetSetupConnections(null);if(!setupHarnessSummary.Contains("未验证"))errors.Add("Offline service retained a green connection");
-            Config=original;Store.Write(original);setupOffline.Checked=false;GoSetup(0);BindVoice();ShowPage("home");if(setupAnimations.Any(a=>a.AnimationRunning))errors.Add("Leaving setup did not stop animation timers");return errors;
+                if(InterfaceSounds.Allowed(true,true,false)||InterfaceSounds.Allowed(true,false,true)||InterfaceSounds.Allowed(false,false,false)||!InterfaceSounds.Allowed(true,false,false))errors.Add("Interface sound overlap policy invalid");
+            }catch(Exception e){errors.Add(e.ToString());}
+            File.WriteAllText(Path.Combine(directory,"welcome-results.json"),Json.Encode(new{ok=errors.Count==0,independentFirstBoot=true,steps=9,layouts=3,transitionMs=480,illustrationMs=960,reducedMotion=true,errors=errors}));return errors.Count==0?0:1;
         }
     }
 }

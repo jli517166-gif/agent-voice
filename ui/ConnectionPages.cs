@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -135,7 +135,6 @@ namespace AgentVoice {
             fields["airiDirectory"].Text=Config.airi.directory;checks["airiEnabled"].Checked=true;OpenLoggedAiri();
         }
         void UpdateVerification(Dictionary<string,object> states){
-            SetSetupConnections(new Dictionary<string,object>{{"verification",states}});
             object raw;var airi=states.TryGetValue("airi",out raw)?raw as Dictionary<string,object>:null;
             if(airiIndicator!=null){bool passed=Config.airi.enabled&&airi!=null&&Json.Text(airi,"state")=="verified";airiIndicator.Text="AIRI · "+(passed?"实际播放验证通过":!Config.airi.enabled?"未启用":"尚未通过播放验证");airiIndicator.ForeColor=passed?Color.FromArgb(25,128,72):ForeColor;}
             foreach(var entry in states){

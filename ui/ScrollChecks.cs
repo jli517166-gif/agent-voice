@@ -36,7 +36,6 @@ namespace AgentVoice {
                     ClientSize=size;ApplyTheme();await Task.Delay(120);
                     foreach(string id in pages.Keys.ToArray()){
                         ShowPage(id);var viewport=pages[id];
-                        if(IsSetupPage(id)){int step=Array.IndexOf(setupIds,id);GoSetup(step);viewport=(ScenePanel)pages[id].Controls.Find("setupScroller_"+step,true).Single();}
                         await Task.Delay(100);
                         int range=viewport.VerticalScroll.Maximum-viewport.VerticalScroll.LargeChange+1;
                         if(range<=0){reports.Add(new{page=id,size=size.ToString(),patterned=patterned,scrollable=false});continue;}

@@ -29,20 +29,21 @@ namespace AgentVoice {
             if(args.Contains("--moduletest"))return ModuleChecks.Run(store,args);
             if(args.Contains("--import-module"))return ModulePackages.ImportCommand(store,args);
             if(args.Contains("--setupvoicetest"))return UiChecks.SetupVoice(store,args);
-            if(args.Contains("--welcome-preview")){using(var preview=new WelcomeForm(false,true,true))Application.Run(preview);return 0;}
+            if(args.Contains("--welcome-preview")||args.Contains("--setup-preview")){using(var preview=new SetupWizard(store))Application.Run(preview);return 0;}
             string key;using(var sha=SHA256.Create())key=BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(root.ToLowerInvariant()))).Replace("-","").Substring(0,24);
             string wakeName="Local\\AgentVoicePublicWake-"+key;
             bool created;using(var mutex=new Mutex(true,"Local\\AgentVoicePublic-"+key,out created)){
                 if(!created){try{using(var wake=EventWaitHandle.OpenExisting(wakeName))wake.Set();}catch(WaitHandleCannotBeOpenedException){}return 0;}
                 try{
                     if(!File.Exists(store.FilePath))store.Write(store.Read());
-                    var welcomeState=new WelcomeState(store);var preference=welcomeState.Read();string choice="home";
-                    if(!preference.seen)using(var welcome=new WelcomeForm(preference.reduceMotion,true,preference.interfaceSounds)){
-                        if(welcome.ShowDialog()!=DialogResult.OK)return 0;
-                        choice=welcome.Choice;welcomeState.Choose(choice,welcome.ReduceMotion);
+                    var welcomeState=new WelcomeState(store);var preference=welcomeState.Read();
+                    if(SetupWizard.NeedsSetup(preference)||args.Contains("--setup"))using(var setup=new SetupWizard(store)){
+                        using(var setupWake=new EventWaitHandle(false,EventResetMode.AutoReset,wakeName)){
+                            var registration=ThreadPool.RegisterWaitForSingleObject(setupWake,(s,t)=>{if(setup.IsHandleCreated&&!setup.IsDisposed)setup.BeginInvoke((Action)(()=>{setup.Show();setup.WindowState=FormWindowState.Normal;setup.Activate();}));},null,Timeout.Infinite,false);
+                            try{if(setup.ShowDialog()!=DialogResult.OK)return 0;}finally{registration.Unregister(null);}
+                        }
                     }
                     using(var wake=new EventWaitHandle(false,EventResetMode.AutoReset,wakeName))using(var form=new MainForm(store)){
-                        string initialChoice=choice;form.Shown+=(s,e)=>form.ApplyWelcomeChoice(initialChoice);
                         var registration=ThreadPool.RegisterWaitForSingleObject(wake,(s,t)=>{if(form.IsHandleCreated&&!form.IsDisposed)form.BeginInvoke((Action)(()=>{form.Show();form.WindowState=FormWindowState.Normal;form.Activate();}));},null,Timeout.Infinite,false);
                         try{Application.Run(form);}finally{registration.Unregister(null);}
                     }return 0;

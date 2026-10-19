@@ -12,7 +12,7 @@ namespace AgentVoice {
         void BuildSettings(){
             var hub=Stack(NewPage("settings"));
             var common=Card(hub,"常用设置");Add(common,Hint("最常用的输出、连接和界面选项。"));
-            Add(common,Row(EntryBtn("配置中心","继续准备环境、声音与连接。",()=>ShowPage("setup")),EntryBtn("重播开场","重播开场并重新选择欢迎页入口；不重置声音设置。",ReplayWelcome)));
+            Add(common,Row(EntryBtn("重新运行首次配置","打开独立配置窗口；返回工作台后保留已有声音。",RunConfiguration)));
             Add(common,HubRow(HubEntry("连接设备","连接 Harness 或 AIRI，并做真实播放验证。","connections",true),HubEntry("外观","设置背景、配色和程序图标。","appearance",false)));
             var system=Card(hub,"系统与维护");Add(system,Hint("运行环境和低频高级选项集中在这里，日常使用通常无需修改。"));
             Add(system,HubRow(HubEntry("补齐环境","检查缺少的依赖、源码与基础模型，在软件内下载并补齐。","environmentRepair",true)));
@@ -22,7 +22,7 @@ namespace AgentVoice {
         Button HubEntry(string text,string note,string pageId,bool important){var button=EntryBtn(text,note,()=>ShowPage(pageId));button.AutoSize=false;button.Width=250;button.Height=52;button.TextAlign=ContentAlignment.MiddleLeft;button.Padding=new Padding(14,0,8,0);return important?Primary(button):button;}
         ScenePanel SettingsCard(string pageId,string title){var stack=Stack(NewPage(pageId));return Card(stack,title);}
         void BuildAppearance(){var card=SettingsCard("appearance","外观与图标");Field(card,"accent","主色（推荐青蓝 #19C7F2）");Field(card,"backgroundColor","背景颜色（推荐深海军蓝 #05101D）");Field(card,"textColor","文字颜色（推荐雾白 #EAF6FF）");
-            var uiSound=new CheckBox{Text="界面电音音效（语音服务开启时暂停）",AutoSize=true,Checked=SetupPreference().interfaceSounds};uiSound.CheckedChanged+=(s,e)=>SetInterfaceSounds(uiSound.Checked);setupSoundChoices.Add(uiSound);Add(card,uiSound);Add(card,Row(Btn("试听电音音效",()=>{PlayInterfaceSound(8);Status("语音服务关闭时可试听界面电音；朗读期间暂停界面音效。");})));
+            var uiSound=new CheckBox{Text="配置流程电音音效（语音服务运行时暂停）",AutoSize=true,Checked=SetupPreference().interfaceSounds};uiSound.CheckedChanged+=(s,e)=>SetInterfaceSounds(uiSound.Checked);setupSoundChoices.Add(uiSound);Add(card,uiSound);Add(card,Row(Btn("试听电音音效",()=>{PlayInterfaceSound(8);Status("语音服务关闭时可试听界面电音；朗读期间暂停界面音效。");})));
             foreach(var key in new[]{"accent","backgroundColor","textColor"}){string field=key;Add(card,Row(Btn("选择颜色",()=>{using(var dialog=new ColorDialog{FullOpen=true})if(dialog.ShowDialog(this)==DialogResult.OK)fields[field].Text=ColorTranslator.ToHtml(dialog.Color).StartsWith("#")?ColorTranslator.ToHtml(dialog.Color):"#"+dialog.Color.R.ToString("X2")+dialog.Color.G.ToString("X2")+dialog.Color.B.ToString("X2");})));}
             PathField(card,"background","整窗背景图片","图片|*.png;*.jpg;*.jpeg;*.bmp",false);Add(card,Row(Btn("清除背景",()=>fields["background"].Text="")));
             PathField(card,"iconSource","自定义图标图片（自动圆角，窗口／托盘／快捷方式同步）","图片|*.png;*.jpg;*.jpeg;*.bmp",false);

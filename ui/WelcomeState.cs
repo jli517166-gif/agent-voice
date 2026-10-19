@@ -13,6 +13,8 @@ namespace AgentVoice {
         public string voiceEvidence="",voiceJobId="",voiceVerifiedAt="";
         public bool heardVoice=false,offline=false;
         public bool interfaceSounds=true;
+        public int onboardingVersion=0,onboardingStep=0;
+        public bool onboardingComplete=false,onboardingDeferred=false;
     }
     public sealed class WelcomeState {
         public readonly string FilePath;
