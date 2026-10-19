@@ -17,7 +17,7 @@ namespace AgentVoice {
         public Settings Config;
         public Color Accent,CardColor;
         public bool HasBackground {get{return background!=null;}}
-        Bitmap background,scaledBackground,defaultBackdrop;
+        Bitmap background,scaledBackground,defaultBackdrop,pageBackdrop,scaledPageBackdrop;
         readonly Dictionary<string,ScenePanel> pages=new Dictionary<string,ScenePanel>();
         readonly Dictionary<string,Button> navigationButtons=new Dictionary<string,Button>();
         readonly List<string> pageHistory=new List<string>();
@@ -108,6 +108,7 @@ namespace AgentVoice {
         }
         void Navigate(string id,bool remember){
             if(id=="setup"){RunConfiguration();return;}
+            LoadPageBackdrop(id);
             if(!pages.ContainsKey(id))return;if(page==id&&pages[id].Visible)return;
             if(id=="home")pageHistory.Clear();
             else if(remember){if(pageHistory.Count==64)pageHistory.RemoveAt(0);pageHistory.Add(page);}
@@ -260,21 +261,23 @@ namespace AgentVoice {
         void EnsureProfileFolders(){foreach(var profile in Config.profiles)WriteProfileFolder(profile);}
         void ArchiveProfileFolder(SavedVoice profile){string folder=ProfileFolder(profile);if(!Directory.Exists(folder))return;string deletedRoot=Path.Combine(ProfileDirectory(),".deleted");Directory.CreateDirectory(deletedRoot);string target=Path.Combine(deletedRoot,Path.GetFileName(folder)+"-"+DateTime.Now.ToString("yyyyMMddHHmmss"));Directory.Move(folder,target);}
         protected override bool ProcessCmdKey(ref Message msg,Keys key){if(key==Keys.Escape){ShowPage("home");return true;}return base.ProcessCmdKey(ref msg,key);}
-        protected override void OnFormClosing(FormClosingEventArgs e){if(!exiting&&tray!=null){e.Cancel=true;Hide();return;}poll.Stop();tips.Dispose();if(tray!=null){tray.Visible=false;tray.Dispose();}if(background!=null)background.Dispose();if(scaledBackground!=null)scaledBackground.Dispose();if(defaultBackdrop!=null)defaultBackdrop.Dispose();base.OnFormClosing(e);}
+        protected override void OnFormClosing(FormClosingEventArgs e){if(!exiting&&tray!=null){e.Cancel=true;Hide();return;}poll.Stop();tips.Dispose();if(tray!=null){tray.Visible=false;tray.Dispose();}if(background!=null)background.Dispose();if(scaledBackground!=null)scaledBackground.Dispose();if(defaultBackdrop!=null)defaultBackdrop.Dispose();if(pageBackdrop!=null)pageBackdrop.Dispose();if(scaledPageBackdrop!=null)scaledPageBackdrop.Dispose();base.OnFormClosing(e);}
         string DefaultMascotPath(){return Path.Combine(Store.Root,".agents","plugins","agent-voice-control","assets","voice-core.png");}
+        void LoadPageBackdrop(string id){if(pageBackdrop!=null){pageBackdrop.Dispose();pageBackdrop=null;}if(scaledPageBackdrop!=null){scaledPageBackdrop.Dispose();scaledPageBackdrop=null;}if(background!=null)return;string name=id=="home"?"speech":id=="configuration"?"voices":id=="voices"?"schemes":id;string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"assets","workspace",name+".png");if(File.Exists(path))using(var source=Image.FromFile(path))pageBackdrop=new Bitmap(source);}
         public void PaintScene(Graphics g,Control control){
-            Bitmap scene=background==null?DefaultScene():null;
-            if(background!=null&&(scaledBackground==null||scaledBackground.Size!=ClientSize)){
-                if(scaledBackground!=null)scaledBackground.Dispose();
-                scaledBackground=new Bitmap(Math.Max(1,ClientSize.Width),Math.Max(1,ClientSize.Height));
-                using(var graphics=Graphics.FromImage(scaledBackground)){
+            Bitmap active=background??pageBackdrop;Bitmap scaled=background!=null?scaledBackground:scaledPageBackdrop;
+            if(active!=null&&(scaled==null||scaled.Size!=ClientSize)){
+                if(scaled!=null)scaled.Dispose();
+                scaled=new Bitmap(Math.Max(1,ClientSize.Width),Math.Max(1,ClientSize.Height));
+                using(var graphics=Graphics.FromImage(scaled)){
                     graphics.Clear(BackColor);graphics.InterpolationMode=System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                    float scale=Math.Max((float)ClientSize.Width/background.Width,(float)ClientSize.Height/background.Height);
-                    float w=background.Width*scale,h=background.Height*scale;
-                    graphics.DrawImage(background,(ClientSize.Width-w)/2,(ClientSize.Height-h)/2,w,h);
+                    float scale=Math.Max((float)ClientSize.Width/active.Width,(float)ClientSize.Height/active.Height);
+                    float w=active.Width*scale,h=active.Height*scale;
+                    graphics.DrawImage(active,(ClientSize.Width-w)/2,(ClientSize.Height-h)/2,w,h);
                 }
+                if(background!=null)scaledBackground=scaled;else scaledPageBackdrop=scaled;
             }
-            if(background!=null)scene=scaledBackground;
+            Bitmap scene=scaled??DefaultScene();
             if(scene==null){using(var brush=new SolidBrush(BackColor))g.FillRectangle(brush,control.ClientRectangle);return;}
             Point origin=PointToClient(control.PointToScreen(Point.Empty));
             Rectangle source=Rectangle.Intersect(new Rectangle(origin,control.ClientSize),new Rectangle(Point.Empty,scene.Size));
