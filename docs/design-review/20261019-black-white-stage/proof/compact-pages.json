@@ -1,0 +1,82 @@
+[
+  {
+    "figures": 1,
+    "h": 918,
+    "heading": "声音，现在开始。",
+    "horizontalOverflow": false,
+    "scene": "0",
+    "w": 606
+  },
+  {
+    "figures": 1,
+    "h": 918,
+    "heading": "从这台电脑开始。",
+    "horizontalOverflow": false,
+    "scene": "1",
+    "w": 606
+  },
+  {
+    "figures": 1,
+    "h": 918,
+    "heading": "选择引擎。",
+    "horizontalOverflow": false,
+    "scene": "2",
+    "w": 606
+  },
+  {
+    "figures": 1,
+    "h": 918,
+    "heading": "准备引擎。",
+    "horizontalOverflow": false,
+    "scene": "3",
+    "w": 606
+  },
+  {
+    "figures": 1,
+    "h": 918,
+    "heading": "环境就位。",
+    "horizontalOverflow": false,
+    "scene": "4",
+    "w": 606
+  },
+  {
+    "figures": 1,
+    "h": 918,
+    "heading": "选择你的声音。",
+    "horizontalOverflow": false,
+    "scene": "5",
+    "w": 606
+  },
+  {
+    "figures": 1,
+    "h": 918,
+    "heading": "先听一听。",
+    "horizontalOverflow": false,
+    "scene": "6",
+    "w": 606
+  },
+  {
+    "figures": 1,
+    "h": 918,
+    "heading": "接住你的对话。",
+    "horizontalOverflow": false,
+    "scene": "7",
+    "w": 606
+  },
+  {
+    "figures": 1,
+    "h": 918,
+    "heading": "让桌宠开口。",
+    "horizontalOverflow": false,
+    "scene": "8",
+    "w": 606
+  },
+  {
+    "figures": 1,
+    "h": 918,
+    "heading": "准备好了。",
+    "horizontalOverflow": false,
+    "scene": "9",
+    "w": 606
+  }
+]

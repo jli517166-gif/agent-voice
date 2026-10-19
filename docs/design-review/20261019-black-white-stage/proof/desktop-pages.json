@@ -1,0 +1,198 @@
+[
+  {
+    "assets": [
+      {
+        "ok": true,
+        "src": "assets/headphone.webp"
+      },
+      {
+        "ok": true,
+        "src": "assets/music.webp"
+      }
+    ],
+    "fields": 1,
+    "figures": 1,
+    "height": 720,
+    "scene": "0",
+    "scroll": false,
+    "title": "声音，现在开始。",
+    "url": "#setup-0",
+    "width": 1280
+  },
+  {
+    "assets": [
+      {
+        "ok": true,
+        "src": "assets/computer.webp"
+      },
+      {
+        "ok": true,
+        "src": "assets/setting.webp"
+      }
+    ],
+    "fields": 1,
+    "figures": 1,
+    "height": 720,
+    "scene": "1",
+    "scroll": false,
+    "title": "从这台电脑开始。",
+    "url": "#setup-1",
+    "width": 1280
+  },
+  {
+    "assets": [
+      {
+        "ok": true,
+        "src": "assets/setting.webp"
+      },
+      {
+        "ok": true,
+        "src": "assets/mic.webp"
+      }
+    ],
+    "fields": 1,
+    "figures": 1,
+    "height": 720,
+    "scene": "2",
+    "scroll": false,
+    "title": "选择引擎。",
+    "url": "#setup-2",
+    "width": 1280
+  },
+  {
+    "assets": [
+      {
+        "ok": true,
+        "src": "assets/folder.webp"
+      },
+      {
+        "ok": true,
+        "src": "assets/copy.webp"
+      }
+    ],
+    "fields": 1,
+    "figures": 1,
+    "height": 720,
+    "scene": "3",
+    "scroll": false,
+    "title": "准备引擎。",
+    "url": "#setup-3",
+    "width": 1280
+  },
+  {
+    "assets": [
+      {
+        "ok": true,
+        "src": "assets/tools.webp"
+      },
+      {
+        "ok": true,
+        "src": "assets/puzzle.webp"
+      }
+    ],
+    "fields": 1,
+    "figures": 1,
+    "height": 720,
+    "scene": "4",
+    "scroll": false,
+    "title": "环境就位。",
+    "url": "#setup-4",
+    "width": 1280
+  },
+  {
+    "assets": [
+      {
+        "ok": true,
+        "src": "assets/mic.webp"
+      },
+      {
+        "ok": true,
+        "src": "assets/music.webp"
+      }
+    ],
+    "fields": 1,
+    "figures": 1,
+    "height": 720,
+    "scene": "5",
+    "scroll": false,
+    "title": "选择你的声音。",
+    "url": "#setup-5",
+    "width": 1280
+  },
+  {
+    "assets": [
+      {
+        "ok": true,
+        "src": "assets/headphone.webp"
+      },
+      {
+        "ok": true,
+        "src": "assets/play.webp"
+      }
+    ],
+    "fields": 1,
+    "figures": 1,
+    "height": 720,
+    "scene": "6",
+    "scroll": false,
+    "title": "先听一听。",
+    "url": "#setup-6",
+    "width": 1280
+  },
+  {
+    "assets": [
+      {
+        "ok": true,
+        "src": "assets/chat.webp"
+      },
+      {
+        "ok": true,
+        "src": "assets/link.webp"
+      }
+    ],
+    "fields": 1,
+    "figures": 1,
+    "height": 720,
+    "scene": "7",
+    "scroll": false,
+    "title": "接住你的对话。",
+    "url": "#setup-7",
+    "width": 1280
+  },
+  {
+    "assets": [
+      {
+        "ok": true,
+        "src": "assets/airi-11-icon.png"
+      }
+    ],
+    "fields": 1,
+    "figures": 1,
+    "height": 720,
+    "scene": "8",
+    "scroll": false,
+    "title": "让桌宠开口。",
+    "url": "#setup-8",
+    "width": 1280
+  },
+  {
+    "assets": [
+      {
+        "ok": true,
+        "src": "assets/puzzle.webp"
+      },
+      {
+        "ok": true,
+        "src": "assets/music.webp"
+      }
+    ],
+    "fields": 1,
+    "figures": 1,
+    "height": 720,
+    "scene": "9",
+    "scroll": false,
+    "title": "准备好了。",
+    "url": "#setup-9",
+    "width": 1280
+  }
+]

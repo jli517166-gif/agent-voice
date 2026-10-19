@@ -1,0 +1,15 @@
+[
+  {
+    "path": "resources/icon.png",
+    "size": 148123,
+    "offset": "1122751716",
+    "integrity": {
+      "algorithm": "SHA256",
+      "hash": "ccaf08d5dd2bb93ea25280449f948e3ad681af8e6c608426f5edf970eff3b15a",
+      "blockSize": 4194304,
+      "blocks": [
+        "ccaf08d5dd2bb93ea25280449f948e3ad681af8e6c608426f5edf970eff3b15a"
+      ]
+    }
+  }
+]

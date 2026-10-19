@@ -1,0 +1,98 @@
+{
+  "computer": {
+    "url": "https://bvconuycpdvgzbvbkijl.supabase.co/storage/v1/object/public/sizes/5f20be-computer/dynamic/500/clay.webp",
+    "page": "https://3dicons.co/icons/5f20be-computer?angle=dynamic&color=clay",
+    "author": "Realvjy",
+    "license": "CC0 (V1 collection)",
+    "sha256": "eed7a0a3ffda15a001168afbb34abb7eb64816990f9dc7f87d250378556f3bb7",
+    "bytes": 5068
+  },
+  "folder": {
+    "url": "https://bvconuycpdvgzbvbkijl.supabase.co/storage/v1/object/public/sizes/176980-folder/dynamic/500/clay.webp",
+    "page": "https://3dicons.co/icons/176980-folder?angle=dynamic&color=clay",
+    "author": "Realvjy",
+    "license": "CC0 (V1 collection)",
+    "sha256": "968eae92a9561713116fbceca1a2e84963c5f8742eb12b3375e739464ee38102",
+    "bytes": 8766
+  },
+  "setting": {
+    "url": "https://bvconuycpdvgzbvbkijl.supabase.co/storage/v1/object/public/sizes/7e47be-setting/dynamic/500/clay.webp",
+    "page": "https://3dicons.co/icons/7e47be-setting?angle=dynamic&color=clay",
+    "author": "Realvjy",
+    "license": "CC0 (V1 collection)",
+    "sha256": "cac0b771778ad11fd091057c0ac80fdcae3e19a01ec80ee725dc8955a08333a9",
+    "bytes": 9200
+  },
+  "headphone": {
+    "url": "https://bvconuycpdvgzbvbkijl.supabase.co/storage/v1/object/public/sizes/b81ead-headphone/dynamic/500/clay.webp",
+    "page": "https://3dicons.co/icons/b81ead-headphone?angle=dynamic&color=clay",
+    "author": "Realvjy",
+    "license": "CC0 (V1 collection)",
+    "sha256": "2e31b56d7d48c615fd9f2ed712eafd5f2f960e6b747ece4b481e70e05d0af2dd",
+    "bytes": 11700
+  },
+  "mic": {
+    "url": "https://bvconuycpdvgzbvbkijl.supabase.co/storage/v1/object/public/sizes/fddbbc-mic/dynamic/500/clay.webp",
+    "page": "https://3dicons.co/icons/fddbbc-mic?angle=dynamic&color=clay",
+    "author": "Realvjy",
+    "license": "CC0 (V1 collection)",
+    "sha256": "886ee9469466f8624e2988fb404c98f02ba913e0f483f2c74ee1cb372236449c",
+    "bytes": 18862
+  },
+  "link": {
+    "url": "https://bvconuycpdvgzbvbkijl.supabase.co/storage/v1/object/public/sizes/2d9fa2-link/dynamic/500/clay.webp",
+    "page": "https://3dicons.co/icons/2d9fa2-link?angle=dynamic&color=clay",
+    "author": "Realvjy",
+    "license": "CC0 (V1 collection)",
+    "sha256": "734454ea11231613cc94cc18e902786ec48712595300e8d3a263b911f8e2aad2",
+    "bytes": 8624
+  },
+  "chat": {
+    "url": "https://bvconuycpdvgzbvbkijl.supabase.co/storage/v1/object/public/sizes/6afbc7-chat/dynamic/500/clay.webp",
+    "page": "https://3dicons.co/icons/6afbc7-chat?angle=dynamic&color=clay",
+    "author": "Realvjy",
+    "license": "CC0 (V1 collection)",
+    "sha256": "8479c7722fa356a0f71c750a4e16133e59911f96ccbb692adc19c65c77bb359c",
+    "bytes": 6720
+  },
+  "music": {
+    "url": "https://bvconuycpdvgzbvbkijl.supabase.co/storage/v1/object/public/sizes/331e9c-music/dynamic/500/clay.webp",
+    "page": "https://3dicons.co/icons/331e9c-music?angle=dynamic&color=clay",
+    "author": "Realvjy",
+    "license": "CC0 (V1 collection)",
+    "sha256": "90f6006c8283ed593f822b8e2236129c78591fad9e4700d5b7f7dae881f58f7b",
+    "bytes": 5678
+  },
+  "tools": {
+    "url": "https://bvconuycpdvgzbvbkijl.supabase.co/storage/v1/object/public/sizes/ff5be0-tools/dynamic/500/clay.webp",
+    "page": "https://3dicons.co/icons/ff5be0-tools?angle=dynamic&color=clay",
+    "author": "Realvjy",
+    "license": "CC0 (V1 collection)",
+    "sha256": "bfca864753344c6d692c7b3edad9fa2658d8e1fa173b51f62cff6bbd199e9b1c",
+    "bytes": 9466
+  },
+  "puzzle": {
+    "url": "https://bvconuycpdvgzbvbkijl.supabase.co/storage/v1/object/public/sizes/a68576-puzzle/dynamic/500/clay.webp",
+    "page": "https://3dicons.co/icons/a68576-puzzle?angle=dynamic&color=clay",
+    "author": "Realvjy",
+    "license": "CC0 (V1 collection)",
+    "sha256": "5aca59d47efb1273604c35a097d22b0038e62a43089dc9ce2ab54d2dbd62733b",
+    "bytes": 9072
+  },
+  "copy": {
+    "url": "https://bvconuycpdvgzbvbkijl.supabase.co/storage/v1/object/public/sizes/d3d0c8-copy/dynamic/500/clay.webp",
+    "page": "https://3dicons.co/icons/d3d0c8-copy?angle=dynamic&color=clay",
+    "author": "Realvjy",
+    "license": "CC0 (V1 collection)",
+    "sha256": "814d37f2781e856c256df642f04ba0cd79cb735a9dbe860265eb552c8b69fb85",
+    "bytes": 9590
+  },
+  "play": {
+    "url": "https://bvconuycpdvgzbvbkijl.supabase.co/storage/v1/object/public/sizes/866e45-play/dynamic/500/clay.webp",
+    "page": "https://3dicons.co/icons/866e45-play?angle=dynamic&color=clay",
+    "author": "Realvjy",
+    "license": "CC0 (V1 collection)",
+    "sha256": "b0ef0afbfb5551d4e2d8b77b8a77df72f29b400ef0421094d3dfd66d9830f73c",
+    "bytes": 3862
+  }
+}
