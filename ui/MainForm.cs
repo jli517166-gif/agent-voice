@@ -71,7 +71,7 @@ namespace AgentVoice {
             statusBar=new ScenePanel{Host=this,Card=true,Dock=DockStyle.Fill,Margin=new Padding(0),Padding=new Padding(6,4,6,4),Visible=false};var statusGrid=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=4,RowCount=1,BackColor=Color.Transparent};for(int i=0;i<4;i++)statusGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,25));statusSystem=TopStatus("● 系统 · 检查中");statusEngine=TopStatus("● 引擎 · "+Config.voice.engine);statusVoice=TopStatus("● 声音 · "+(Config.voice.baseModel.Length>0?"已配置":"待配置"));statusOutput=TopStatus("● 输出 · TTS 直出");statusGrid.Controls.Add(statusSystem,0,0);statusGrid.Controls.Add(statusEngine,1,0);statusGrid.Controls.Add(statusVoice,2,0);statusGrid.Controls.Add(statusOutput,3,0);statusBar.Controls.Add(statusGrid);workspace.Controls.Add(statusBar,0,1);
             content=new ScenePanel{Host=this,Dock=DockStyle.Fill,ComposeChildren=true};workspace.Controls.Add(content,0,2);
             footer=new Label{Dock=DockStyle.Fill,AutoEllipsis=false,Font=new Font(Font.FontFamily,9.5F,FontStyle.Bold),Text=Config.voice.assetScope=="private"?"状态：已载入认可版，私有声音资源单独保存。":"状态：请选择本地 TTS 模型包与参考条件。",TextAlign=ContentAlignment.MiddleLeft,Padding=new Padding(14,5,14,5),AccessibleName="操作状态提示"};workspace.Controls.Add(footer,0,3);
-            BuildSavedVoices();BuildHome();BuildSettings();EnsureProfileFolders();BindVoice();BindSettings();ApplyTheme();ShowPage("home");
+            BuildSavedVoices();BuildHomeWeb();BuildSettings();EnsureProfileFolders();BindVoice();BindSettings();ApplyTheme();ShowPage("home");
             if(!testing){tray=new NotifyIcon{Text="agent语音",Icon=SystemIcons.Application,Visible=true};var menu=new ContextMenuStrip();menu.Items.Add("打开程序",null,(s,e)=>OpenMain());menu.Items.Add("停止朗读",null,async(s,e)=>await StopSpeech());
                 menu.Items.Add("退出",null,async(s,e)=>{exiting=true;try{if(await Service.Running())await Service.Stop();}catch(Exception x){Status(x.Message);}Close();});tray.ContextMenuStrip=menu;tray.DoubleClick+=(s,e)=>OpenMain();
                 ApplyIcon();poll.Tick+=async(s,e)=>await Poll();poll.Start();Shown+=async(s,e)=>await Poll();}
@@ -108,12 +108,11 @@ namespace AgentVoice {
         }
         void Navigate(string id,bool remember){
             if(id=="setup"){RunConfiguration();return;}
-            LoadPageBackdrop(id);
             if(!pages.ContainsKey(id))return;if(page==id&&pages[id].Visible)return;
             if(id=="home")pageHistory.Clear();
             else if(remember){if(pageHistory.Count==64)pageHistory.RemoveAt(0);pageHistory.Add(page);}
             SendMessage(content.Handle,0x000B,IntPtr.Zero,IntPtr.Zero);content.SuspendLayout();
-            try{foreach(var pair in pages)pair.Value.Visible=pair.Key==id;pages[id].BringToFront();page=id;sidebar.Visible=true;outer.ColumnStyles[0].Width=150;workspace.RowStyles[0].Height=76;backButton.Visible=id!="home";pageTitle.Text=PageName(id);statusBar.Visible=false;workspace.RowStyles[1].Height=0;foreach(var pair in navigationButtons)StyleButton(pair.Value,pair.Key==id);}
+            try{foreach(var pair in pages)pair.Value.Visible=pair.Key==id;pages[id].BringToFront();page=id;sidebar.Visible=true;outer.ColumnStyles[0].Width=150;workspace.RowStyles[0].Height=76;backButton.Visible=id!="home";pageTitle.Text=PageName(id);pageTitle.Visible=id!="home";statusBar.Visible=false;workspace.RowStyles[1].Height=0;foreach(var pair in navigationButtons)StyleButton(pair.Value,pair.Key==id);}
             finally{content.ResumeLayout(true);SendMessage(content.Handle,0x000B,new IntPtr(1),IntPtr.Zero);content.Invalidate(true);}
 
         }
@@ -166,6 +165,32 @@ namespace AgentVoice {
         Label homeVoiceSummary;
         ComboBox quickVoice;
         bool speechOperation;
+        void BuildHomeWeb(){
+            var home=NewPage("home");home.AutoScroll=false;
+            var title=new Label{Text="文字，有了声音。",Font=new Font(Font.FontFamily,28F,FontStyle.Bold),AutoSize=true,BackColor=Color.Transparent,ForeColor=ForeColor};title.SetBounds(38,20,620,54);home.Controls.Add(title);
+            var lead=Hint("手动朗读与自动朗读，在这里统一控制。");lead.SetBounds(40,72,520,24);home.Controls.Add(lead);
+            serviceToggle=Primary(AsyncBtn("开启服务",async()=>{if(await Service.Running()){await Service.Stop();Status("服务已关闭。");}else{await SaveDraft();await Service.Start();Status("服务已启动。");}await Poll();}));serviceToggle.AutoSize=false;serviceToggle.SetBounds(868,46,96,34);home.Controls.Add(serviceToggle);
+            var voice=new ScenePanel{Host=this,Card=true,Location=new Point(38,120),Size=new Size(658,104),Padding=new Padding(16,10,16,10)};home.Controls.Add(voice);
+            homeVoiceSummary=Hint("");homeVoiceSummary.Font=new Font(Font.FontFamily,12F,FontStyle.Bold);homeVoiceSummary.SetBounds(0,0,620,24);voice.Controls.Add(homeVoiceSummary);
+            quickVoice=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=330,AccessibleName="快速选择已保存的声音方案"};quickVoice.SetBounds(0,30,330,28);voice.Controls.Add(quickVoice);
+            var switchVoice=Btn("切换声音",async()=>{var item=quickVoice.SelectedItem as SavedVoice;if(item==null)throw new InvalidOperationException("请先在声音方案中保存或选择一个声音。");await ProfileOperation("apply",item.id,null);BindVoice();Status("声音已切换："+item.name);});switchVoice.SetBounds(342,30,96,30);voice.Controls.Add(switchVoice);
+            var adjust=EntryBtn("调整声音","选择引擎、模型和语速。",()=>ShowPage("voiceEditor"));adjust.SetBounds(446,30,96,30);voice.Controls.Add(adjust);
+            harnessSummary=Hint("Harness：服务关闭");harnessSummary.Font=new Font(Font.FontFamily,9F);harnessSummary.SetBounds(0,66,620,20);voice.Controls.Add(harnessSummary);
+            var speech=new ScenePanel{Host=this,Card=true,Location=new Point(38,240),Size=new Size(658,176),Padding=new Padding(16,10,16,10)};home.Controls.Add(speech);
+            var speechTitle=new Label{Text="想说什么？",Font=new Font(Font.FontFamily,13F,FontStyle.Bold),AutoSize=true,BackColor=Color.Transparent};speechTitle.SetBounds(0,0,300,26);speech.Controls.Add(speechTitle);
+            body=Input(true);body.SetBounds(0,32,626,106);body.Text="工作好久啦，起来动一动、喝口水吧～";body.AccessibleName="朗读文本";speech.Controls.Add(body);
+            var phraseCard=new ScenePanel{Host=this,Card=true,Location=new Point(38,430),Size=new Size(658,72),Padding=new Padding(16,8,16,8)};home.Controls.Add(phraseCard);
+            var phraseTitle=new Label{Text="常用句",Font=new Font(Font.FontFamily,10F,FontStyle.Bold),AutoSize=true,BackColor=Color.Transparent};phraseTitle.SetBounds(0,0,160,20);phraseCard.Controls.Add(phraseTitle);
+            phrases=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=420,AccessibleName="常用句选择"};phrases.SetBounds(0,26,420,26);phraseCard.Controls.Add(phrases);
+            var manage=Btn("管理",()=>ShowPage("home"));manage.SetBounds(590,26,50,26);phraseCard.Controls.Add(manage);
+            var queue=new ScenePanel{Host=this,Card=true,Location=new Point(725,120),Size=new Size(215,355),Padding=new Padding(16,14,16,14)};home.Controls.Add(queue);
+            var queueTitle=new Label{Text="朗读队列",Font=new Font(Font.FontFamily,10F,FontStyle.Bold),AutoSize=true,BackColor=Color.Transparent};queueTitle.SetBounds(0,0,150,24);queue.Controls.Add(queueTitle);
+            var queueEmpty=Hint("暂时没有朗读任务。\r\n来自客户端的完整句子\r\n会按顺序出现在这里。");queueEmpty.SetBounds(0,46,185,120);queue.Controls.Add(queueEmpty);
+            var deck=new ScenePanel{Host=this,Card=true,Location=new Point(0,516),Size=new Size(978,88),Padding=new Padding(16,10,16,10)};home.Controls.Add(deck);
+            var stop=Btn("停止",async()=>await StopSpeech());stop.SetBounds(0,20,96,38);deck.Controls.Add(stop);
+            playButton=LiveSpeechButton("重播上一条",PlayLast);playButton.AutoSize=false;playButton.SetBounds(112,20,120,38);deck.Controls.Add(playButton);
+            generate=Primary(LiveSpeechButton("生成并播放",async()=>await Generate(body.Text,true)));generate.AutoSize=false;generate.SetBounds(788,20,150,38);deck.Controls.Add(generate);BuildVoiceEditor();BuildCosyReference();
+        }
         void BuildHome(){
             var home=NewPage("home");var stack=Stack(home);
             serviceToggle=Primary(AsyncBtn("启动服务",async()=>{if(await Service.Running()){await Service.Stop();Status("服务已关闭。");}else{await SaveDraft();await Service.Start();Status("服务已启动。");}await Poll();}));
