@@ -1,10 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace AgentVoice {
@@ -19,10 +20,10 @@ namespace AgentVoice {
                 using(var wizard=new SetupWizard(fixture,true)){
                     wizard.ShowInTaskbar=false;wizard.StartPosition=FormStartPosition.Manual;wizard.Location=new Point(-32000,-32000);wizard.Show();Application.DoEvents();
                     if(Application.OpenForms.Cast<Form>().Any(f=>f is MainForm))errors.Add("Workspace constructed before onboarding finished");
-                    if(wizard.PageCount!=9||wizard.Controls.Find("nav_home",true).Length>0)errors.Add("First-boot workflow mixed with workspace navigation");
+                    if(wizard.PageCount!=10||wizard.Controls.Find("nav_home",true).Length>0)errors.Add("First-boot workflow mixed with workspace navigation");
                     foreach(var size in new[]{new Size(1120,780),new Size(900,640),new Size(1440,900)}){
                         wizard.ClientSize=size;
-                        for(int step=0;step<9;step++){
+                        for(int step=0;step<10;step++){
                             wizard.Go(step,false);Application.DoEvents();
                             if(wizard.Step!=step||wizard.VisiblePageCount!=1||wizard.RunningArtCount>1)errors.Add("Multiple steps or timers visible: "+step);
                             foreach(var c in new Control[]{wizard.Next,wizard.Back,wizard.Later,wizard.Skip,wizard.Motion,wizard.Sound}.Where(c=>c.Visible)){
@@ -46,7 +47,7 @@ namespace AgentVoice {
                 using(var resumed=new SetupWizard(fixture,true)){if(resumed.Step!=6)errors.Add("Closing interrupted setup loses step");resumed.Dispose();}
                 if(!SetupWizard.NeedsSetup(state.Read()))errors.Add("Interrupted setup marked as finished");
                 fixture.Write(settings);before=File.ReadAllText(fixture.FilePath);
-                using(var completed=new SetupWizard(fixture,true)){completed.Go(8,false);completed.Finish(false);}
+                using(var completed=new SetupWizard(fixture,true)){completed.Go(9,false);completed.Finish(false);}
                 if(SetupWizard.NeedsSetup(state.Read())||!state.Read().onboardingComplete||state.Read().onboardingDeferred)errors.Add("Finish does not enter daily mode");
                 if(before!=File.ReadAllText(fixture.FilePath))errors.Add("Navigation changed voice settings");
                 using(var workspace=new MainForm(fixture,true)){workspace.ShowInTaskbar=false;workspace.StartPosition=FormStartPosition.Manual;workspace.Location=new Point(-32000,-32000);workspace.Show();Application.DoEvents();if(workspace.Controls.Find("onboardingStage",true).Length>0||workspace.Controls.Find("homeKeynote",true).Length>0||workspace.Controls.Find("nav_setup",true).Length>0)errors.Add("Workspace contains first-boot design");using(var shot=SetupWizard.CaptureFrame(workspace))shot.Save(Path.Combine(directory,"workspace.png"));}
@@ -54,9 +55,16 @@ namespace AgentVoice {
                 using(var beforeFrame=new Bitmap(400,220))using(var afterFrame=new Bitmap(400,220)){
                     using(var g=Graphics.FromImage(beforeFrame))g.Clear(Color.FromArgb(15,40,65));using(var g=Graphics.FromImage(afterFrame))g.Clear(Color.FromArgb(35,70,100));foreach(double time in new[]{0,.12,.24,.36,.48})using(var frame=new Bitmap(400,220)){using(var g=Graphics.FromImage(frame))WizardTransition.PaintFrame(g,beforeFrame,afterFrame,new Rectangle(0,0,400,220),time,1);frame.Save(Path.Combine(directory,"transition-half-speed-"+(time*2).ToString("0.00",System.Globalization.CultureInfo.InvariantCulture)+".png"));}
                 }
+                using(var task=new WizardTaskForm("任务窗口检查",new[]{"步骤一","步骤二"},async progress=>{progress.Report("执行中…");await Task.Delay(120);return "任务完成";},true)){
+                    var taskTimer=new System.Windows.Forms.Timer{Interval=50};bool captured=false;
+                    taskTimer.Tick+=(s,e)=>{if(!task.Finished)return;if(!captured){captured=true;using(var shot=SetupWizard.CaptureFrame(task))shot.Save(Path.Combine(directory,"task-dialog.png"));}taskTimer.Stop();task.Close();};
+                    taskTimer.Start();task.ShowDialog();taskTimer.Dispose();
+                    if(task.Error!=null||task.Result!="任务完成")errors.Add("Task dialog did not complete");
+                }
                 if(InterfaceSounds.Allowed(true,true,false)||InterfaceSounds.Allowed(true,false,true)||InterfaceSounds.Allowed(false,false,false)||!InterfaceSounds.Allowed(true,false,false))errors.Add("Interface sound overlap policy invalid");
             }catch(Exception e){errors.Add(e.ToString());}
-            File.WriteAllText(Path.Combine(directory,"welcome-results.json"),Json.Encode(new{ok=errors.Count==0,independentFirstBoot=true,steps=9,layouts=3,transitionMs=480,illustrationMs=960,reducedMotion=true,errors=errors}));return errors.Count==0?0:1;
+            File.WriteAllText(Path.Combine(directory,"welcome-results.json"),Json.Encode(new{ok=errors.Count==0,independentFirstBoot=true,steps=10,layouts=3,transitionMs=480,illustrationMs=960,reducedMotion=true,errors=errors}));return errors.Count==0?0:1;
         }
     }
 }
+
