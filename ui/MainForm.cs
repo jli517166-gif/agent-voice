@@ -113,7 +113,7 @@ namespace AgentVoice {
             if(id=="home")pageHistory.Clear();
             else if(remember){if(pageHistory.Count==64)pageHistory.RemoveAt(0);pageHistory.Add(page);}
             SendMessage(content.Handle,0x000B,IntPtr.Zero,IntPtr.Zero);content.SuspendLayout();
-            try{foreach(var pair in pages)pair.Value.Visible=pair.Key==id;pages[id].BringToFront();page=id;sidebar.Visible=true;outer.ColumnStyles[0].Width=150;workspace.RowStyles[0].Height=76;backButton.Visible=id!="home";pageTitle.Text=PageName(id);pageTitle.Visible=id!="home"&&!IsWebLayoutPage(id);statusBar.Visible=false;workspace.RowStyles[1].Height=0;foreach(var pair in navigationButtons)StyleButton(pair.Value,pair.Key==id);}
+            try{foreach(var pair in pages)pair.Value.Visible=pair.Key==id;pages[id].BringToFront();page=id;if(id=="home"||IsWebLayoutPage(id))WebFit.Attach(pages[id]);sidebar.Visible=true;outer.ColumnStyles[0].Width=150;workspace.RowStyles[0].Height=76;backButton.Visible=id!="home";pageTitle.Text=PageName(id);pageTitle.Visible=id!="home"&&!IsWebLayoutPage(id);statusBar.Visible=false;workspace.RowStyles[1].Height=0;foreach(var pair in navigationButtons)StyleButton(pair.Value,pair.Key==id);}
             finally{content.ResumeLayout(true);SendMessage(content.Handle,0x000B,new IntPtr(1),IntPtr.Zero);content.Invalidate(true);}
 
         }
