@@ -1,5 +1,5 @@
 // Scene composition only. Existing controls, delegated actions and task states stay intact.
-// AIRI is deliberately excluded: its approved DOM, geometry and animation are unchanged.
+// AIRI keeps its approved composition; shared entrance motion is applied separately.
 const names = [
   "opening",
   "diagnostic",
@@ -107,10 +107,10 @@ export function composePage(screen, step, host) {
   }
 }
 
-// Animate semantic phrases inside fixed masks, never the heading's layout box.
+// Deal semantic phrases without moving the heading's fixed layout box.
 // Preserve the original nodes so AIRI keeps its pink accent and all text stays exact.
-export function prepareText(screen) {
-  const heading = screen.querySelector("h1");
+export function prepareText(screen, selector = "h1") {
+  const heading = screen.querySelector(selector);
   if (!heading || heading.dataset.motionReady === "true") return;
   heading.setAttribute("aria-label", heading.textContent);
   let index = 0;

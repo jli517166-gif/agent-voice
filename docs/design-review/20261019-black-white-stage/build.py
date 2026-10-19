@@ -8,7 +8,7 @@ html=(root/'base-template.html').read_text(encoding='utf-8')
 html=re.sub(r'(<symbol\s+id=")([^"]+)',lambda m:m[1]+'av-symbol-'+m[2],html)
 html=re.sub(r'(<use\s+href="#)([^"]+)',lambda m:m[1]+'av-symbol-'+m[2],html)
 html=html.replace('<title>Agent Voice · 声音终端 · 设计审核</title>','<title>Agent Voice · 黑白声场设计审核</title>')
-html=html.replace('</head>','<link rel="preload" as="image" href="assets/headphone.webp"><link rel="preload" as="image" href="assets/music.webp"><link rel="stylesheet" href="art-direction.css"><link rel="stylesheet" href="workspace.css"><link rel="stylesheet" href="reference-glass.css"><link rel="stylesheet" href="scene-materials.css"><link rel="stylesheet" href="page-compositions.css"><link rel="stylesheet" href="render-lifecycle.css"><link rel="stylesheet" href="text-motion.css"></head>')
+html=html.replace('</head>','<link rel="preload" as="image" href="assets/headphone.webp"><link rel="preload" as="image" href="assets/music.webp"><link rel="stylesheet" href="art-direction.css"><link rel="stylesheet" href="workspace.css"><link rel="stylesheet" href="reference-glass.css"><link rel="stylesheet" href="scene-materials.css"><link rel="stylesheet" href="page-compositions.css"><link rel="stylesheet" href="render-lifecycle.css"><link rel="stylesheet" href="text-motion.css"><link rel="stylesheet" href="task-motion.css"></head>')
 html=html.replace("history.replaceState(null,'',`#setup-${step}`)}","history.replaceState(null,'',`#setup-${step}`);window.dispatchEvent(new Event('design-route'))}")
 html=html.replace("$('#jump').value='desk';history.replaceState","$('#jump').value='desk';window.dispatchEvent(new Event('design-route'));history.replaceState")
 html=html.replace('function clearTransient(){',"function clearTransient(){window.dispatchEvent(new Event('design-dispose'));")
@@ -28,7 +28,7 @@ html=html.replace('<body>','<body class="ui-booting">',1)
 html=html.replace('</body>','<script type="module" src="ui-readiness.js"></script><script type="module" src="render-diagnostics.js"></script></body>')
 # One module identity per document, including dependencies imported by readiness.
 # Content versions prevent a refreshed layout from running a cached old task renderer.
-modules=['art-direction.js','page-compositions.js','scene-materials.js','workflow.js','workspace.js','ui-readiness.js','render-diagnostics.js']
+modules=['center-deal.js','art-direction.js','page-compositions.js','scene-materials.js','workflow.js','workspace.js','ui-readiness.js','render-diagnostics.js']
 # Normalize checkout line endings so Git's Windows conversion does not stale versions.
 version=lambda name: hashlib.sha256((root/name).read_text(encoding='utf-8').encode('utf-8')).hexdigest()[:12]
 imports={'./'+name:'./'+name+'?v='+version(name) for name in modules}

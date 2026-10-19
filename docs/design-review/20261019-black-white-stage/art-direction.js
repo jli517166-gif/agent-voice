@@ -1,5 +1,6 @@
 // Agent Voice design review, independent from the installed program.
 import { composePage, prepareText } from "./page-compositions.js";
+import { dealFromCenter, pageEntries } from "./center-deal.js";
 import { createMaterialRoom } from "./scene-materials.js";
 const direction = [
   { main: "headphone", small: "music", name: "声音入场" },
@@ -244,6 +245,7 @@ function mount() {
   }
   function play() {
     freeze();
+    animations.forEach((a) => a.cancel());
     const replaying = art.classList.contains("art-reveal");
     art.classList.remove("art-reveal");
     floor.classList.remove("field-reveal");
@@ -261,12 +263,16 @@ function mount() {
     floor.classList.add("field-reveal");
     room?.classList.add("scene-reveal");
     if (!reduced) screen.classList.add("focus-reveal");
-    animations = [
-      ...art.getAnimations({ subtree: true }),
-      ...floor.getAnimations(),
-      ...(room?.getAnimations({ subtree: true }) || []),
-      ...screen.getAnimations({ subtree: true }),
-    ];
+    animations = dealFromCenter(
+      win,
+      pageEntries(screen, art, room, floor, ribbons),
+      reduced,
+    );
+    animations.push(
+      ...screen
+        .getAnimations({ subtree: true })
+        .filter((a) => !animations.includes(a)),
+    );
     if (reduced) {
       freeze();
       return;
@@ -274,10 +280,7 @@ function mount() {
     const slow = new URLSearchParams(location.search).get("slow") === "1";
     if (slow) animations.forEach((a) => (a.playbackRate = 0.5));
     art.dataset.playing = "true";
-    timer = setTimeout(
-      () => freeze(true),
-      slow ? 3600 : step === 8 ? 1600 : 1400,
-    );
+    timer = setTimeout(() => freeze(true), slow ? 3800 : 1700);
   }
   const onAction = (e) => {
     const a = e.target.closest("[data-action]")?.dataset.action;

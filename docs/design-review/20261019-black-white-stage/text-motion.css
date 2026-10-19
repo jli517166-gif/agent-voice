@@ -1,5 +1,6 @@
-/* Primary reading choreography. Only child ink moves; page geometry stays fixed. */
-.reference-setup .screen h1[data-motion-ready] {
+/* Geometry stays fixed. center-deal.js deals the actual words and cards from the stage center. */
+.reference-setup .screen h1[data-motion-ready],
+#taskTitle[data-motion-ready] {
   position: relative;
   width: fit-content;
   max-width: 100%;
@@ -10,20 +11,18 @@
 }
 .title-piece {
   display: inline-block;
-  overflow: clip;
+  overflow: visible;
   vertical-align: bottom;
-  padding: 0.06em 0.01em 0.16em;
-  margin: -0.06em -0.01em -0.16em;
   line-height: inherit;
 }
 .title-ink {
   display: inline-block;
-  transform-origin: left bottom;
 }
 .reference-setup .focus-word:after {
   content: none;
 }
-.reference-setup .screen h1[data-motion-ready]:after {
+.reference-setup .screen h1[data-motion-ready]:after,
+#taskTitle[data-motion-ready]:after {
   content: "";
   position: absolute;
   left: 0;
@@ -32,66 +31,17 @@
   height: 3px;
   background: #c9b4ed;
   opacity: 0.85;
-  transform-origin: left;
+  transform-origin: center;
   pointer-events: none;
 }
 .reference-setup[data-reference-step="8"] h1[data-motion-ready]:after {
   background: #e4afca;
 }
-.reference-setup .focus-reveal .title-ink {
-  animation: title-action 640ms cubic-bezier(0.16, 1, 0.3, 1) both;
+.reference-setup .focus-reveal h1[data-motion-ready]:after,
+.task-scene[data-dealing="true"] #taskTitle:after {
+  animation: deal-rule 500ms 420ms ease-out both;
 }
-.reference-setup .focus-reveal [data-part="subject"] .title-ink {
-  animation: title-subject 720ms 120ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.reference-setup .focus-reveal h1[data-motion-ready]:after {
-  animation: title-rule 600ms 260ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
-}
-.reference-setup .focus-reveal .lead {
-  animation: description-arrive 480ms 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.reference-setup .focus-reveal .scene-controls {
-  animation: actions-arrive 420ms 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-/* Art follows the message, rather than competing with the opening words. */
-.reference-setup[data-composition] .art-reveal .hero-object {
-  animation-delay: 520ms;
-}
-.reference-setup[data-composition] .art-reveal .support-object {
-  animation-delay: 600ms;
-}
-.reference-setup[data-composition]
-  .art-reveal
-  :is(.voice-signature i, .listening-wave i) {
-  animation-delay: 540ms;
-}
-.reference-setup[data-composition] .scene-reveal:not(.still) {
-  animation-delay: 380ms;
-}
-@keyframes title-action {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 105%, 0) rotate(2deg);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) rotate(0);
-  }
-}
-@keyframes title-subject {
-  0% {
-    opacity: 0;
-    transform: translate3d(0, 110%, 0) rotate(2deg);
-  }
-  65% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) rotate(0);
-  }
-}
-@keyframes title-rule {
+@keyframes deal-rule {
   from {
     transform: scaleX(0);
     opacity: 0;
@@ -101,37 +51,29 @@
     opacity: 0.85;
   }
 }
-@keyframes description-arrive {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 18px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
+/* The whole illustration is one card; don't animate its children a second time. */
+.reference-setup .art-reveal *,
+.reference-setup .scene-reveal,
+.reference-setup .field-reveal {
+  animation: none !important;
 }
-@keyframes actions-arrive {
-  from {
-    opacity: 0.1;
-    transform: translate3d(0, 14px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
+.reference-setup .scene-copy {
+  overflow: visible;
 }
-.reduced .title-ink,
+.reference-setup:has(.art-stage[data-playing="true"]) .screen,
+.reference-setup:has(.art-stage[data-playing="true"]) .screen-content {
+  overflow: visible;
+}
+.task-scene[data-dealing="true"] .task-main {
+  overflow: visible !important;
+}
 .reduced h1[data-motion-ready]:after,
-.reduced .focus-reveal .lead,
-.reduced .focus-reveal .scene-controls {
+.reduced #taskTitle:after {
   animation: none !important;
 }
 @media (prefers-reduced-motion: reduce) {
-  .title-ink,
   h1[data-motion-ready]:after,
-  .reference-setup .focus-reveal .lead,
-  .reference-setup .focus-reveal .scene-controls {
+  #taskTitle:after {
     animation: none !important;
   }
 }

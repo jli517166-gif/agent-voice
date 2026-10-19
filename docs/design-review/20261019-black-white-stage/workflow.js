@@ -1,3 +1,5 @@
+import { dealFromCenter, settle } from "./center-deal.js";
+import { prepareText } from "./page-compositions.js";
 // Finite, cancellable state demonstrations; never installation or connection evidence.
 const B = window.reviewBridge,
   q = (s) => document.querySelector(s);
@@ -145,6 +147,8 @@ const specs = {
 let active = null,
   focusBefore = null,
   timers = [];
+let taskAnimations = [],
+  motionRevision = 0;
 const outcome = document.createElement("select");
 outcome.className = "prototype-outcome";
 outcome.setAttribute("aria-label", "预览执行结果");
@@ -168,6 +172,7 @@ function taskMode(enabled) {
 }
 function close(restore = true) {
   cancelTimers();
+  stopMotion();
   q(".task-scene")?.remove();
   taskMode(false);
   q("#window").style.removeProperty("--task-reading-top");
@@ -236,6 +241,79 @@ function manual() {
 function success() {
   return `<p>当前步骤的完成反馈示例。${["connection", "airi"].includes(active.kind) ? "实际实现仍需核对随机正文、来源与播放回执。" : "实际实现仍需校验真实资源和执行结果。"}</p><ul class="receipt-list">${active.spec.steps.map((s) => `<li>${s} · 演示通过</li>`).join("")}</ul>${active.path ? `<div class="task-path">${safe(active.path)}</div>` : ""}<p class="task-demo-note">未执行真实操作，不是本机验收结果。</p>`;
 }
+function stopMotion() {
+  motionRevision++;
+  settle(taskAnimations, true);
+  taskAnimations = [];
+}
+function taskVisual(kind) {
+  if (kind === "engine")
+    return `<div class="resource-deck" aria-hidden="true"><i class="resource-sheet sheet-one"></i><i class="resource-sheet sheet-two"></i><i class="resource-sheet sheet-three"></i><span class="resource-label">ENGINE</span></div>`;
+  if (kind === "environment")
+    return `<div class="runtime-circuit" aria-hidden="true"><div class="runtime-wire"></div>${["Python", "GPU", "依赖"].map((label, i) => `<span class="runtime-module" data-module="${i}"><b>${["Py", "GPU", "+"][i]}</b><small>${label}</small></span>`).join("")}</div>`;
+  return "";
+}
+function animateTask(scene, changed) {
+  if (B.isReduced()) {
+    scene.dataset.dealing = "false";
+    return;
+  }
+  if (changed) {
+    const entries = [...scene.querySelectorAll(".title-piece")].map(
+      (node, i) => ({ node, role: "title", delay: i * 100, duration: 650 }),
+    );
+    scene
+      .querySelectorAll(".task-body > :not(input[hidden]):not(.ui-sr)")
+      .forEach((node, i) =>
+        entries.push({
+          node,
+          role: "task-content",
+          delay: 300 + i * 60,
+          duration: 540,
+        }),
+      );
+    scene
+      .querySelectorAll(
+        active.phase === "running"
+          ? ".task-footer .inline-row > *"
+          : ".task-footer > button,.task-footer .inline-row > *",
+      )
+      .forEach((node, i) =>
+        entries.push({
+          node,
+          role: "task-control",
+          delay: 590 + i * 70,
+          duration: 520,
+        }),
+      );
+    entries.push({
+      node: scene.querySelector(".task-image"),
+      role: "task-illustration",
+      delay: 730,
+      duration: 650,
+      angle: -4,
+    });
+    scene.dataset.dealing = "true";
+    taskAnimations = dealFromCenter(q("#window"), entries);
+    const revision = ++motionRevision;
+    Promise.allSettled(taskAnimations.map((a) => a.finished)).then(() => {
+      if (revision === motionRevision && scene.isConnected)
+        scene.dataset.dealing = "false";
+    });
+  } else if (active.phase === "running") {
+    const node = scene.querySelector(".task-steps .current");
+    if (node)
+      taskAnimations.push(
+        node.animate(
+          [
+            { opacity: 0.25, transform: "translateX(-8px)" },
+            { opacity: 1, transform: "translateX(0)" },
+          ],
+          { duration: 330, easing: "ease-out" },
+        ),
+      );
+  }
+}
 function draw() {
   if (!active) return;
   const a = active,
@@ -249,32 +327,61 @@ function draw() {
             ? a.spec.name + "需要你继续。"
             : a.spec.title;
   let scene = q(".task-scene");
+  const changed = !scene || scene.dataset.phase !== phase;
+  if (changed) stopMotion();
   if (!scene) {
     scene = document.createElement("section");
     scene.className = "task-scene";
     scene.setAttribute("role", "dialog");
     scene.setAttribute("aria-modal", "true");
     scene.setAttribute("aria-labelledby", "taskTitle");
-    scene.innerHTML = `<div class="task-main"><div class="task-copy"><div class="task-kicker"></div><h2 id="taskTitle"></h2><div class="task-body" aria-live="polite"></div></div><div class="task-image" data-kind="${a.kind}"><img src="assets/${a.spec.image}" alt="" decoding="async"></div></div><footer class="task-footer"></footer>`;
+    scene.innerHTML = `<div class="task-main"><div class="task-copy"><div class="task-kicker"></div><h2 id="taskTitle"></h2><div class="task-body" aria-live="polite"></div></div><div class="task-image" data-kind="${a.kind}"><img src="assets/${a.spec.image}" alt="" decoding="async">${taskVisual(a.kind)}<span class="task-complete-mark" aria-hidden="true">✓</span><div class="task-progress-track" aria-hidden="true"><i></i></div></div></div><footer class="task-footer"></footer>`;
     q("#window").append(scene);
     scene.onclick = onTask;
   }
+  scene.dataset.phase = phase;
+  scene.dataset.kind = a.kind;
+  scene.dataset.index = String(a.index);
   scene.setAttribute("aria-busy", String(phase === "running"));
   scene.querySelector(".task-kicker").textContent =
     (a.options.name || a.spec.name) + " · 设计反馈";
-  scene.querySelector("#taskTitle").textContent = title;
-  scene.querySelector(".task-body").innerHTML = {
-    ready,
-    running: progress,
-    failure: failed,
-    manual,
-    success,
-  }[phase]();
+  const heading = scene.querySelector("#taskTitle");
+  if (heading.getAttribute("aria-label") !== title) {
+    heading.replaceChildren();
+    delete heading.dataset.motionReady;
+    if (
+      ["engine", "environment"].includes(a.kind) &&
+      ["ready", "running"].includes(phase)
+    ) {
+      const action = document.createElement("span"),
+        subject = document.createElement("span");
+      action.textContent = a.kind === "engine" ? "准备" : "补齐";
+      subject.textContent = a.kind === "engine" ? "引擎文件。" : "运行环境。";
+      heading.append(action, subject);
+    } else heading.textContent = title;
+    prepareText(scene, "#taskTitle");
+  }
+  const body = scene.querySelector(".task-body");
+  if (phase === "running" && !changed) {
+    // Progress advances in place: don't discard cards while their entrance is running.
+    body.querySelector("p").textContent = "正在" + a.spec.steps[a.index] + "…";
+    body.querySelectorAll(".task-steps li").forEach((node, i) => {
+      node.className = i < a.index ? "done" : i === a.index ? "current" : "";
+    });
+  } else
+    body.innerHTML = {
+      ready,
+      running: progress,
+      failure: failed,
+      manual,
+      success,
+    }[phase]();
   scene.querySelector(".task-image").dataset.running = String(
     phase === "running",
   );
-  scene.querySelector(".task-footer").innerHTML =
-    `<button class="ui-button subtle" data-task="cancel">${phase === "running" ? "取消执行" : "返回"}</button><div class="inline-row">${phase === "ready" ? `<button class="ui-button" data-task="example">使用示例${a.spec.path ? "位置" : ""}</button><button class="ui-button main" data-task="start">开始${a.spec.name} · 演示</button>` : phase === "running" ? '<span class="compact-hint">执行中，可随时取消</span>' : phase === "failure" ? '<button class="ui-button main" data-task="retry">预览重试通过</button>' : phase === "manual" ? '<button class="ui-button main" data-task="manualComplete">预览回执通过</button>' : '<button class="ui-button main" data-task="complete">完成并返回</button>'}</div>`;
+  if (changed || phase !== "running")
+    scene.querySelector(".task-footer").innerHTML =
+      `<button class="ui-button subtle" data-task="cancel">${phase === "running" ? "取消执行" : "返回"}</button><div class="inline-row">${phase === "ready" ? `<button class="ui-button" data-task="example">使用示例${a.spec.path ? "位置" : ""}</button><button class="ui-button main" data-task="start">开始${a.spec.name} · 演示</button>` : phase === "running" ? '<span class="compact-hint">执行中，可随时取消</span>' : phase === "failure" ? '<button class="ui-button main" data-task="retry">预览重试通过</button>' : phase === "manual" ? '<button class="ui-button main" data-task="manualComplete">预览回执通过</button>' : '<button class="ui-button main" data-task="complete">完成并返回</button>'}</div>`;
   const input = q("#taskPath");
   if (input)
     input.oninput = () => {
@@ -292,10 +399,14 @@ function draw() {
       }
     };
   if (phase !== "running")
-    scene.querySelector("input:not([hidden]),button")?.focus();
+    scene
+      .querySelector("input:not([hidden]),button")
+      ?.focus({ preventScroll: true });
+  animateTask(scene, changed);
 }
 function start(force) {
   cancelTimers();
+  stopMotion();
   active.outcome = force || active.outcome;
   active.phase = "running";
   active.index = 0;
@@ -304,12 +415,12 @@ function start(force) {
     if (!active) return;
     active.index = 1;
     draw();
-  }, 700);
+  }, 1100);
   schedule(() => {
     if (!active) return;
     active.index = 2;
     draw();
-  }, 1450);
+  }, 2200);
   schedule(() => {
     if (!active) return;
     active.phase =
@@ -325,7 +436,7 @@ function start(force) {
       B.cue(9);
       if (["connection", "airi"].includes(active.kind)) celebrate();
     }
-  }, 2200);
+  }, 3600);
 }
 function celebrate() {
   if (B.isReduced()) return;
@@ -494,7 +605,10 @@ document.addEventListener(
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopImmediatePropagation();
-      close();
+      if (q(".task-scene")?.dataset.dealing === "true") {
+        settle(taskAnimations);
+        q(".task-scene").dataset.dealing = "false";
+      } else close();
       return;
     }
     if (e.key === "Tab") {

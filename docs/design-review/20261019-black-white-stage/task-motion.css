@@ -1,0 +1,230 @@
+/* Preparation tasks retain a fixed reading anchor; only their surfaces move. */
+#window .task-scene {
+  animation: none;
+}
+#window .task-image {
+  isolation: isolate;
+}
+#window .task-image > img {
+  position: relative;
+  z-index: 2;
+}
+#window .task-scene[data-kind="engine"] .task-image > img {
+  width: 82%;
+  margin: 24px auto 0;
+}
+#window .task-scene[data-kind="environment"] .task-image > img {
+  width: 72%;
+  margin: 0 auto;
+  opacity: 0.94;
+}
+.resource-deck {
+  position: absolute;
+  inset: 8px 24px 20px;
+  z-index: 1;
+}
+.resource-sheet {
+  position: absolute;
+  width: 66%;
+  height: 65%;
+  left: 17%;
+  top: 8%;
+  border: 1px solid #a89ac66e;
+  border-radius: 14px;
+  background: linear-gradient(140deg, #f2edf4e8, #b9a8d148);
+  box-shadow: 0 12px 36px #14111b15;
+}
+.sheet-one {
+  transform: translate(-16px, -12px) rotate(-12deg);
+}
+.sheet-two {
+  transform: translate(18px, -2px) rotate(9deg);
+}
+.sheet-three {
+  transform: translate(0, 12px) rotate(-2deg);
+}
+.resource-label {
+  position: absolute;
+  left: 12px;
+  bottom: 2px;
+  color: #726786;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+}
+#window .task-scene[data-phase="running"] .sheet-one {
+  animation: file-transfer 1.25s ease-in-out infinite alternate;
+}
+#window .task-scene[data-phase="running"] .sheet-two {
+  animation: file-transfer 1.25s 0.2s ease-in-out infinite alternate-reverse;
+}
+@keyframes file-transfer {
+  from {
+    opacity: 0.4;
+    transform: translate(-16px, -18px) rotate(-10deg);
+  }
+  to {
+    opacity: 1;
+    transform: translate(18px, 0) rotate(6deg);
+  }
+}
+.runtime-circuit {
+  position: absolute;
+  z-index: 3;
+  bottom: 4px;
+  left: -4%;
+  right: -4%;
+  display: flex;
+  justify-content: space-between;
+}
+.runtime-wire {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 24px;
+  height: 1px;
+  background: #b5a8c4;
+}
+.runtime-module {
+  position: relative;
+  display: flex;
+  width: 72px;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  color: #796f85;
+}
+.runtime-module b {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  border: 1px solid #b3a1cc;
+  background: #ede7f1;
+  color: #716080;
+  font-size: 13px;
+  font-weight: 600;
+}
+.runtime-module small {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+#window .task-scene[data-phase="running"][data-index="0"] [data-module="0"] b,
+#window .task-scene[data-phase="running"][data-index="1"] [data-module="1"] b,
+#window .task-scene[data-phase="running"][data-index="2"] [data-module="2"] b {
+  animation: module-pulse 0.7s ease-in-out infinite alternate;
+  background: #b8a2e3;
+  color: #30283e;
+}
+#window .task-scene[data-phase="success"] .runtime-module b {
+  background: #d6e7dc;
+  border-color: #a0bfad;
+  color: #40614b;
+}
+@keyframes module-pulse {
+  from {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+.task-progress-track {
+  position: absolute;
+  bottom: -22px;
+  height: 3px;
+  left: 12%;
+  right: 12%;
+  overflow: hidden;
+  background: #a69ab12b;
+  border-radius: 3px;
+}
+.task-progress-track i {
+  display: block;
+  height: 100%;
+  background: #9a7cc6;
+  transform: scaleX(0.06);
+  transform-origin: left;
+}
+.task-scene[data-phase="running"][data-index="0"] .task-progress-track i {
+  transform: scaleX(0.3);
+}
+.task-scene[data-phase="running"][data-index="1"] .task-progress-track i {
+  transform: scaleX(0.63);
+}
+.task-scene[data-phase="running"][data-index="2"] .task-progress-track i,
+.task-scene[data-phase="success"] .task-progress-track i {
+  transform: scaleX(1);
+}
+.task-scene[data-phase="running"] .task-progress-track i {
+  transition: transform 0.4s ease-out;
+}
+.task-complete-mark {
+  position: absolute;
+  z-index: 4;
+  right: 2px;
+  top: 12px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #d9e9de;
+  color: #45634e;
+  display: grid;
+  place-items: center;
+  font-size: 25px;
+  opacity: 0;
+  transform: scale(0.5);
+}
+.task-scene[data-phase="success"] .task-complete-mark {
+  animation: task-confirm 0.5s 0.9s both cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes task-confirm {
+  from {
+    opacity: 0;
+    transform: scale(0.5) rotate(-25deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+.task-scene[data-phase="failure"] .task-progress-track i {
+  background: #bf786e;
+  transform: scaleX(0.65);
+}
+#window .task-steps li.current b {
+  animation: status-beat 0.75s ease-in-out infinite alternate;
+}
+@keyframes status-beat {
+  from {
+    opacity: 0.35;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #window .task-scene *,
+  #window .task-scene *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .task-scene[data-phase="success"] .task-complete-mark {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.reduced .task-scene *,
+.reduced .task-scene *::after {
+  animation: none !important;
+  transition: none !important;
+}
+.reduced .task-scene[data-phase="success"] .task-complete-mark {
+  opacity: 1;
+  transform: none;
+}
