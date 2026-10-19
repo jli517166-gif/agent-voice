@@ -35,13 +35,13 @@ namespace AgentVoice {
             var clip=new RectangleF(0,(Height-height)/2f,Width,height);
             var old=g.Clip;g.SetClip(clip);
             using(var brush=new SolidBrush(ForeColor))
-            using(var format=new StringFormat{Alignment=StringAlignment.Center,LineAlignment=StringAlignment.Center,FormatFlags=StringFormatFlags.NoWrap,Trimming=StringTrimming.EllipsisCharacter})
+            using(var format=new StringFormat{Alignment=StringAlignment.Near,LineAlignment=StringAlignment.Center,FormatFlags=0,Trimming=StringTrimming.None})
                 g.DrawString(Text,Font,brush,new RectangleF(0,0,Width,Height),format);
             g.Clip=old;
             if(progress>.82f){
                 float line=Width*.42f*Math.Min(1,(progress-.82f)/.18f);
                 using(var pen=new Pen(Color.FromArgb(200,174,148,255),2f))
-                    g.DrawLine(pen,Width/2f-line,Height-4,Width/2f+line,Height-4);
+                    g.DrawLine(pen,0,Height-4,line,Height-4);
             }
         }
         protected override void Dispose(bool disposing){if(disposing){timer.Dispose();watch.Stop();}base.Dispose(disposing);}

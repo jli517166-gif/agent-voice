@@ -18,7 +18,7 @@ namespace AgentVoice {
         internal void Preview(double t){Stop();time=t;Invalidate();}
         static float E(double t){t=Math.Max(0,Math.Min(1,t));return (float)(1-Math.Pow(1-t,3));}
         protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;float reveal=E(time/.5),settle=E((time-.16)/.68);float cx=Width/2f,cy=Height/2f;g.TranslateTransform(cx,cy+(1-reveal)*10);float s=Math.Min(1.1f,Math.Max(.65f,Height/132f));g.ScaleTransform(s,s);
-            Color cyan=Color.FromArgb(243,245,248),blue=Color.FromArgb(174,148,255);using(var dim=new Pen(Color.FromArgb(30,cyan),1))g.DrawEllipse(dim,-55,-55,110,110);
+            Color cyan=Color.FromArgb(243,245,248),blue=Color.FromArgb(174,148,255);if(Step==8){cyan=Color.FromArgb(244,175,202);blue=Color.FromArgb(205,120,160);}using(var dim=new Pen(Color.FromArgb(30,cyan),1))g.DrawEllipse(dim,-55,-55,110,110);
             for(int n=0;n<19;n++){float x=(n-9)*13;float amp=(float)(9+17*Math.Abs(Math.Sin(n*.67+Step*.5)));float pulse=reduced||time>=Duration?0:(float)Math.Sin(time*10-n*.25)*6*(1-settle);float h=Math.Max(4,(amp+pulse)*E((time-n*.012)/.5));using(var b=new SolidBrush(n%3==0?blue:cyan)){float alpha=Step==0||Step==4||Step==5?1:.18f;b.Color=Color.FromArgb((int)(220*reveal*alpha),b.Color);for(float y=0;y<h;y+=7){g.FillRectangle(b,x-3,30-y,6,4);g.FillRectangle(b,x-3,37+y,6,4);}}}
             using(var p=new Pen(Color.FromArgb((int)(255*reveal),cyan),2.4f))using(var white=new Pen(Color.FromArgb((int)(245*settle),Color.White),2.4f)){
                 switch(Step){
