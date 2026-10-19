@@ -10,14 +10,59 @@ using System.Windows.Forms;
 namespace AgentVoice {
     public sealed partial class MainForm {
         void BuildSettings(){
-            var hub=Stack(NewPage("settings"));
-            var common=Card(hub,"常用设置");Add(common,Hint("最常用的输出、连接和界面选项。"));
-            Add(common,Row(EntryBtn("重新运行首次配置","打开独立配置窗口；返回工作台后保留已有声音。",RunConfiguration)));
-            Add(common,HubRow(HubEntry("连接设备","连接 Harness 或 AIRI，并做真实播放验证。","connections",true),HubEntry("外观","设置背景、配色和程序图标。","appearance",false)));
-            var system=Card(hub,"系统与维护");Add(system,Hint("运行环境和低频高级选项集中在这里，日常使用通常无需修改。"));
-            Add(system,HubRow(HubEntry("补齐环境","检查缺少的依赖、源码与基础模型，在软件内下载并补齐。","environmentRepair",true)));
-            Add(system,HubRow(HubEntry("本地引擎","设置 CosyVoice、GPT-SoVITS v5 Turbo 和 ProPlus 的运行位置。","engine",false),HubEntry("声音细调","调整表达指令、句首空白和播放音量。","advanced",false),HubEntry("音频清理","设置生成音频的保留时间、数量和空间上限。","cleanup",false)));
+            var page=WebPage("settings");
+            WebTitle(page,"设置","需要时再展开，常用操作留在前台。");
+            var tabNames=new[]{"引擎与环境","声音","外观","存储"};
+            var tabWidths=new[]{130,76,76,76};
+            var tabX=new[]{38,176,260,344};
+            var tabs=new Button[4];
+            var panels=new ScenePanel[4];
+            Action<int> select=null;
+            select=delegate(int index){
+                for(int i=0;i<4;i++){
+                    panels[i].Visible=i==index;
+                    tabs[i].Tag=i==index?"primary":"secondary";
+                    if(!Accent.IsEmpty)StyleButton(tabs[i],false);
+                }
+            };
+            for(int i=0;i<4;i++){
+                int index=i;
+                tabs[i]=WebButton(tabNames[i],null,()=>select(index),tabX[i],126,tabWidths[i],30,false);
+                tabs[i].Tag=index==0?"primary":"secondary";
+                page.Controls.Add(tabs[i]);
+            }
+            WebDivider(page,38,160,902);
+            for(int i=0;i<4;i++){
+                panels[i]=new ScenePanel{Host=this,Location=new Point(38,181),Size=new Size(902,320),Margin=new Padding(0)};
+                page.Controls.Add(panels[i]);
+            }
+            var engineCard=WebCard(panels[0],0,0,902,320);
+            SettingsLine(engineCard,0,"本地 TTS 引擎","CosyVoice、GPT-SoVITS v5 Turbo / ProPlus 分开匹配环境。","管理引擎",()=>ShowPage("engine"));
+            SettingsLine(engineCard,1,"检查与补齐环境","联网准备或导入离线环境包，文件保存在软件目录内。","检查环境",()=>ShowPage("environmentRepair"));
+            SettingsLine(engineCard,2,"首次配置","重新进入独立向导；已有设置可保留。","重新配置",RunConfiguration);
+            SettingsLine(engineCard,3,"连接设备","连接 Harness 或 AIRI，并做真实播放验证。","连接设备",()=>ShowPage("connections"));
+            var soundCard=WebCard(panels[1],0,0,902,240);
+            SettingsLine(soundCard,0,"声音细调","调整表达指令、句首空白和播放音量。","调整",()=>ShowPage("advanced"));
+            SettingsLine(soundCard,1,"音色包","导入或导出声音模型与训练结果。","管理",()=>ShowPage("configuration"));
+            SettingsLine(soundCard,2,"声音方案","保存和切换整套声音设置。","管理",()=>ShowPage("voices"));
+            var lookCard=WebCard(panels[2],0,0,902,160);
+            SettingsLine(lookCard,0,"外观与图标","设置背景、配色、程序图标和等待动画。","打开外观",()=>ShowPage("appearance"));
+            SettingsLine(lookCard,1,"桌面快捷方式","使用当前图标创建桌面快捷方式。","创建",()=>{Icons.Shortcut(Application.ExecutablePath,Config.appearance.icon.Length>0?Store.Resolve(Config.appearance.icon):Application.ExecutablePath);Status("快捷方式已创建。");});
+            panels[2].Controls.Add(WebText("背景、配色、图标和等待动画在外观页统一保存。",8.8F,FontStyle.Regular,0,176,902,20,ContentAlignment.MiddleLeft));
+            var storageCard=WebCard(panels[3],0,0,902,240);
+            SettingsLine(storageCard,0,"音频清理","设置生成音频的保留时间、数量和空间上限。","打开清理",()=>ShowPage("cleanup"));
+            SettingsLine(storageCard,1,"音色包目录","查看导入与导出的音色包。","打开目录",()=>ServiceClient.Open(VoicePackageDirectory()));
+            SettingsLine(storageCard,2,"程序数据目录","settings.json、日志和生成音频的位置。","打开数据",()=>ServiceClient.Open(Store.Resolve("data")));
+            panels[3].Controls.Add(WebText("清理会保护生成或播放中的文件；跨电脑迁移请导出音色包。",8.8F,FontStyle.Regular,0,256,902,20,ContentAlignment.MiddleLeft));
+            select(0);
             BuildAppearance();BuildEngines();BuildEnvironmentRepair();BuildHarness();BuildAiri();BuildConnectionHub();BuildAdvanced();BuildCleanup();BuildConfiguration();BuildTraining();BuildAdvancedTraining();
+        }
+        void SettingsLine(ScenePanel card,int index,string title,string detail,string action,Action handler){
+            int y=index*80;
+            card.Controls.Add(WebText(title,10F,FontStyle.Bold,16,y+12,700,22,ContentAlignment.MiddleLeft));
+            card.Controls.Add(WebText(detail,9F,FontStyle.Regular,16,y+38,700,20,ContentAlignment.MiddleLeft));
+            card.Controls.Add(WebButton(action,null,handler,774,y+20,116,39));
+            if(index>0)WebDivider(card,16,y,870);
         }
         Button HubEntry(string text,string note,string pageId,bool important){var button=EntryBtn(text,note,()=>ShowPage(pageId));button.AutoSize=false;button.Width=250;button.Height=52;button.TextAlign=ContentAlignment.MiddleLeft;button.Padding=new Padding(14,0,8,0);return important?Primary(button):button;}
         ScenePanel SettingsCard(string pageId,string title){var stack=Stack(NewPage(pageId));return Card(stack,title);}
@@ -60,7 +105,7 @@ namespace AgentVoice {
             Add(connect,Hint("验证测试音频必须经桌宠播放完成并返回回执后才变绿和播放礼炮。仅连接心跳、打开窗口或降级到本机播放都不会误报成功；启动较慢时，桥接连通后会自动继续验证。"));
             var manual=Card(stack,"高级 · 手动连接信息");Add(manual,Hint("仅在自动联动不适用时使用。AIRI 的 TTS 提供方填入下面的本机地址；账号仍由 AIRI 自己管理。"));Add(manual,Row(Btn("复制 AIRI 连接信息",()=>{Clipboard.SetText("Base URL: http://127.0.0.1:"+Config.port+"/v1/\r\nAPI Key: "+Config.token+"\r\nModel: agent-voice-tts\r\nVoice: current");Status("AIRI 手动连接信息已复制。");})));
         }
-        void BuildConnectionHub(){var stack=Stack(NewPage("connections"));var start=Card(stack,"选择连接对象");Add(start,Hint("Harness 把进度说明和最终回复交给语音队列；AIRI 可以朗读聊天，也可以接管播放和嘴型。两者可以独立使用。"));var harness=HubEntry("Harness","连接已实测支持的 Codex 或 DeepSeek Harness，并可安装 MCP 快捷控制。","harness",true);var airi=HubEntry("AIRI 桌宠","手动启用后，选择已登录 AIRI 的目录并自动验证播放与嘴型。","airi",true);var guide=HubEntry("连接帮助","查看重载方法、验证标准和故障排查。","connectionGuide",false);Add(start,HubRow(harness,airi,guide));var flow=Card(stack,"连接步骤");Add(flow,Hint("1. 在首页试听声音。\r\n2. 启动语音服务。\r\n3. Harness 直接选择目录；AIRI 先手动启用，再选择目录。\r\n4. 程序自动识别、配置并完成真实播放验证。\r\n5. 看到绿色状态和礼炮才算完成。"));Add(flow,Hint("换电脑或移动程序后需要重新定位并验证。其他 Harness 请从二次开发入口新增适配器。"));}
+
         void BuildCleanup(){var card=SettingsCard("cleanup","音频清理");Add(card,Hint("音频目录："+Store.Resolve("data/output")));Add(card,Row(Btn("打开音频目录",()=>{Directory.CreateDirectory(Store.Resolve("data/output"));ServiceClient.Open(Store.Resolve("data/output"));})));NumberField(card,"maxAgeMinutes","删除超过（分钟）",1,43200,1,0);NumberField(card,"keepLatest","保留最新文件数",0,10000,1,0);NumberField(card,"maxTotalMb","总占用上限（MB）",1,100000,10,0);Add(card,Row(Primary(AsyncBtn("保存并清理",async()=>{var next=Json.Copy(Config);next.cleanup.maxAgeMinutes=(int)numbers["maxAgeMinutes"].Value;next.cleanup.keepLatest=(int)numbers["keepLatest"].Value;next.cleanup.maxTotalMb=(int)numbers["maxTotalMb"].Value;await Persist(next,new {cleanup=next.cleanup});var result=await Service.Request("/api/cleanup",new {});Status("已清理 "+result["removed"]+" 个音频。");})),Danger(AsyncBtn("清空已完成音频",async()=>{var result=await Service.Request("/api/cleanup",new {all=true});Status("已清理 "+result["removed"]+" 个音频，生成或播放中的文件受到保护。");}))));
         }
         void BindSettings(){foreach(var field in typeof(Engines).GetFields())fields[field.Name].Text=Convert.ToString(field.GetValue(Config.engines));fields["accent"].Text=Config.appearance.accent;fields["backgroundColor"].Text=Config.appearance.backgroundColor;fields["textColor"].Text=Config.appearance.textColor;fields["background"].Text=Config.appearance.background;fields["loadingAnimation"].Text=Config.appearance.loadingAnimation;fields["airiDirectory"].Text=Config.airi.directory;outputChoice.SelectedIndex=Config.airi.output=="airi"?1:0;checks["airiEnabled"].Checked=Config.airi.enabled;foreach(var key in Config.harness.Keys)checks[key].Checked=Config.harness[key];numbers["maxAgeMinutes"].Value=Config.cleanup.maxAgeMinutes;numbers["keepLatest"].Value=Config.cleanup.keepLatest;numbers["maxTotalMb"].Value=Config.cleanup.maxTotalMb;}

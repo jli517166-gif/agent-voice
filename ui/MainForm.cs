@@ -1,4 +1,4 @@
-﻿using Button = AgentVoice.AnimeButton;
+using Button = AgentVoice.AnimeButton;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -46,6 +46,7 @@ namespace AgentVoice {
         Label engineDetails;
         readonly List<Control> cosyOnlyControls=new List<Control>();
         ListBox profileList;
+        Label profileEmpty;
         SavedVoice deleted;
         public MainForm(SettingsStore store,bool testing=false){
             Store=store;Service=new ServiceClient(store);Config=store.Read();testingMode=testing;
@@ -112,7 +113,7 @@ namespace AgentVoice {
             if(id=="home")pageHistory.Clear();
             else if(remember){if(pageHistory.Count==64)pageHistory.RemoveAt(0);pageHistory.Add(page);}
             SendMessage(content.Handle,0x000B,IntPtr.Zero,IntPtr.Zero);content.SuspendLayout();
-            try{foreach(var pair in pages)pair.Value.Visible=pair.Key==id;pages[id].BringToFront();page=id;sidebar.Visible=true;outer.ColumnStyles[0].Width=150;workspace.RowStyles[0].Height=76;backButton.Visible=id!="home";pageTitle.Text=PageName(id);pageTitle.Visible=id!="home";statusBar.Visible=false;workspace.RowStyles[1].Height=0;foreach(var pair in navigationButtons)StyleButton(pair.Value,pair.Key==id);}
+            try{foreach(var pair in pages)pair.Value.Visible=pair.Key==id;pages[id].BringToFront();page=id;sidebar.Visible=true;outer.ColumnStyles[0].Width=150;workspace.RowStyles[0].Height=76;backButton.Visible=id!="home";pageTitle.Text=PageName(id);pageTitle.Visible=id!="home"&&!IsWebLayoutPage(id);statusBar.Visible=false;workspace.RowStyles[1].Height=0;foreach(var pair in navigationButtons)StyleButton(pair.Value,pair.Key==id);}
             finally{content.ResumeLayout(true);SendMessage(content.Handle,0x000B,new IntPtr(1),IntPtr.Zero);content.Invalidate(true);}
 
         }
@@ -144,6 +145,7 @@ namespace AgentVoice {
                 if(green)active.Add(Convert.ToString(pair.Value[0].Tag)+"（"+text+"）");
             }
             if(harnessSummary!=null){harnessSummary.Text=!online?"Harness：服务关闭":active.Count==0?"Harness：等待接入":"已验证接入："+string.Join("、",active);harnessSummary.ForeColor=online&&active.Count>0?(BackColor.GetBrightness()<.4F?Color.LightGreen:Color.FromArgb(25,128,72)):ForeColor;}
+            SyncAutoRead();
         }
         TextBox Input(bool multiline=false){return new TextBox{BorderStyle=BorderStyle.FixedSingle,Multiline=multiline,Height=multiline?78:30,MinimumSize=new Size(100,multiline?78:28),ScrollBars=multiline?ScrollBars.Vertical:ScrollBars.None};}
         NumericUpDown Number(decimal min,decimal max,decimal step,int digits){return new NumericUpDown{Minimum=min,Maximum=max,Increment=step,DecimalPlaces=digits,Width=110,Height=30};}
@@ -261,13 +263,50 @@ namespace AgentVoice {
             if(!draftChanged)BindVoice();else UpdateVoiceControls();
         }
         async Task Poll(){if(polling||IsDisposed)return;polling=true;try{var health=await Service.Request("/health",null,1000);if(Json.Text(health,"service")!="agent-voice-public")throw new InvalidOperationException("端口被其他服务占用");await SyncRemoteVoice(health);serviceToggle.Text="关闭服务";var missing=health["missing"] as object[];connection.Text="服务：已开启\r\n输出："+(missing!=null&&missing.Length>0?"声音待配置":(Convert.ToBoolean(health["airiConnected"])?"AIRI 桌宠":"本地播放"));object states;var connections=health.TryGetValue("harnessConnections",out states)?states as Dictionary<string,object>:null;object rawChecks;var verified=health.TryGetValue("verification",out rawChecks)?rawChecks as Dictionary<string,object>:null;
-                if(verified!=null){foreach(var entry in verified){var item=entry.Value as Dictionary<string,object>;if(item!=null&&Json.Text(item,"state")=="verified"&&connections!=null&&connections.ContainsKey(entry.Key))((Dictionary<string,object>)connections[entry.Key])["state"]="verified";}UpdateVerification(verified);}modelStatus=Json.Text(health,"serviceState");tips.SetToolTip(statusSystem,Json.Text(health,"error"));UpdateHarnessIndicators(connections,true);UpdateTopStatus(true);await ResumeAiriVerification(Convert.ToBoolean(health["airiConnected"]));}catch{pendingAiriVerification=false;modelStatus="offline";serviceToggle.Text="启动服务";connection.Text="服务：关闭或未响应\r\n输出：待命";UpdateHarnessIndicators(null,false);UpdateTopStatus(false);if(airiIndicator!=null){airiIndicator.Text="AIRI · 服务关闭";airiIndicator.ForeColor=ForeColor;}}finally{if(Config.voice.assetScope=="private")connection.Text+="\r\n声音：私有";polling=false;}}
+                if(verified!=null){foreach(var entry in verified){var item=entry.Value as Dictionary<string,object>;if(item!=null&&Json.Text(item,"state")=="verified"&&connections!=null&&connections.ContainsKey(entry.Key))((Dictionary<string,object>)connections[entry.Key])["state"]="verified";}UpdateVerification(verified);}modelStatus=Json.Text(health,"serviceState");tips.SetToolTip(statusSystem,Json.Text(health,"error"));UpdateHarnessIndicators(connections,true);UpdateTopStatus(true);await ResumeAiriVerification(Convert.ToBoolean(health["airiConnected"]));}catch{pendingAiriVerification=false;modelStatus="offline";serviceToggle.Text="启动服务";connection.Text="服务：关闭或未响应\r\n输出：待命";UpdateHarnessIndicators(null,false);UpdateTopStatus(false);UpdateAiriStatus("AIRI · 服务关闭",ForeColor);}finally{if(Config.voice.assetScope=="private")connection.Text+="\r\n声音：私有";polling=false;}}
         void UpdateTopStatus(bool online){if(statusSystem==null)return;string label="未就绪";switch(modelStatus){case "ready":label="声音已就绪";break;case "loading":label="模型加载中";break;case "unconfigured":label="声音待配置";break;case "error":label="声音故障 · 请自检";break;case "generating":label="语音生成中";break;case "playing":label="正在播放";break;case "queued":label="等待播放";break;case "not_loaded":label="模型尚未加载";break;}statusSystem.Text="● 系统 · "+(online?label:"服务关闭或未响应");statusSystem.ForeColor=online?(modelStatus=="error"?Color.Salmon:modelStatus=="ready"?Color.FromArgb(80,235,190):Color.Gold):ForeColor;statusEngine.Text="● 引擎 · "+(Config.voice.engine=="gpt-sovits"?"GPT-SoVITS":"CosyVoice");statusVoice.Text=Config.voice.engine=="gpt-sovits"?"● 版本 · "+(Config.voice.gptVariant=="v5turbo"?"v5 Turbo":"ProPlus"):"● 声音 · CosyVoice";statusOutput.Text="● 输出 · TTS 直出";}
         void RefreshPhrases(){string selected=Convert.ToString(phrases.SelectedItem);phrases.Items.Clear();foreach(var text in Config.phrases)phrases.Items.Add(text);if(phrases.Items.Contains(selected))phrases.SelectedItem=selected;else if(phrases.Items.Count>0)phrases.SelectedIndex=0;}
-        void RefreshProfiles(){if(profileList==null)return;string selected=(profileList.SelectedItem as SavedVoice)==null?"":((SavedVoice)profileList.SelectedItem).id;profileList.Items.Clear();foreach(var profile in Config.profiles)profileList.Items.Add(profile);for(int i=0;i<profileList.Items.Count;i++)if(((SavedVoice)profileList.Items[i]).id==selected)profileList.SelectedIndex=i;}
-        void BuildSavedVoices(){var stack=Stack(NewPage("voices"));var card=Card(stack,"声音方案");Add(card,Hint("保存声音参数，并把参考录音复制到程序内固定保存。模型记录校验信息，不重复复制大权重；跨电脑请导出音色包。"));
-            profileName=Input();profileName.Text="我的声音";Add(card,profileName);Add(card,Row(Primary(AsyncBtn("保存方案",SaveProfile)),AsyncBtn("固定旧方案参考",async()=>{var item=profileList.SelectedItem as SavedVoice;if(item==null)return;var result=await ProfileOperation("seal",item.id,null);WriteProfileFolder(Json.Decode<SavedVoice>(Json.Encode(result["profile"])));RefreshProfiles();Status("已固定旧方案的参考录音并记录模型校验信息。");})));profileList=new ListBox{Height=220,IntegralHeight=false};Add(card,profileList);
-            Add(card,Row(Primary(AsyncBtn("使用选中方案",async()=>{var item=profileList.SelectedItem as SavedVoice;if(item==null)return;await ProfileOperation("apply",item.id,null);BindVoice();Status("已应用声音方案："+item.name);})),Danger(AsyncBtn("删除方案",async()=>{var item=profileList.SelectedItem as SavedVoice;if(item==null)return;var next=Json.Copy(Config);next.profiles.RemoveAll(p=>p.id==item.id);await Persist(next,new {profiles=next.profiles});ArchiveProfileFolder(item);deleted=Json.Copy(item);RefreshProfiles();Status("声音方案已删除，模型文件保留；可撤销。");})),AsyncBtn("撤销删除",async()=>{if(deleted==null)return;var next=Json.Copy(Config);next.profiles.Add(deleted);await Persist(next,new {profiles=next.profiles});WriteProfileFolder(deleted);deleted=null;RefreshProfiles();}),EntryBtn("打开方案目录","查看每个声音方案保存的参数副本。",()=>{string directory=ProfileDirectory();ServiceClient.Open(directory);Status("每个声音方案有独立同名文件夹："+directory);})));Add(card,Hint("每次保存都会在 data/voice-configurations 下建立“方案名称 + ID”文件夹。"));
+        void RefreshProfiles(){if(profileList==null)return;string selected=(profileList.SelectedItem as SavedVoice)==null?"":((SavedVoice)profileList.SelectedItem).id;profileList.Items.Clear();foreach(var profile in Config.profiles)profileList.Items.Add(profile);for(int i=0;i<profileList.Items.Count;i++)if(((SavedVoice)profileList.Items[i]).id==selected)profileList.SelectedIndex=i;if(profileEmpty!=null)profileEmpty.Visible=profileList.Items.Count==0;}
+        void BuildSavedVoices(){
+            var page=WebPage("voices");
+            WebTitle(page,"声音方案","保存当前声音和参数，随时切回熟悉的听感。");
+            page.Controls.Add(WebAsyncButton("保存当前设置","把当前声音、参考条件和语速保存为可复用方案。",SaveProfile,632,46,140,39,true));
+            page.Controls.Add(WebButton("打开方案文件夹","查看每个声音方案保存的参数副本。",()=>{string directory=ProfileDirectory();ServiceClient.Open(directory);Status("每个声音方案有独立同名文件夹："+directory);},780,46,160,39));
+            var listCard=WebCard(page,38,126,902,111);
+            profileList=new ListBox{IntegralHeight=false,BorderStyle=BorderStyle.FixedSingle,ItemHeight=40,DrawMode=DrawMode.OwnerDrawFixed};
+            profileList.SetBounds(16,14,720,82);
+            profileList.DrawItem+=(s,e)=>{
+                if(e.Index<0||e.Index>=profileList.Items.Count)return;
+                var item=profileList.Items[e.Index] as SavedVoice;if(item==null)return;
+                bool selected=(e.State&DrawItemState.Selected)!=0;
+                using(var brush=new SolidBrush(selected?Mix(CardColor,Accent,18):CardColor))e.Graphics.FillRectangle(brush,e.Bounds);
+                Color color=selected?Accent:ForeColor;
+                using(var nameFont=new Font(Font.FontFamily,10F,FontStyle.Bold))using(var detailFont=new Font(Font.FontFamily,8F)){
+                    TextRenderer.DrawText(e.Graphics,item.name,nameFont,new Rectangle(e.Bounds.X+10,e.Bounds.Y+3,e.Bounds.Width-20,19),color,TextFormatFlags.Left|TextFormatFlags.EndEllipsis);
+                    string detail=EngineLabel(item.voice)+" · 语速 "+item.voice.speed.ToString("0.00")+"× · 音量 "+(item.voice.volume*100).ToString("0")+"%";
+                    TextRenderer.DrawText(e.Graphics,detail,detailFont,new Rectangle(e.Bounds.X+10,e.Bounds.Y+21,e.Bounds.Width-20,16),color,TextFormatFlags.Left|TextFormatFlags.EndEllipsis);
+                }
+                if(selected)e.DrawFocusRectangle();
+            };
+            listCard.Controls.Add(profileList);
+            profileEmpty=WebText("还没有保存的声音方案。填写方案名称后，点右上角“保存当前设置”。",9F,FontStyle.Regular,16,14,720,82,ContentAlignment.MiddleCenter);
+            profileEmpty.Visible=false;
+            listCard.Controls.Add(profileEmpty);
+            var apply=WebAsyncButton("应用",null,async()=>{var item=profileList.SelectedItem as SavedVoice;if(item==null)return;await ProfileOperation("apply",item.id,null);BindVoice();Status("已应用声音方案："+item.name);},772,38,60,34,false);
+            listCard.Controls.Add(apply);
+            var remove=WebAsyncButton("删除",null,async()=>{var item=profileList.SelectedItem as SavedVoice;if(item==null)return;var next=Json.Copy(Config);next.profiles.RemoveAll(p=>p.id==item.id);await Persist(next,new {profiles=next.profiles});ArchiveProfileFolder(item);deleted=Json.Copy(item);RefreshProfiles();Status("声音方案已删除，模型文件保留；可撤销。");},840,38,60,34,false);
+            Danger(remove);listCard.Controls.Add(remove);
+            page.Controls.Add(WebText("方案记录设置；音色包保存声音文件。两者分开管理，避免重复导出模型。",8.8F,FontStyle.Regular,38,240,902,18,ContentAlignment.MiddleLeft));
+            var maintain=WebCard(page,38,260,902,168);
+            maintain.Controls.Add(WebText("方案名称",9.5F,FontStyle.Bold,16,18,90,24,ContentAlignment.MiddleLeft));
+            profileName=Input();profileName.Text="我的声音";profileName.SetBounds(110,15,250,28);maintain.Controls.Add(profileName);
+            maintain.Controls.Add(WebAsyncButton("固定旧方案参考","把旧方案用到的参考录音固定到方案文件夹，并记录模型校验信息。",async()=>{var item=profileList.SelectedItem as SavedVoice;if(item==null)return;var result=await ProfileOperation("seal",item.id,null);WriteProfileFolder(Json.Decode<SavedVoice>(Json.Encode(result["profile"])));RefreshProfiles();Status("已固定旧方案的参考录音并记录模型校验信息。");},368,13,160,36,false));
+            maintain.Controls.Add(WebAsyncButton("撤销删除",null,async()=>{if(deleted==null)return;var next=Json.Copy(Config);next.profiles.Add(deleted);await Persist(next,new {profiles=next.profiles});WriteProfileFolder(deleted);deleted=null;RefreshProfiles();},536,13,110,36,false));
+            maintain.Controls.Add(WebButton("打开方案目录","查看每个声音方案保存的参数副本。",()=>{string directory=ProfileDirectory();ServiceClient.Open(directory);Status("每个声音方案有独立同名文件夹："+directory);},654,13,150,36));
+            maintain.Controls.Add(WebText("保存时会把参考录音复制到 data/voice-configurations/方案名称-ID。",9F,FontStyle.Regular,16,60,860,20,ContentAlignment.MiddleLeft));
+            maintain.Controls.Add(WebText("模型只记录校验信息，不重复复制大权重；跨电脑请导出音色包。",9F,FontStyle.Regular,16,84,860,20,ContentAlignment.MiddleLeft));
+            page.Controls.Add(WebText("每次保存都会在 data/voice-configurations 下建立“方案名称 + ID”文件夹。",9F,FontStyle.Regular,38,440,902,20,ContentAlignment.MiddleLeft));
+            page.Controls.Add(WebText("删除方案只归档配置文件夹并保留模型文件；可撤销最近一次删除。",8.8F,FontStyle.Regular,38,466,902,20,ContentAlignment.MiddleLeft));
         }
 
         async Task<Dictionary<string,object>> ProfileOperation(string mode,string id,object payload){

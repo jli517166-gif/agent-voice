@@ -1,4 +1,6 @@
+using Button = AgentVoice.AnimeButton;
 using System;
+using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using System.Linq;
@@ -6,44 +8,90 @@ using System.Threading.Tasks;
 
 namespace AgentVoice {
     public sealed partial class MainForm {
+        Label gptVariantNote;
         void BuildTraining(){
-            var stack=Stack(NewPage("training"));
-            var choose=Card(stack,"选择训练引擎");
-            Add(choose,Hint("先选择引擎，再按对应教程操作。这里只准备和检查素材，不会自动启动显卡训练。GPT 与 CosyVoice 的训练清单和权重不能互换。"));
-            var trainingChoice=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Name="trainingEngineChoice"};trainingChoice.Items.AddRange(new object[]{"CosyVoice 3","GPT-SoVITS · v5 Turbo","GPT-SoVITS · ProPlus"});Add(choose,trainingChoice);
-            var intro=Card(stack,"基础训练");
-            intro.Name="cosyTrainingGuide";
-            Add(intro,Hint("这里负责指导、准备目录、校验结果和带你回到导入入口。训练本身使用 CosyVoice 官方脚本，耗时、显存和数据量因数据集与训练轮数而异；程序不会把一段参考音频冒充为已训练模型。"));
-            Add(intro,Hint("本机可以先检查素材和生成清单。官方权重训练在单独的 Linux／WSL2 环境执行；只有推理文件的安装包不含完整训练脚本。不要覆盖已认可的推理环境。"));
-            Add(intro,Row(Primary(AsyncBtn("检查训练素材",async()=>await CheckTraining(false))),AsyncBtn("生成训练清单",async()=>await CheckTraining(true)),EntryBtn("从零开始训练","包含素材表格、Windows/WSL 路径、命令、失败处理和输出验收。",()=>ServiceClient.Open(Store.Resolve("音色训练从零开始.md"))),EntryBtn("交给 AI 的训练说明","AI 应先检查环境和素材，不得把参考克隆称为训练，也不应覆盖认可声音。",()=>ServiceClient.Open(Store.Resolve("AI训练操作约定.md")))));
-            Add(intro,Row(AsyncBtn("检查训练脚本",async()=>{var r=Json.Object(await Service.RunTool("prepare_training.py","inspect-repo --input "+ServiceClient.Quote(Store.Resolve(Config.engines.cosyRepo))+" --report-only"));MessageBox.Show(this,Json.Text(r,"message"),"训练环境检查");})));
-            Add(intro,Row(EntryBtn("打开训练目录","整理音频、台词和训练结果。",OpenTrainingWorkspace),EntryBtn("打开 CosyVoice 源码","查看本机安装的 CosyVoice。",()=>ServiceClient.Open(Store.Resolve(Config.engines.cosyRepo))),EntryBtn("打开官方训练脚本","查看官方 CosyVoice3 训练流程。",()=>ServiceClient.Open("https://github.com/FunAudioLLM/CosyVoice/blob/main/examples/libritts/cosyvoice3/run.sh")),EntryBtn("高级训练","查看高配置电脑训练专属权重的完整流程。",()=>ShowPage("advancedTraining"))));
+            var page=WebPage("training");
+            WebTitle(page,"训练指南","先选引擎，再按当前阶段继续。");
+            var cosyGuide=new ScenePanel{Host=this,Location=new Point(38,160),Size=new Size(902,516),Margin=new Padding(0),Name="cosyTrainingGuide"};
+            var gptGuide=new ScenePanel{Host=this,Location=new Point(38,160),Size=new Size(902,516),Margin=new Padding(0),Name="gptTrainingGuide"};
+            page.Controls.Add(cosyGuide);page.Controls.Add(gptGuide);
+            var cosyIntro=WebCard(cosyGuide,0,21,902,114);
+            cosyIntro.Controls.Add(WebText("从一段干净的参考录音开始。",15F,FontStyle.Bold,16,12,740,30,ContentAlignment.MiddleLeft));
+            cosyIntro.Controls.Add(WebText("先完成参考克隆，再决定是否需要训练权重。",9.5F,FontStyle.Regular,16,46,740,22,ContentAlignment.MiddleLeft));
+            cosyIntro.Controls.Add(WebText("这里只准备和检查素材，不会自动启动显卡训练。",8.5F,FontStyle.Regular,16,78,740,22,ContentAlignment.MiddleLeft));
+            var cosyArt=WebCard(cosyIntro,770,16,112,78);
+            cosyArt.Controls.Add(WebText("MIC",16F,FontStyle.Bold,0,0,112,78,ContentAlignment.MiddleCenter));
+            var cosySteps=WebCard(cosyGuide,0,151,902,312);
+            TrainingStep(cosySteps,0,"准备声音","录音清楚、无背景音乐；台词与录音一致。","检查素材",()=>{var ignored=Guard(async()=>await CheckTraining(false),"检查训练素材");},590,110,"生成清单",()=>{var ignored=Guard(async()=>await CheckTraining(true),"生成训练清单");},706,110);
+            TrainingStep(cosySteps,1,"选择训练路线","参考克隆用录音与台词；硬件较好时按高级指南。","从零开始",()=>ServiceClient.Open(Store.Resolve("音色训练从零开始.md")),560,110,"AI 训练约定",()=>ServiceClient.Open(Store.Resolve("AI训练操作约定.md")),678,150);
+            TrainingStep(cosySteps,2,"本地试听并验证","确认引擎、模型与台词一致，再用长短句验证。","选择训练模型",SelectTrainedModel,550,155,"打开音色包",()=>ShowPage("configuration"),713,125);
+            TrainingStep(cosySteps,3,"导出训练结果","按内容选择轻量、完整、训练增量或训练完整包。","高级训练",()=>ShowPage("advancedTraining"),540,105,"检查脚本",()=>{var ignored=Guard(InspectTrainingScript,"检查训练脚本");},653,105);
+            cosySteps.Controls.Add(WebButton("打开目录","打开音色包库内的训练输出目录。",OpenTrainingWorkspace,770,255,110,36));
+            var cosyFooter=WebCard(cosyGuide,0,468,902,48);
+            cosyFooter.Controls.Add(WebButton("查看详细操作手册","包含素材表格、Windows/WSL 路径、命令、失败处理和输出验收。",()=>ServiceClient.Open(Store.Resolve("音色训练从零开始.md")),0,4,185,39));
+            cosyFooter.Controls.Add(WebButton("打开 CosyVoice 源码","查看本机安装的 CosyVoice。",()=>ServiceClient.Open(Store.Resolve(Config.engines.cosyRepo)),191,4,230,39));
+            cosyFooter.Controls.Add(WebButton("打开官方训练脚本","查看官方 CosyVoice3 训练流程。",()=>ServiceClient.Open("https://github.com/FunAudioLLM/CosyVoice/blob/main/examples/libritts/cosyvoice3/run.sh"),427,4,185,39));
+            cosyFooter.Controls.Add(WebButton("打开训练界面","整理音频、台词和训练结果。",OpenTrainingWorkspace,618,4,145,39));
+            cosyFooter.Controls.Add(WebButton("返回首页","回到首页设置参考声音并试听。",()=>ShowPage("home"),769,4,105,39));
 
-            var prepare=Card(stack,"第 1 步 · 准备训练数据");
-            Add(prepare,Hint("收集同一说话人的干净单声道录音，切成自然短句；每段配一条完全一致的台词。去掉背景音乐、混响、重叠人声、爆音和长静音。训练数据可以有很多段，首页的推理参考音频仍是另一件事。"));
-            Add(prepare,Hint("按官方 recipe 准备 wav.scp、text、utt2spk、spk2utt，再生成 parquet 数据列表。建议先留出独立验证集，用没有参加训练的句子试听。"));
+            var gptIntro=WebCard(gptGuide,0,21,902,114);
+            gptIntro.Controls.Add(WebText("GPT-SoVITS 训练与声音准备",15F,FontStyle.Bold,16,12,740,30,ContentAlignment.MiddleLeft));
+            gptVariantNote=WebText("",8.5F,FontStyle.Regular,16,46,740,40,ContentAlignment.TopLeft);
+            gptIntro.Controls.Add(gptVariantNote);
+            gptIntro.Controls.Add(WebText("GPT 与 CosyVoice 的训练清单和权重不能互换。",8.5F,FontStyle.Regular,16,90,740,20,ContentAlignment.MiddleLeft));
+            var gptArt=WebCard(gptIntro,770,16,112,78);
+            gptArt.Controls.Add(WebText("GPT",16F,FontStyle.Bold,0,0,112,78,ContentAlignment.MiddleCenter));
+            var gptSteps=WebCard(gptGuide,0,151,902,312);
+            TrainingStep(gptSteps,0,"准备素材","干净短句、官方切片与标注；保留试听句。","训练手册",()=>ServiceClient.Open(Store.Resolve("GPT-SoVITS训练指南.md")),700,100);
+            TrainingStep(gptSteps,1,"训练特征","独立环境运行官方脚本，完成特征提取。","打开源码",()=>ServiceClient.Open(Store.Resolve(Config.engines.gptRepo)),700,100);
+            TrainingStep(gptSteps,2,"验证模型","先在官方推理页测试；不支持自动合并 LoRA。","官方说明",()=>ServiceClient.Open("https://github.com/RVC-Boss/GPT-SoVITS/blob/main/docs/cn/README.md"),700,100);
+            TrainingStep(gptSteps,3,"导出结果","参考音频 3～10 秒，试听后导出音色包。","打开目录",OpenTrainingWorkspace,700,100);
+            var gptFooter=WebCard(gptGuide,0,468,902,48);
+            gptFooter.Controls.Add(WebButton("查看详细操作手册","分别说明 ProPlus 与 v5 Turbo 的流程、权重格式和当前接入限制。",()=>ServiceClient.Open(Store.Resolve("GPT-SoVITS训练指南.md")),0,4,185,39));
+            gptFooter.Controls.Add(WebButton("打开训练目录","保存独立训练结果和验收记录。",OpenTrainingWorkspace,191,4,140,39));
+            gptFooter.Controls.Add(WebButton("打开音色包","导出训练结果或导入已有音色包。",()=>ShowPage("configuration"),337,4,120,39));
+            gptFooter.Controls.Add(WebButton("高级训练","查看高配置电脑训练专属权重的完整流程。",()=>ShowPage("advancedTraining"),463,4,110,39));
+            gptFooter.Controls.Add(WebButton("返回首页","回到首页设置参考声音并试听。",()=>ShowPage("home"),579,4,105,39));
 
-            var train=Card(stack,"第 2 步 · 训练与导出");
-            Add(train,Hint("使用 CosyVoice3 官方 examples/libritts/cosyvoice3/run.sh：先准备数据，再提取说话人特征／语音 token（CosyVoice3 可在线提取，但会影响训练速度），随后训练并平均 checkpoint。官方脚本当前标注主要支持 LLM 训练；不要直接把单个 checkpoint 当成完整可推理模型包。"));
-            Add(train,Hint("训练完成后，把选定权重放回兼容的完整 CosyVoice3 模型目录。该目录至少应包含 cosyvoice3.yaml、llm.pt、flow.pt、hift.pt、campplus.onnx、speech_tokenizer_v3.onnx 和 CosyVoice-BlankEN。"));
-
-            var use=Card(stack,"第 3 步 · 校验并在 agent语音中使用");
-            Add(use,Hint("训练结果统一放在音色包库的“训练输出”目录。校验完整模型后，到首页设置参考声音并点击“使用当前声音”试听，满意后进入“音色包”导出。"));
-            Add(use,Row(EntryBtn("选择训练模型","选择并校验完整 CosyVoice3 模型目录。",SelectTrainedModel),EntryBtn("打开音色包","导出训练结果或导入已有音色包。",()=>ShowPage("configuration")),EntryBtn("返回首页","回到首页设置参考声音并试听。",()=>ShowPage("home"))));
-
-            var explain=Card(stack,"参考克隆与训练模型的区别");
-            Add(explain,Hint("首页当前使用零样本参考克隆：一段参考音频 + 它的逐字台词作为条件。真正训练会用多段带台词的数据更新模型权重。当前程序仍以零样本接口调用训练后模型，因此首页的一段参考音频和逐字台词仍需填写；未来若加入 SFT 说话人 ID 推理，才可以对兼容的专属模型取消这项要求。"));
-            var cosyCards=stack.Controls.Cast<Control>().Where(c=>c!=choose).ToArray();
-            var gpt=Card(stack,"GPT-SoVITS 训练与声音准备");
-            gpt.Name="gptTrainingGuide";
-            var gptVariantNote=Hint("");Add(gpt,gptVariantNote);
-            Add(gpt,Hint("第 1 步：收集同一人的干净短句，使用 GPT 官方切片、ASR 和标注工具校对。标注格式为 音频路径|说话人|语言|逐字台词；不要使用 CosyVoice 的 metadata.csv／Kaldi 清单。保留未参加训练的试听句。"));
-            Add(gpt,Hint("第 2 步：在独立训练环境启动官方 webui.py，选择准确版本。完成文本、SSL 和语义特征提取，再按官方页面训练 SoVITS／GPT；不要覆盖本程序正在使用的推理环境或已认可模型。"));
-            Add(gpt,Hint("第 3 步：先在官方推理页测试训练结果，再检查本程序适配边界。当前适配完整权重目录和参考克隆，不会把 LoRA／adapter 单文件自动合并，也不能把改名当作格式转换。"));
-            Add(gpt,Hint("第 4 步：准备 3～10 秒参考音频与准确台词，在首页选对应 GPT 版本和完整模型目录，点击“使用当前声音”。等待新声音就绪，再用未见文本试听。满意后在音色包页面导出 .gpt-sovits.ttsmodel。"));
-            Add(gpt,Row(EntryBtn("GPT 训练手册","分别说明 ProPlus 与 v5 Turbo 的流程、权重格式和当前接入限制。",()=>ServiceClient.Open(Store.Resolve("GPT-SoVITS训练指南.md"))),EntryBtn("打开 GPT 源码","在独立环境运行官方 webui.py；不会自动启动训练。",()=>ServiceClient.Open(Store.Resolve(Config.engines.gptRepo))),EntryBtn("打开 GPT 官方说明","以所安装版本的训练页面和说明为准。",()=>ServiceClient.Open("https://github.com/RVC-Boss/GPT-SoVITS/blob/main/docs/cn/README.md")),EntryBtn("打开训练目录","保存独立训练结果和验收记录。",OpenTrainingWorkspace)));
-            trainingChoice.SelectedIndexChanged+=(s,e)=>{bool cosy=trainingChoice.SelectedIndex==0;foreach(var c in cosyCards)c.Visible=cosy;gpt.Visible=!cosy;gptVariantNote.Text=trainingChoice.SelectedIndex==1?"v5 Turbo：优先验证参考克隆。官方微调可能输出 LoRA；当前软件没有自动合并 LoRA 的功能，未经合并验证的权重不能直接导入。":"ProPlus：在官方页面选择 v2ProPlus，分别训练语义 GPT 与声学 SoVITS。只有架构兼容的完整推理权重才能按手册整理为模型目录。";};
+            var trainingChoice=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Name="trainingEngineChoice",Visible=false,Location=new Point(0,0),Size=new Size(1,1)};
+            trainingChoice.Items.AddRange(new object[]{"CosyVoice 3","GPT-SoVITS · v5 Turbo","GPT-SoVITS · ProPlus"});
+            page.Controls.Add(trainingChoice);
+            var tabs=new Button[3];
+            var names=new[]{"CosyVoice","GPT-SoVITS · v5 Turbo","GPT-SoVITS · ProPlus"};
+            var widths=new[]{140,260,250};
+            var xs=new[]{38,186,454};
+            for(int i=0;i<3;i++){
+                int index=i;
+                tabs[i]=WebButton(names[i],null,()=>trainingChoice.SelectedIndex=index,xs[i],126,widths[i],30,false);
+                page.Controls.Add(tabs[i]);
+            }
+            trainingChoice.SelectedIndexChanged+=(s,e)=>{
+                int index=trainingChoice.SelectedIndex;if(index<0)return;
+                cosyGuide.Visible=index==0;gptGuide.Visible=index>0;
+                for(int i=0;i<3;i++){tabs[i].Tag=i==index?"primary":"secondary";if(!Accent.IsEmpty)StyleButton(tabs[i],false);}
+                gptVariantNote.Text=index==1?"v5 Turbo：优先验证参考克隆。\r\n官方微调可能输出 LoRA，需先合并验证。":"ProPlus：分别训练语义 GPT 与声学 SoVITS。\r\n只导入架构兼容的完整推理权重。";
+            };
             trainingChoice.SelectedIndex=Config.voice.engine=="gpt-sovits"?(Config.voice.gptVariant=="v5turbo"?1:2):0;
+            int initial=trainingChoice.SelectedIndex;
+            cosyGuide.Visible=initial==0;gptGuide.Visible=initial!=0;
+            for(int i=0;i<3;i++)tabs[i].Tag=i==initial?"primary":"secondary";
+            gptVariantNote.Text=initial==2?"ProPlus：分别训练语义 GPT 与声学 SoVITS。\r\n只导入架构兼容的完整推理权重。":"v5 Turbo：优先验证参考克隆。\r\n官方微调可能输出 LoRA，需先合并验证。";
+        }
+        void TrainingStep(ScenePanel card,int index,string title,string detail,string first,Action firstAction,int firstX,int firstWidth,string second,Action secondAction,int secondX,int secondWidth){
+            int y=index*78;
+            card.Controls.Add(WebText((index+1).ToString(),12F,FontStyle.Bold,16,y+18,28,24,ContentAlignment.MiddleLeft));
+            card.Controls.Add(WebText(title,10.5F,FontStyle.Bold,48,y+14,460,24,ContentAlignment.MiddleLeft));
+            card.Controls.Add(WebText(detail,8.5F,FontStyle.Regular,48,y+38,460,20,ContentAlignment.MiddleLeft));
+            card.Controls.Add(WebButton(first,null,firstAction,firstX,y+21,firstWidth,36));
+            if(second!=null)card.Controls.Add(WebButton(second,null,secondAction,secondX,y+21,secondWidth,36));
+            if(index>0)WebDivider(card,16,y,870);
+        }
+        void TrainingStep(ScenePanel card,int index,string title,string detail,string action,Action handler,int x,int width){
+            TrainingStep(card,index,title,detail,action,handler,x,width,null,null,0,0);
+        }
+        async Task InspectTrainingScript(){
+            var r=Json.Object(await Service.RunTool("prepare_training.py","inspect-repo --input "+ServiceClient.Quote(Store.Resolve(Config.engines.cosyRepo))+" --report-only"));
+            MessageBox.Show(this,Json.Text(r,"message"),"训练环境检查");
         }
         void BuildAdvancedTraining(){
             var stack=Stack(NewPage("advancedTraining"));

@@ -1,6 +1,7 @@
 using Button = AgentVoice.AnimeButton;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -8,36 +9,82 @@ using System.Windows.Forms;
 namespace AgentVoice {
     public sealed partial class MainForm {
         Button exportConfigurationButton,exportFullConfigurationButton,exportTrainedButton,exportTrainedFullButton,importConfigurationButton;
+        ToolStripMenuItem exportTrainedMenuItem,exportTrainedFullMenuItem;
         TextBox modelPackageName;
         Label packageEngineHint;
 
         Dictionary<string,object> lastTransfer;
         void BuildConfiguration(){
-            var card=SettingsCard("configuration","音色包");
-            packageEngineHint=Hint("CosyVoice 与 GPT-SoVITS 使用各自后缀的音色包，导入时自动选择引擎和版本。");Add(card,packageEngineHint);
-            Add(card,Hint("轻量包：参考音频和参数；目标电脑必须已有完全一致的基础模型。模型完整包：额外携带当前基础模型，适合离线迁移。"));
-            Add(card,Hint("高级训练包：只携带训练后变化的权重，体积较小，导入时需要匹配的基础模型。高级完整包：携带完整训练模型，不要求目标电脑已有基础模型。四种包都不包含 Python、外观或连接密钥。"));
-            Add(card,Hint("音色名称"));modelPackageName=Input();modelPackageName.Text="我的声音";Add(card,modelPackageName);
-            exportConfigurationButton=AsyncBtn("导出轻量包",async()=>await ChooseAndExport("lightweight"));
-            exportFullConfigurationButton=AsyncBtn("导出模型完整包",async()=>await ChooseAndExport("full"));
-            exportTrainedButton=AsyncBtn("导出高级训练包",async()=>await ChooseAndExport("trained"));
-            exportTrainedFullButton=AsyncBtn("导出高级完整包",async()=>await ChooseAndExport("trained-full"));
-            importConfigurationButton=Primary(AsyncBtn("导入音色包",async()=>{
+            var page=WebPage("configuration");
+            WebTitle(page,"音色包","声音文件放在这里，参数组合放在“声音方案”。");
+            importConfigurationButton=WebAsyncButton("导入音色包","导入 CosyVoice 或 GPT-SoVITS 音色包，自动匹配模型和版本。",async()=>{
                 string path=null;
-                if(path==null)using(var dialog=new OpenFileDialog{Filter="TTS 音色包|*.cosyvoice.ttsmodel;*.gpt-sovits.ttsmodel",CheckFileExists=true,InitialDirectory=VoicePackageDirectory()}){
-                    if(dialog.ShowDialog(this)!=DialogResult.OK)return;path=dialog.FileName;
+                using(var dialog=new OpenFileDialog{Filter="TTS 音色包|*.cosyvoice.ttsmodel;*.gpt-sovits.ttsmodel",CheckFileExists=true,InitialDirectory=VoicePackageDirectory()}){
+                    if(dialog.ShowDialog(this)!=DialogResult.OK)return;
+                    path=dialog.FileName;
                 }
                 await ImportConfiguration(path);
-            }));
-            tips.SetToolTip(importConfigurationButton,"导入 CosyVoice 或 GPT-SoVITS 音色包，自动匹配模型和版本。");
-            tips.SetToolTip(exportConfigurationButton,"只导出参考声音和参数；目标电脑需要相同基础模型。");
-            tips.SetToolTip(exportFullConfigurationButton,"导出参考声音、参数和当前基础模型。");
-            tips.SetToolTip(exportTrainedButton,"只导出训练后变化的权重；目标电脑需要相同基础模型。");
-            tips.SetToolTip(exportTrainedFullButton,"导出完整训练模型，适合跨电脑迁移。");
-            Add(card,Row(importConfigurationButton,exportConfigurationButton,exportFullConfigurationButton,exportTrainedButton,exportTrainedFullButton));
-            Add(card,Row(Btn("打开音色包目录",()=>ServiceClient.Open(VoicePackageDirectory())),Btn("打开引擎目录",()=>ServiceClient.Open(TtsEngineDirectory())),Btn("查看高级训练手册",()=>ShowPage("advancedTraining"))));
-            Add(card,Hint("高级导出会先让你选择训练完成的完整 CosyVoice3 模型目录。导入时程序会校验模型、引擎和运行环境指纹；不兼容时不会覆盖当前声音。"));
+            },676,46,128,39,true);
+            page.Controls.Add(importConfigurationButton);
+            var exportButton=WebButton("导出音色包","先在这里选择导出类型，或在下方按类型直接导出。",()=>{},812,46,128,39);
+            page.Controls.Add(exportButton);
+            var menu=new ContextMenuStrip();
+            foreach(var pair in new string[][]{
+                new[]{"导出轻量包","lightweight"},
+                new[]{"导出模型完整包","full"},
+                new[]{"导出高级训练包","trained"},
+                new[]{"导出高级完整包","trained-full"}
+            }){
+                var item=new ToolStripMenuItem(pair[0]);string mode=pair[1];
+                item.Click+=(s,e)=>ExportMode(mode);
+                if(mode=="trained")exportTrainedMenuItem=item;
+                if(mode=="trained-full")exportTrainedFullMenuItem=item;
+                menu.Items.Add(item);
+            }
+            exportButton.Click+=(s,e)=>menu.Show(exportButton,new Point(0,exportButton.Height));
+            exportButton.ContextMenuStrip=menu;
+
+            var list=WebCard(page,38,126,902,275);
+            PackageIcon(list,0);
+            list.Controls.Add(WebText("轻量包",13F,FontStyle.Bold,70,18,430,26,ContentAlignment.MiddleLeft));
+            list.Controls.Add(WebText("参考声音与参数；目标电脑需要相同的基础模型。",9F,FontStyle.Regular,70,48,560,20,ContentAlignment.MiddleLeft));
+            exportConfigurationButton=WebAsyncButton("导出轻量包","只导出参考声音和参数；目标电脑需要相同基础模型。",async()=>await ChooseAndExport("lightweight"),700,26,180,39,false);
+            list.Controls.Add(exportConfigurationButton);
+            WebDivider(list,16,91,870);
+
+            PackageIcon(list,91);
+            list.Controls.Add(WebText("模型完整包",13F,FontStyle.Bold,70,109,430,26,ContentAlignment.MiddleLeft));
+            list.Controls.Add(WebText("额外携带当前基础模型，适合离线迁移。",9F,FontStyle.Regular,70,139,560,20,ContentAlignment.MiddleLeft));
+            exportFullConfigurationButton=WebAsyncButton("导出模型完整包","导出参考声音、参数和当前基础模型。",async()=>await ChooseAndExport("full"),700,117,180,39,false);
+            list.Controls.Add(exportFullConfigurationButton);
+            WebDivider(list,16,182,870);
+
+            PackageIcon(list,182);
+            list.Controls.Add(WebText("高级训练包 / 高级完整包",13F,FontStyle.Bold,70,200,430,26,ContentAlignment.MiddleLeft));
+            list.Controls.Add(WebText("训练后权重或完整训练模型；导入时匹配。",9F,FontStyle.Regular,70,230,408,20,ContentAlignment.MiddleLeft));
+            exportTrainedButton=WebAsyncButton("导出高级训练包","只导出训练后变化的权重；目标电脑需要相同基础模型。",async()=>await ChooseAndExport("trained"),478,208,180,39,false);
+            list.Controls.Add(exportTrainedButton);
+            exportTrainedFullButton=WebAsyncButton("导出高级完整包","导出完整训练模型，适合跨电脑迁移。",async()=>await ChooseAndExport("trained-full"),666,208,180,39,false);
+            list.Controls.Add(exportTrainedFullButton);
+
+            page.Controls.Add(WebText("音色名称",9.5F,FontStyle.Bold,38,408,90,24,ContentAlignment.MiddleLeft));
+            modelPackageName=Input();modelPackageName.Text="我的声音";modelPackageName.SetBounds(132,406,260,30);page.Controls.Add(modelPackageName);
+            page.Controls.Add(WebText("导出文件名会使用此名称；高级导出会再选模型目录。",8.8F,FontStyle.Regular,410,406,530,34,ContentAlignment.TopLeft));
+            packageEngineHint=WebText("CosyVoice 与 GPT-SoVITS 使用各自后缀的音色包，导入时自动选择引擎和版本。",9F,FontStyle.Regular,38,446,902,20,ContentAlignment.MiddleLeft);
+            page.Controls.Add(packageEngineHint);
+
+            page.Controls.Add(WebButton("训练自己的音色","准备数据并校验训练模型。",()=>ShowPage("training"),38,484,170,39));
+            page.Controls.Add(WebButton("查看高级训练手册","查看高配置电脑训练专属权重的完整流程。",()=>ShowPage("advancedTraining"),216,484,190,39));
+            page.Controls.Add(WebButton("打开引擎目录","查看独立的源码、运行环境与模型。",()=>ServiceClient.Open(TtsEngineDirectory()),414,484,150,39));
+            page.Controls.Add(WebButton("打开音色包文件夹","打开程序专用的音色包库。",()=>ServiceClient.Open(VoicePackageDirectory()),760,484,180,39));
+            page.Controls.Add(WebText("高级导出会先选择训练模型目录；导入会校验模型与环境指纹，不兼容时不覆盖当前声音。",8.8F,FontStyle.Regular,38,536,902,40,ContentAlignment.TopLeft));
         }
+        void PackageIcon(ScenePanel card,int y){
+            var icon=new Panel{BackColor=Mix(CardColor,ForeColor,8),Bounds=new Rectangle(16,y+24,42,42),Margin=new Padding(0)};
+            icon.Controls.Add(WebText("♪",16F,FontStyle.Bold,0,0,42,42,ContentAlignment.MiddleCenter));
+            card.Controls.Add(icon);
+        }
+        async void ExportMode(string mode){try{await ChooseAndExport(mode);}catch(Exception error){StatusError(error.Message);}}
         async Task ChooseAndExport(string mode){
             string path=null;
             string name=SafeProfileName(PackageDisplayName(modelPackageName.Text));if(name=="未命名配置")throw new InvalidOperationException("请先填写导出音色名称。");

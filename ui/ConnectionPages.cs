@@ -12,7 +12,9 @@ namespace AgentVoice {
     public sealed partial class MainForm {
         readonly Dictionary<string,string> verificationIds=new Dictionary<string,string>();
         readonly Dictionary<string,string> connectionHints=new Dictionary<string,string>();
-        Label verificationHint,airiIndicator;
+        Label verificationHint,airiIndicator,airiConnectionsStatus;
+        CheckBox autoReadToggle;
+        bool autoReadSyncing;
         bool pendingAiriVerification;
         [DllImport("user32.dll")]static extern bool SetForegroundWindow(IntPtr window);
         [DllImport("user32.dll",EntryPoint="ShowWindow")]static extern bool ShowAiriWindow(IntPtr window,int command);
@@ -136,7 +138,7 @@ namespace AgentVoice {
         }
         void UpdateVerification(Dictionary<string,object> states){
             object raw;var airi=states.TryGetValue("airi",out raw)?raw as Dictionary<string,object>:null;
-            if(airiIndicator!=null){bool passed=Config.airi.enabled&&airi!=null&&Json.Text(airi,"state")=="verified";airiIndicator.Text="AIRI · "+(passed?"实际播放验证通过":!Config.airi.enabled?"未启用":"尚未通过播放验证");airiIndicator.ForeColor=passed?Color.FromArgb(25,128,72):ForeColor;}
+            if(airiIndicator!=null||airiConnectionsStatus!=null){bool passed=Config.airi.enabled&&airi!=null&&Json.Text(airi,"state")=="verified";UpdateAiriStatus("AIRI · "+(passed?"实际播放验证通过":!Config.airi.enabled?"未启用":"尚未通过播放验证"),passed?Color.FromArgb(25,128,72):ForeColor);}
             foreach(var entry in states){
                 var item=entry.Value as Dictionary<string,object>;if(item==null)continue;string id;
                 if(!verificationIds.TryGetValue(entry.Key,out id)||id!=Json.Text(item,"id"))continue;
@@ -155,6 +157,81 @@ namespace AgentVoice {
             if(!File.Exists(exe))throw new InvalidOperationException("请选择原 AIRI 安装目录。");
             Process.Start(new ProcessStartInfo(exe){WorkingDirectory=Path.GetDirectoryName(exe),UseShellExecute=true});
             Status("已打开 AIRI，沿用原用户登录资料；等待桌宠连接后验证。");
+        }
+        void BuildConnectionHub(){
+            var page=WebPage("connections");
+            WebTitle(page,"连接","先选目录，再验证真实回复与播放回执。");
+            page.Controls.Add(WebButton("接入验证说明","查看识别依据、真实验证标准和故障排查。",()=>ShowPage("connectionGuide"),784,46,156,39));
+            var clients=WebCard(page,38,126,902,350);
+            ClientIcon(clients,0,"Cx");
+            clients.Controls.Add(WebText("Codex",13F,FontStyle.Bold,70,18,600,26,ContentAlignment.MiddleLeft));
+            clients.Controls.Add(WebText("MCP 语言控制与生成过程自动朗读。",9F,FontStyle.Regular,70,47,650,20,ContentAlignment.MiddleLeft));
+            clients.Controls.Add(WebHarnessStatus("codex","Codex",70,73,640));
+            clients.Controls.Add(WebAsyncButton("选择并验证","选择 Codex 或 DeepSeek Harness 的安装目录或用户配置目录，自动识别、安装连接器并做真实回复与播放验证。",BeginAutoHarness,762,39,132,39));
+            WebDivider(clients,16,117,870);
+
+            ClientIcon(clients,117,"DS");
+            clients.Controls.Add(WebText("DeepSeek Harness",13F,FontStyle.Bold,70,135,600,26,ContentAlignment.MiddleLeft));
+            clients.Controls.Add(WebText("聊天栏控制入口与生成过程自动朗读。",9F,FontStyle.Regular,70,164,650,20,ContentAlignment.MiddleLeft));
+            clients.Controls.Add(WebHarnessStatus("deepseek","DeepSeek Harness",70,190,640));
+            clients.Controls.Add(WebAsyncButton("选择并验证","自动定位 DeepSeek Harness 的用户配置目录，安装连接器并完成真实回复与播放验证。",BeginAutoHarness,762,156,132,39));
+            WebDivider(clients,16,234,870);
+
+            ClientIcon(clients,234,"AI");
+            clients.Controls.Add(WebText("AIRI",13F,FontStyle.Bold,70,252,600,26,ContentAlignment.MiddleLeft));
+            clients.Controls.Add(WebText("使用你已经登录的原 AIRI，不另建副本。",9F,FontStyle.Regular,70,281,560,20,ContentAlignment.MiddleLeft));
+            airiConnectionsStatus=WebText("AIRI · 未启用",9F,FontStyle.Regular,70,307,540,20,ContentAlignment.MiddleLeft);
+            clients.Controls.Add(airiConnectionsStatus);
+            var airiToggle=new CheckBox{Text="启用联动",AutoSize=false,Bounds=new Rectangle(620,277,130,26),BackColor=Color.Transparent};
+            airiToggle.Checked=Config.airi.enabled;
+            airiToggle.CheckedChanged+=async(s,e)=>{
+                try{
+                    var next=Json.Copy(Config);next.airi.enabled=airiToggle.Checked;await Persist(next,new{airi=next.airi});
+                    if(checks.ContainsKey("airiEnabled"))checks["airiEnabled"].Checked=airiToggle.Checked;
+                    Status(airiToggle.Checked?"AIRI 联动已启用。":"AIRI 联动已关闭。");
+                }catch(Exception error){StatusError(error.Message);}
+            };
+            clients.Controls.Add(airiToggle);
+            clients.Controls.Add(WebButton("AIRI 设置","打开 AIRI 页面，选择目录并做真实播放验证。",()=>ShowPage("airi"),768,273,126,39));
+
+            var auto=WebCard(page,38,476,902,80);
+            auto.Controls.Add(WebText("自动朗读",10F,FontStyle.Bold,16,12,300,24,ContentAlignment.MiddleLeft));
+            auto.Controls.Add(WebText("任务执行过程中的正文与最终回复都可朗读；完整句子按顺序播放。",9F,FontStyle.Regular,16,38,620,34,ContentAlignment.TopLeft));
+            auto.Controls.Add(WebButton("Harness 设置","分别启用 Codex 或 DeepSeek Harness。",()=>ShowPage("harness"),656,22,144,39));
+            autoReadToggle=new CheckBox{Text="启用",AutoSize=false,Bounds=new Rectangle(808,26,92,28),BackColor=Color.Transparent};
+            autoReadToggle.Checked=AnyHarnessEnabled();
+            autoReadToggle.CheckedChanged+=async(s,e)=>{
+                if(autoReadSyncing)return;
+                try{
+                    var next=Json.Copy(Config);
+                    foreach(var key in next.harness.Keys.ToArray())next.harness[key]=autoReadToggle.Checked;
+                    await Persist(next,new{harness=next.harness});
+                    if(checks.ContainsKey("codex"))checks["codex"].Checked=next.harness["codex"];
+                    if(checks.ContainsKey("deepseek"))checks["deepseek"].Checked=next.harness["deepseek"];
+                    Status(autoReadToggle.Checked?"自动朗读已开启。":"自动朗读已关闭；仍可手动生成和播放。");
+                }catch(Exception error){StatusError(error.Message);}
+            };
+            auto.Controls.Add(autoReadToggle);
+
+            var footer=WebCard(page,38,566,902,74);
+            footer.Controls.Add(WebButton("开发其他客户端连接器","新增适配器前先阅读 Harness 二次开发指南。",()=>ServiceClient.Open(Store.Resolve("Harness二次开发指南.md")),16,16,236,39));
+            footer.Controls.Add(WebText("当前实测支持范围：Codex、DeepSeek Harness。",9F,FontStyle.Regular,270,16,610,20,ContentAlignment.MiddleLeft));
+            footer.Controls.Add(WebText("未真机验证的 Harness 不进入正式支持列表。",8.8F,FontStyle.Regular,270,40,610,20,ContentAlignment.MiddleLeft));
+        }
+        void ClientIcon(ScenePanel card,int y,string text){
+            var panel=new Panel{BackColor=Mix(CardColor,ForeColor,8),Bounds=new Rectangle(16,y+37,42,42),Margin=new Padding(0)};
+            panel.Controls.Add(WebText(text,9F,FontStyle.Bold,0,0,42,42,ContentAlignment.MiddleCenter));
+            card.Controls.Add(panel);
+        }
+        bool AnyHarnessEnabled(){foreach(var value in Config.harness.Values)if(value)return true;return false;}
+        void SyncAutoRead(){
+            if(autoReadToggle==null||autoReadSyncing)return;
+            autoReadSyncing=true;
+            try{autoReadToggle.Checked=AnyHarnessEnabled();}finally{autoReadSyncing=false;}
+        }
+        void UpdateAiriStatus(string text,Color color){
+            if(airiIndicator!=null){airiIndicator.Text=text;airiIndicator.ForeColor=color;}
+            if(airiConnectionsStatus!=null){airiConnectionsStatus.Text=text;airiConnectionsStatus.ForeColor=color;}
         }
         void ShowCelebration(string source){
             var snapshot=new Bitmap(Math.Max(1,shell.ClientSize.Width),Math.Max(1,shell.ClientSize.Height));shell.DrawToBitmap(snapshot,new Rectangle(Point.Empty,snapshot.Size));

@@ -19,7 +19,9 @@ namespace AgentVoice {
             if(engineDetails!=null)engineDetails.Text=engine=="gpt-sovits"?"GPT-SoVITS · "+(SelectedVariant()=="v5turbo"?"v5 Turbo：推荐的参考音色版本。":"ProPlus：用于按角色保存另一套声音方案。") :"CosyVoice：保留已认可的本地音色、参考条件和训练音色包。";
             foreach(var button in new[]{exportConfigurationButton,exportFullConfigurationButton})if(button!=null)button.Enabled=true;
             foreach(var button in new[]{exportTrainedButton,exportTrainedFullButton})if(button!=null)button.Enabled=Capability("trainedBundles");
-            if(packageEngineHint!=null)packageEngineHint.Text=engine=="cosyvoice"?"当前为 CosyVoice，支持四种 .cosyvoice.ttsmodel 音色包。":"当前为 GPT-SoVITS：支持轻量包和模型完整包，后缀 .gpt-sovits.ttsmodel；包内记录 v5 Turbo 或 ProPlus 版本。";
+            if(exportTrainedMenuItem!=null)exportTrainedMenuItem.Enabled=Capability("trainedBundles");
+            if(exportTrainedFullMenuItem!=null)exportTrainedFullMenuItem.Enabled=Capability("trainedBundles");
+            if(packageEngineHint!=null)packageEngineHint.Text=engine=="cosyvoice"?"当前为 CosyVoice，支持四种 .cosyvoice.ttsmodel 音色包。":"当前为 GPT-SoVITS，支持轻量包与模型完整包（.gpt-sovits.ttsmodel）。";
             bool advanced=checks.ContainsKey("advancedEnabled")&&checks["advancedEnabled"].Checked;
             foreach(string key in new[]{"volume","leadingSilence"})if(numbers.ContainsKey(key))numbers[key].Enabled=advanced&&(key=="volume"||Capability("leadingSilence"));
             if(fields.ContainsKey("instruction"))fields["instruction"].Enabled=advanced&&Capability("instructions");
