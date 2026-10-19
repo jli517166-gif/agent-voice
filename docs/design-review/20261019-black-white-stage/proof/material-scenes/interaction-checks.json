@@ -1,0 +1,25 @@
+{
+  "scope": "Design prototype only; no live Harness/AIRI/TTS calls.",
+  "clientSelection": {
+    "Codex": true,
+    "DeepSeek": true,
+    "roomBranches": "both on"
+  },
+  "reducedMotion": {
+    "enabled": true,
+    "coreAnimation": "none"
+  },
+  "recap": {
+    "clientText": "Codex、DeepSeek Harness",
+    "summaryLabelsAfterReplay": 3,
+    "receiptsAfterReplay": 1
+  },
+  "leaveSetup": {
+    "rooms": 0,
+    "fields": 0,
+    "figures": 0
+  },
+  "connectionHelp": "Opens directory selection / verification design task; cancel returns to current step.",
+  "backNavigation": "Step 7 returns to step 6.",
+  "engineSelection": "Selecting GPT-SoVITS v5 Turbo leaves exactly that radio selected; 3 choice images remain."
+}

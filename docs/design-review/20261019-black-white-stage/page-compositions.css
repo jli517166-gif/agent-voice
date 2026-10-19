@@ -1,0 +1,1105 @@
+/* Reading order first: title, one decision, feedback. AIRI is excluded. */
+.reference-setup[data-composition] {
+  --scene-ink: #11121a;
+  --scene-light: #f6f4fc;
+  --scene-lilac: #c8b5f1;
+}
+.reference-setup[data-composition] .position {
+  color: #c5bdcf;
+}
+.reference-setup[data-composition] .reference-ribbons {
+  display: none;
+}
+.reference-setup[data-composition] .composition-surface {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+.reference-setup[data-composition] .art-field {
+  display: block;
+}
+.reference-setup[data-composition] .screen {
+  padding: 0 7%;
+}
+.reference-setup[data-composition] .screen-content {
+  overflow: auto;
+  max-height: 100%;
+  padding: 12px 0;
+}
+.reference-setup[data-composition] .scene-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 24px 8%;
+  align-items: center;
+  width: 100%;
+}
+.reference-setup[data-composition] .scene-heading {
+  grid-area: 1/1;
+  align-self: end;
+  min-width: 0;
+}
+.reference-setup[data-composition] .scene-controls {
+  grid-area: 2/1;
+  align-self: start;
+  min-width: 0;
+}
+.reference-setup[data-composition] .scene-heading h1 {
+  font-size: clamp(42px, 5vw, 68px);
+  line-height: 1.17;
+  margin: 0 0 16px;
+  letter-spacing: -0.035em;
+}
+.reference-setup[data-composition] .scene-heading .lead {
+  font-size: clamp(14px, 1.4vw, 18px);
+  line-height: 1.7;
+  margin: 0;
+  max-width: 26em;
+}
+.reference-setup[data-composition] .art-host {
+  grid-area: 1/2/3/3;
+  width: 100%;
+  height: 330px;
+}
+.reference-setup[data-composition] .option-list {
+  max-width: none;
+  gap: 10px;
+}
+.reference-setup[data-composition] .option {
+  min-height: 70px;
+  padding: 15px 20px;
+  gap: 16px;
+  border-radius: 17px;
+}
+.reference-setup[data-composition] .option-name {
+  font-size: 20px;
+  line-height: 1.3;
+}
+.reference-setup[data-composition] .option-desc {
+  font-size: 12px;
+  line-height: 1.55;
+  margin-top: 5px;
+}
+.reference-setup[data-composition] .simple-action {
+  border: 1px solid #d6c5ef59;
+  border-radius: 99px;
+  padding: 13px 21px;
+  background: #ddd0f00a;
+}
+.reference-setup[data-composition] .after-options {
+  margin-top: 12px;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.reference-setup[data-composition] .small-result {
+  font-size: 12px;
+  line-height: 1.65;
+  margin-top: 18px;
+}
+.reference-setup[data-composition] .art-stage .hero-object {
+  left: 10%;
+  top: 3%;
+  width: 80%;
+  height: 88%;
+}
+.reference-setup[data-composition] .art-stage .support-object {
+  left: 67%;
+  top: 63%;
+  width: 27%;
+  height: 27%;
+}
+.reference-setup[data-composition] .spec-tags,
+.reference-setup[data-composition] .dependency-pins,
+.reference-setup[data-composition] .package-names {
+  left: 18%;
+  right: 18%;
+  bottom: 7%;
+  font-size: 11px;
+}
+.reference-setup[data-composition] .footer .primary {
+  background: linear-gradient(150deg, #f8f4ff, #d8c8ef);
+  box-shadow:
+    inset 0 0 0 2px #d8c6ee44,
+    0 8px 23px #a18bb52a;
+}
+/* Opening */
+.reference-setup[data-composition="opening"] .scene-grid {
+  grid-template-columns: 1fr 1fr;
+  gap: 24px 5%;
+}
+.reference-setup[data-composition="opening"] .scene-heading h1 {
+  font-size: clamp(56px, 6.5vw, 88px);
+}
+.reference-setup[data-composition="opening"] .art-host {
+  height: 390px;
+}
+.reference-setup[data-composition="opening"] .art-stage .hero-object {
+  left: 3%;
+  width: 95%;
+  height: 95%;
+}
+.reference-setup[data-composition="opening"] .intro-foot {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.reference-setup[data-composition="opening"] .intro-staff {
+  left: 18%;
+  top: 78%;
+  gap: 6px;
+}
+/* Computer: portrait and tightly grouped explanation/action */
+.reference-setup[data-composition="diagnostic"] .scene-grid {
+  grid-template-columns: 1fr 1fr;
+  gap: 24px 10%;
+}
+.reference-setup[data-composition="diagnostic"] .scene-heading {
+  grid-area: 1/2;
+}
+.reference-setup[data-composition="diagnostic"] .scene-controls {
+  grid-area: 2/2;
+}
+.reference-setup[data-composition="diagnostic"] .art-host {
+  grid-area: 1/1/3/2;
+  height: 335px;
+}
+.reference-setup[data-composition="diagnostic"] .scene-controls .text-link {
+  display: block;
+  margin-top: 8px;
+}
+.reference-setup[data-composition="diagnostic"] .diagnostic-scan {
+  left: 20%;
+  width: 58%;
+  top: 33%;
+}
+/* Engine: the three choices are the visual objects */
+.reference-setup[data-composition="engines"] .scene-grid {
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+.reference-setup[data-composition="engines"] .scene-heading {
+  grid-area: 1/1;
+  align-self: start;
+}
+.reference-setup[data-composition="engines"] .scene-controls {
+  grid-area: 2/1;
+}
+.reference-setup[data-composition="engines"] .art-host {
+  display: none !important;
+}
+.reference-setup[data-composition="engines"] .art-stage,
+.reference-setup[data-composition="engines"] .scene-room {
+  display: none;
+}
+.reference-setup[data-composition="engines"] .art-field {
+  clip-path: none !important;
+  background: radial-gradient(ellipse at 75% 75%, #a790c41a, transparent 62%);
+}
+.reference-setup[data-composition="engines"] .art-field:before,
+.reference-setup[data-composition="engines"] .art-field:after {
+  display: none;
+}
+.reference-setup[data-composition="engines"] .option-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.reference-setup[data-composition="engines"] .option {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0;
+  min-height: 263px;
+  padding: 0 0 21px;
+  overflow: hidden;
+  border-radius: 23px;
+}
+.reference-setup[data-composition="engines"] .option-no {
+  position: absolute;
+  left: 20px;
+  top: 17px;
+  z-index: 3;
+  color: #81728f;
+}
+.reference-setup[data-composition="engines"] .radio {
+  position: absolute;
+  right: 20px;
+  top: 19px;
+  z-index: 3;
+  border-color: #9a87b0;
+}
+.reference-setup[data-composition="engines"] .option-copy {
+  padding: 19px 22px 0;
+  flex: 0;
+}
+.reference-setup[data-composition="engines"] .option-name {
+  font-size: clamp(16px, 1.65vw, 22px);
+  white-space: nowrap;
+}
+.reference-setup[data-composition="engines"] .option-desc {
+  font-size: 12px;
+  margin-top: 8px;
+}
+.choice-image-pane {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 100%;
+  height: 148px;
+  background:
+    radial-gradient(ellipse at 70% 90%, #e3cde659, transparent 70%), #f6f3fa;
+  overflow: hidden;
+}
+.choice-image-pane img {
+  position: absolute;
+  left: 16%;
+  top: 0;
+  width: 68%;
+  height: 100%;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  transform: rotate(-8deg);
+}
+.choice-glass {
+  position: absolute;
+  inset: 14% 14% 11%;
+  border-radius: 24px;
+  border: 1px solid #fff9;
+  box-shadow:
+    inset 1px 2px #fff,
+    10px 12px 18px #aa96be26;
+  background: linear-gradient(140deg, #fff7, #dbc6e61a);
+  transform: perspective(500px) rotateY(-14deg) rotateZ(5deg);
+}
+.reference-setup[data-composition="engines"]
+  .option:nth-child(2)
+  .choice-image-pane {
+  background:
+    radial-gradient(ellipse at 70% 90%, #c8d9e14d, transparent 70%), #f6f3fa;
+}
+.reference-setup[data-composition="engines"]
+  .option:nth-child(3)
+  .choice-image-pane {
+  background:
+    radial-gradient(ellipse at 70% 90%, #dcc8dc4d, transparent 70%), #f6f3fa;
+}
+/* Resources: aligned source rows and one archive on the right */
+.reference-setup[data-composition="resources"] .scene-grid {
+  grid-template-columns: 1.08fr 0.92fr;
+  gap: 22px 9%;
+}
+.reference-setup[data-composition="resources"] .art-host {
+  height: 365px;
+}
+.reference-setup[data-composition="resources"] .option {
+  min-height: 73px;
+}
+.reference-setup[data-composition="resources"] .resource-strips {
+  left: 36%;
+  top: 12%;
+}
+/* Environment: explanation and assembly together; decision on the right */
+.reference-setup[data-composition="assembly"] .scene-grid {
+  grid-template-columns: 1fr 1fr;
+  gap: 26px 11%;
+}
+.reference-setup[data-composition="assembly"] .scene-heading {
+  grid-area: 1/1;
+}
+.reference-setup[data-composition="assembly"] .art-host {
+  grid-area: 2/1;
+  height: 145px;
+}
+.reference-setup[data-composition="assembly"] .scene-controls {
+  grid-area: 1/2/3/3;
+  align-self: center;
+}
+.reference-setup[data-composition="assembly"] .option {
+  min-height: 94px;
+  padding: 20px;
+}
+.reference-setup[data-composition="assembly"] .scene-heading .lead {
+  max-width: 22em;
+}
+.reference-setup[data-composition="assembly"] .after-options {
+  flex-direction: column;
+  gap: 0;
+  margin-top: 17px;
+}
+.reference-setup[data-composition="assembly"] .art-stage .hero-object {
+  left: 9%;
+  width: 24%;
+  top: -5%;
+  height: 79%;
+}
+.reference-setup[data-composition="assembly"] .art-stage .support-object {
+  left: 68%;
+  top: 0;
+  width: 22%;
+  height: 70%;
+}
+.reference-setup[data-composition="assembly"] .dependency-pins {
+  left: 18%;
+  right: 18%;
+  bottom: 3%;
+}
+/* Voice: recording portrait facing two import choices */
+.reference-setup[data-composition="voice"] .scene-grid {
+  grid-template-columns: 0.87fr 1.13fr;
+  gap: 24px 12%;
+}
+.reference-setup[data-composition="voice"] .scene-heading {
+  grid-area: 1/2;
+}
+.reference-setup[data-composition="voice"] .scene-controls {
+  grid-area: 2/2;
+}
+.reference-setup[data-composition="voice"] .art-host {
+  grid-area: 1/1/3/2;
+  width: 88%;
+  height: 370px;
+  justify-self: center;
+}
+.reference-setup[data-composition="voice"] .voice-signature {
+  left: 20%;
+  top: 7%;
+  gap: 3px;
+}
+.reference-setup[data-composition="voice"] .art-stage .hero-object {
+  top: 9%;
+  height: 78%;
+  left: 8%;
+  width: 84%;
+}
+.reference-setup[data-composition="voice"] .art-stage .support-object {
+  left: 37%;
+  top: 76%;
+  width: 26%;
+  height: 20%;
+}
+/* Preview: one centered player, with controls in the same reading column */
+.reference-setup[data-composition="listening"] .scene-grid {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 155px auto;
+  gap: 17px;
+  justify-items: center;
+}
+.reference-setup[data-composition="listening"] .scene-heading {
+  grid-area: 1/1;
+  text-align: center;
+}
+.reference-setup[data-composition="listening"] .scene-heading h1 {
+  font-size: 57px;
+}
+.reference-setup[data-composition="listening"] .scene-heading .lead {
+  margin: auto;
+}
+.reference-setup[data-composition="listening"] .art-host {
+  grid-area: 2/1;
+  height: 155px;
+  width: 57%;
+}
+.reference-setup[data-composition="listening"] .scene-controls {
+  grid-area: 3/1;
+  text-align: center;
+}
+.reference-setup[data-composition="listening"] .voice-name {
+  margin: 0 0 13px;
+  font-size: 15px;
+}
+.reference-setup[data-composition="listening"] .simple-action {
+  margin: auto;
+}
+.reference-setup[data-composition="listening"] .small-result {
+  font-size: 11px;
+  margin-top: 10px;
+}
+.reference-setup[data-composition="listening"] .art-stage .hero-object {
+  height: 100%;
+  width: 52%;
+  left: 24%;
+  top: -6%;
+}
+.reference-setup[data-composition="listening"] .art-stage .support-object {
+  height: 21%;
+  width: 10%;
+  top: 58%;
+  left: 55%;
+}
+.reference-setup[data-composition="listening"] .listening-wave {
+  left: 8%;
+  right: 8%;
+  top: 40%;
+  border: 0;
+  background: none;
+  justify-content: space-between;
+  gap: 4px;
+}
+/* Harness: selection first, sculpture second, no title collision */
+.reference-setup[data-composition="conversation"] .scene-grid {
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 23px 12%;
+}
+.reference-setup[data-composition="conversation"] .art-host {
+  height: 300px;
+}
+.reference-setup[data-composition="conversation"] .option {
+  min-height: 78px;
+}
+.reference-setup[data-composition="conversation"] .option-no {
+  display: none;
+}
+.reference-setup[data-composition="conversation"] .after-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 14px;
+}
+.reference-setup[data-composition="conversation"] .client-tags {
+  display: none;
+}
+.reference-setup[data-composition="conversation"] .conversation-path {
+  left: 15%;
+  width: 70%;
+  top: 54%;
+  transform: none;
+}
+.reference-setup[data-composition="conversation"] .art-stage .hero-object {
+  width: 73%;
+  height: 80%;
+  left: 13%;
+  top: -2%;
+}
+.reference-setup[data-composition="conversation"] .art-stage .support-object {
+  width: 30%;
+  height: 30%;
+  left: 35%;
+  top: 66%;
+}
+/* Finish: centered heading and compact aligned receipt */
+.reference-setup[data-composition="ready"] .scene-grid {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 110px auto;
+  gap: 24px;
+  justify-items: center;
+}
+.reference-setup[data-composition="ready"] .scene-heading {
+  grid-area: 1/1;
+  text-align: center;
+}
+.reference-setup[data-composition="ready"] .scene-heading h1 {
+  font-size: 58px;
+}
+.reference-setup[data-composition="ready"] .scene-heading .lead {
+  margin: auto;
+}
+.reference-setup[data-composition="ready"] .art-host {
+  grid-area: 2/1;
+  height: 110px;
+  width: 280px;
+}
+.reference-setup[data-composition="ready"] .scene-controls {
+  grid-area: 3/1;
+  width: 100%;
+}
+.reference-setup[data-composition="ready"] .summary-list {
+  max-width: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+}
+.reference-setup[data-composition="ready"] .summary-line {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 17px;
+}
+.reference-setup[data-composition="ready"] .summary-line small {
+  font-size: 11px;
+}
+.reference-setup[data-composition="ready"] .package-names {
+  display: none;
+}
+/* Finite plane reveals */
+.reference-setup[data-composition="resources"] .field-reveal {
+  animation: archive-surface 850ms ease-out both;
+}
+.reference-setup[data-composition="assembly"] .field-reveal {
+  animation: bench-unfold 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.reference-setup[data-composition="listening"] .field-reveal {
+  animation: listening-open 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.reference-setup[data-composition="ready"] .field-reveal {
+  animation: receipt-seat 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes archive-surface {
+  from {
+    opacity: 0;
+    translate: 20px 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes bench-unfold {
+  from {
+    opacity: 0;
+    scale: 0.8 1;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes listening-open {
+  from {
+    opacity: 0;
+    scale: 0.92;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes receipt-seat {
+  from {
+    opacity: 0;
+    translate: 0 -18px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@media (max-width: 1050px) and (min-width: 781px) {
+  .reference-setup[data-composition] .screen {
+    padding: 0 6%;
+  }
+  .reference-setup[data-composition] .scene-grid {
+    column-gap: 7%;
+  }
+  .reference-setup[data-composition] .scene-heading h1 {
+    font-size: 48px;
+  }
+  .reference-setup[data-composition] .art-host {
+    height: 290px;
+  }
+  .reference-setup[data-composition="assembly"] .art-host {
+    height: 125px;
+  }
+  .reference-setup[data-composition="listening"] .art-host {
+    height: 155px;
+  }
+  .reference-setup[data-composition="ready"] .art-host {
+    height: 110px;
+  }
+  .reference-setup[data-composition] .option {
+    padding: 14px;
+  }
+  .reference-setup[data-composition] .option-name {
+    font-size: 17px;
+  }
+  .reference-setup[data-composition] .option-desc {
+    font-size: 11px;
+  }
+  .reference-setup[data-composition="engines"] .option {
+    padding: 0 0 18px;
+    min-height: 248px;
+  }
+  .reference-setup[data-composition="engines"] .option-copy {
+    padding: 17px 14px 0;
+  }
+  .reference-setup[data-composition="engines"] .option-name {
+    font-size: 15px;
+  }
+}
+@media (max-width: 780px) {
+  .reference-setup[data-composition] .screen {
+    padding: 0 6%;
+  }
+  .reference-setup[data-composition] .scene-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 20px;
+  }
+  .reference-setup[data-composition] .scene-heading {
+    grid-area: 1/1;
+    text-align: left;
+    justify-self: stretch;
+  }
+  .reference-setup[data-composition] .scene-heading h1 {
+    font-size: 38px;
+  }
+  .reference-setup[data-composition] .scene-heading h1 br {
+    display: none;
+  }
+  .reference-setup[data-composition] .scene-heading .lead {
+    font-size: 14px;
+    margin: 0;
+  }
+  .reference-setup[data-composition] .art-host {
+    grid-area: 2/1;
+    height: 155px;
+    width: 100%;
+    justify-self: stretch;
+    background: transparent;
+    border-radius: 25px;
+  }
+  .reference-setup[data-composition] .scene-controls {
+    grid-area: 3/1;
+    text-align: left;
+  }
+  .reference-setup[data-composition] .option {
+    min-height: 65px;
+    padding: 13px 16px;
+  }
+  .reference-setup[data-composition] .option-name {
+    font-size: 18px;
+  }
+  .reference-setup[data-composition] .option-desc {
+    font-size: 11px;
+  }
+  .reference-setup[data-composition="opening"] .scene-heading h1 {
+    font-size: 51px;
+  }
+  .reference-setup[data-composition="opening"] .scene-heading h1 br {
+    display: block;
+  }
+  .reference-setup[data-composition="opening"] .art-host {
+    height: 180px;
+  }
+  .reference-setup[data-composition="diagnostic"] .art-host,
+  .reference-setup[data-composition="voice"] .art-host {
+    grid-area: 2/1;
+    height: 155px;
+    width: 80%;
+    justify-self: center;
+  }
+  .reference-setup[data-composition="engines"] .scene-grid {
+    grid-template-rows: auto auto;
+    gap: 24px;
+  }
+  .reference-setup[data-composition="engines"] .scene-controls {
+    grid-area: 2/1;
+  }
+  .reference-setup[data-composition="engines"] .option-list {
+    display: flex;
+    gap: 12px;
+  }
+  .reference-setup[data-composition="engines"] .option {
+    flex-direction: row;
+    align-items: center;
+    gap: 0;
+    min-height: 97px;
+    padding: 0;
+  }
+  .choice-image-pane {
+    width: 91px;
+    min-height: 97px;
+    height: 100%;
+    align-self: stretch;
+  }
+  .choice-image-pane img {
+    left: 7%;
+    width: 86%;
+  }
+  .choice-glass {
+    inset: 15% 9%;
+    border-radius: 14px;
+  }
+  .reference-setup[data-composition="engines"] .option-copy {
+    padding: 15px 37px 15px 17px;
+  }
+  .reference-setup[data-composition="engines"] .option-name {
+    font-size: 16px;
+    white-space: normal;
+  }
+  .reference-setup[data-composition="engines"] .option-desc {
+    font-size: 10px;
+  }
+  .reference-setup[data-composition="engines"] .option-no {
+    display: none;
+  }
+  .reference-setup[data-composition="engines"] .radio {
+    top: calc(50% - 6px);
+    right: 16px;
+  }
+  .reference-setup[data-composition="resources"] .art-host {
+    height: 130px;
+  }
+  .reference-setup[data-composition="assembly"] .art-host {
+    height: 120px;
+  }
+  .reference-setup[data-composition="assembly"] .scene-controls {
+    grid-area: 3/1;
+  }
+  .reference-setup[data-composition="assembly"] .after-options {
+    flex-direction: row;
+    gap: 12px;
+  }
+  .reference-setup[data-composition="conversation"] .art-host {
+    height: 135px;
+  }
+  .reference-setup[data-composition="listening"] .scene-heading,
+  .reference-setup[data-composition="listening"] .scene-controls,
+  .reference-setup[data-composition="ready"] .scene-heading {
+    text-align: center;
+  }
+  .reference-setup[data-composition="listening"] .scene-heading .lead,
+  .reference-setup[data-composition="ready"] .scene-heading .lead {
+    margin: auto;
+  }
+  .reference-setup[data-composition="ready"] .art-host {
+    height: 110px;
+    width: 250px;
+    justify-self: center;
+  }
+  .reference-setup[data-composition="ready"] .summary-list {
+    grid-template-columns: 1fr;
+  }
+  .reference-setup[data-composition="ready"] .summary-line {
+    flex-direction: row;
+    align-items: center;
+    font-size: 15px;
+  }
+  .reference-setup[data-composition="ready"] .summary-line small {
+    font-size: 10px;
+    white-space: nowrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reference-setup[data-composition] .art-field {
+    animation: none !important;
+  }
+}
+/* Keep text intrinsically wide inside both horizontal and vertical engine choices. */
+.reference-setup[data-composition="engines"] .option-copy {
+  width: 100%;
+  flex: initial;
+  min-width: 0;
+}
+.reference-setup[data-composition="conversation"] .scene-heading h1 {
+  font-size: 54px;
+  line-height: 1.12;
+}
+.reference-setup[data-composition="conversation"] .option {
+  min-height: 72px;
+}
+@media (max-width: 780px) {
+  .reference-setup[data-composition="engines"] .option-copy {
+    width: auto;
+    flex: 1;
+  }
+  .reference-setup[data-composition="conversation"] .scene-heading h1 {
+    font-size: 38px;
+    line-height: 1.17;
+  }
+}
+/* Page 7: client choices converge into the common voice destination. */
+.reference-setup[data-composition="conversation"] .scene-grid {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto 86px auto;
+  gap: 18px;
+}
+.reference-setup[data-composition="conversation"] .scene-heading {
+  grid-area: 1/1;
+  align-self: start;
+}
+.reference-setup[data-composition="conversation"] .scene-heading h1 {
+  font-size: 56px;
+  line-height: 1.17;
+}
+.reference-setup[data-composition="conversation"] .scene-controls {
+  grid-area: 2/1;
+}
+.reference-setup[data-composition="conversation"] .option-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+}
+.reference-setup[data-composition="conversation"] .option {
+  min-height: 138px;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 22px;
+  align-items: center;
+}
+.reference-setup[data-composition="conversation"] .choice-image-pane {
+  width: 145px;
+  height: 138px;
+  min-height: 138px;
+  align-self: stretch;
+  border-radius: 0 40px 40px 0;
+}
+.reference-setup[data-composition="conversation"] .option-copy {
+  padding: 18px 42px 18px 24px;
+  flex: 1;
+  min-width: 0;
+}
+.reference-setup[data-composition="conversation"] .option-name {
+  font-size: 23px;
+  line-height: 1.3;
+}
+.reference-setup[data-composition="conversation"] .option-desc {
+  font-size: 11px;
+  margin-top: 10px;
+}
+.reference-setup[data-composition="conversation"] .radio {
+  position: absolute;
+  right: 20px;
+  top: 22px;
+}
+.reference-setup[data-composition="conversation"] .art-host {
+  grid-area: 3/1;
+  height: 86px;
+  width: 100%;
+}
+.reference-setup[data-composition="conversation"] .scene-help {
+  grid-area: 4/1;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 15px;
+  margin: 0;
+}
+.reference-setup[data-composition="conversation"] .art-stage {
+  display: none;
+}
+/* Page 9: recap sheet facing the sound sculpture. */
+.reference-setup[data-composition="ready"] .scene-grid {
+  grid-template-columns: 0.9fr 1.1fr;
+  grid-template-rows: auto auto;
+  gap: 22px 12%;
+  justify-items: stretch;
+}
+.reference-setup[data-composition="ready"] .scene-heading {
+  grid-area: 1/1;
+  text-align: left;
+  align-self: end;
+}
+.reference-setup[data-composition="ready"] .scene-heading h1 {
+  font-size: 58px;
+}
+.reference-setup[data-composition="ready"] .scene-heading .lead {
+  margin: 0;
+  max-width: 20em;
+}
+.reference-setup[data-composition="ready"] .art-host {
+  grid-area: 2/1;
+  justify-self: start;
+  align-self: start;
+  height: 155px;
+  width: 92%;
+}
+.reference-setup[data-composition="ready"] .scene-controls {
+  grid-area: 1/2/3/3;
+  align-self: center;
+  width: 100%;
+  padding: 27px 30px;
+  border: 1px solid #fff9;
+  border-radius: 25px;
+  background: linear-gradient(140deg, #fbf9fef0, #ebe2f2ed);
+  box-shadow:
+    inset 0 2px #fff,
+    0 20px 50px #05040a25;
+}
+.reference-setup[data-composition="ready"] .summary-list {
+  display: flex;
+  flex-direction: column;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+}
+.reference-setup[data-composition="ready"] .summary-line {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 17px 0;
+  border-top: 1px solid #a28bb82e;
+  color: #332a41;
+  font-size: 20px;
+}
+.reference-setup[data-composition="ready"] .summary-line + .summary-line {
+  border-left: 0;
+}
+.reference-setup[data-composition="ready"] .summary-line small {
+  font-size: 11px;
+  color: #746481;
+}
+.reference-setup[data-composition="ready"] .summary-label {
+  font-size: 11px;
+  color: #877692;
+}
+.receipt-heading {
+  margin: 0 0 18px;
+  color: #665470;
+  font-size: 14px;
+}
+@media (max-width: 1050px) and (min-width: 781px) {
+  .reference-setup[data-composition="conversation"] .choice-image-pane {
+    width: 105px;
+  }
+  .reference-setup[data-composition="conversation"] .option-copy {
+    padding-left: 17px;
+  }
+  .reference-setup[data-composition="conversation"] .option-name {
+    font-size: 19px;
+  }
+  .reference-setup[data-composition="ready"] .scene-controls {
+    padding: 22px 25px;
+  }
+}
+@media (max-width: 780px) {
+  .reference-setup[data-composition="conversation"] .scene-grid {
+    grid-template-rows: auto auto 60px auto;
+    gap: 17px;
+  }
+  .reference-setup[data-composition="conversation"] .scene-heading h1 {
+    font-size: 38px;
+  }
+  .reference-setup[data-composition="conversation"] .option-list {
+    gap: 12px;
+  }
+  .reference-setup[data-composition="conversation"] .option {
+    flex-direction: column;
+    align-items: stretch;
+    min-height: 190px;
+  }
+  .reference-setup[data-composition="conversation"] .choice-image-pane {
+    width: 100%;
+    height: 95px;
+    min-height: 95px;
+    border-radius: 0 0 25px 0;
+  }
+  .reference-setup[data-composition="conversation"] .choice-image-pane img {
+    left: 17%;
+    width: 66%;
+  }
+  .reference-setup[data-composition="conversation"] .option-copy {
+    padding: 15px 12px 18px;
+  }
+  .reference-setup[data-composition="conversation"] .option-name {
+    font-size: 17px;
+  }
+  .reference-setup[data-composition="conversation"] .option-desc {
+    font-size: 10px;
+    margin-top: 8px;
+  }
+  .reference-setup[data-composition="conversation"] .radio {
+    top: 13px;
+    right: 12px;
+  }
+  .reference-setup[data-composition="conversation"] .art-host {
+    height: 60px;
+    grid-area: 3/1;
+  }
+  .reference-setup[data-composition="conversation"] .scene-help {
+    gap: 8px;
+  }
+  .reference-setup[data-composition="conversation"] .scene-help .text-link {
+    font-size: 10px;
+  }
+  .reference-setup[data-composition="ready"] .scene-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 130px auto;
+    gap: 20px;
+  }
+  .reference-setup[data-composition="ready"] .scene-heading {
+    grid-area: 1/1;
+  }
+  .reference-setup[data-composition="ready"] .scene-heading h1 {
+    font-size: 38px;
+  }
+  .reference-setup[data-composition="ready"] .art-host {
+    grid-area: 2/1;
+    width: 80%;
+    height: 130px;
+    justify-self: center;
+  }
+  .reference-setup[data-composition="ready"] .scene-controls {
+    grid-area: 3/1;
+    padding: 22px;
+  }
+  .reference-setup[data-composition="ready"] .summary-list {
+    padding: 0;
+  }
+  .reference-setup[data-composition="ready"] .summary-line {
+    flex-direction: column;
+    align-items: flex-start;
+    font-size: 17px;
+    padding: 14px 0;
+    gap: 5px;
+  }
+  .reference-setup[data-composition="ready"] .summary-line + .summary-line {
+    border-color: #a28bb82e;
+  }
+  .reference-setup[data-composition="ready"] .summary-line small {
+    font-size: 10px;
+  }
+}
+.reference-setup[data-composition="ready"] .summary-line {
+  border-bottom: 0;
+}
+.reference-setup[data-composition="ready"] .footer .back,
+.reference-setup[data-composition="ready"] .footer .quiet {
+  color: #65566e;
+  border-color: #9a81b34a;
+}
+@media (max-width: 780px) {
+  .reference-setup[data-composition="ready"] .footer .back,
+  .reference-setup[data-composition="ready"] .footer .quiet {
+    color: #d0c5da;
+    border-color: #ddd4e35e;
+  }
+}
+@media (max-width: 780px) {
+  .reference-setup[data-composition="ready"] .scene-grid {
+    grid-template-columns: 1fr 80px;
+    grid-template-rows: auto auto;
+    gap: 20px;
+  }
+  .reference-setup[data-composition="ready"] .scene-heading {
+    grid-area: 1/1;
+  }
+  .reference-setup[data-composition="ready"] .scene-heading h1 {
+    font-size: 34px;
+  }
+  .reference-setup[data-composition="ready"] .scene-heading .lead {
+    font-size: 13px;
+  }
+  .reference-setup[data-composition="ready"] .art-host {
+    grid-area: 1/2;
+    width: 80px;
+    height: 95px;
+    align-self: center;
+  }
+  .reference-setup[data-composition="ready"] .scene-controls {
+    grid-area: 2/1/3/3;
+  }
+}
+@media (min-width: 781px) {
+  .reference-setup[data-composition="engines"] .scene-grid {
+    gap: 20px;
+  }
+}
+@media (max-width: 780px) {
+  .reference-setup[data-composition="resources"] .art-host {
+    height: 120px;
+  }
+}
+.reference-setup[data-composition="ready"] .footer .quiet {
+  color: #d0c5da;
+  border-color: transparent;
+}

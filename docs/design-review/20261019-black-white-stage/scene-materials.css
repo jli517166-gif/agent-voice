@@ -1,0 +1,1146 @@
+/* Rich scenery without changing the approved AIRI selectors or business UI. */
+.reference-setup[data-composition] {
+  --scene-tint: #c8b5f1;
+  --scene-cool: #c6d9e4;
+  --scene-warm: #e6d4de;
+  background:
+    radial-gradient(ellipse at 62% 95%, #69607132, transparent 64%),
+    linear-gradient(120deg, #0d0f15, #24232e);
+}
+.reference-setup[data-composition] .composition-surface {
+  isolation: isolate;
+  inset: 0;
+}
+.reference-setup[data-composition] .composition-aperture {
+  position: absolute;
+  inset: 92px 0 114px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.reference-setup:is(
+    [data-composition="opening"],
+    [data-composition="engines"],
+    [data-composition="resources"],
+    [data-composition="voice"]
+  )
+  .position {
+  color: #65566e;
+}
+.reference-setup[data-composition="diagnostic"] .brand,
+.reference-setup[data-composition="assembly"] .brand {
+  color: #3e364b;
+}
+.reference-setup[data-composition="assembly"] .position {
+  color: #65566e;
+}
+.reference-setup[data-composition="diagnostic"] .footer .back,
+.reference-setup[data-composition="diagnostic"] .footer .quiet,
+.reference-setup[data-composition="diagnostic"] .footer #skip {
+  color: #65566e;
+  border-color: #9a81b34a;
+}
+.reference-setup[data-composition] .art-field {
+  background:
+    radial-gradient(ellipse at 70% 85%, #d6c9e852, transparent 60%),
+    linear-gradient(150deg, #f9f8fc, #f5f1f9 60%, #e6dcec);
+}
+.reference-setup[data-composition] .art-field:before {
+  display: block;
+  inset: 0;
+  opacity: 0.8;
+  background: linear-gradient(
+    120deg,
+    transparent 45%,
+    #fff8 45.2%,
+    transparent 46%,
+    transparent 52%,
+    #b9a4ce26 52.1%,
+    transparent 52.4%
+  );
+}
+.reference-setup[data-composition] .art-field:after {
+  display: block;
+  inset: 0;
+  mix-blend-mode: normal;
+  background: radial-gradient(ellipse at 86% 80%, #e4c7d82e, transparent 45%);
+}
+.reference-setup[data-composition] .scene-heading h1 {
+  text-shadow: 0 3px 22px #0002;
+}
+.reference-setup[data-composition] .option {
+  background: linear-gradient(120deg, #ffffff05, #e0c7ee0e);
+  border-color: #d6c5e73d;
+  box-shadow:
+    inset 0 1px #fff1,
+    0 10px 28px #05040b12;
+}
+.reference-setup[data-composition] .option.selected {
+  background: linear-gradient(120deg, #d1c3ef15, #dbc6e21c);
+  border-color: #d5c1ec86;
+}
+.reference-setup[data-composition] .option.selected .option-name {
+  color: #fffaff;
+}
+.reference-setup[data-composition] .scene-room {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  color: #9d85ba;
+  --glass-edge: #fff9;
+  --glass-line: #ad98bc59;
+}
+.scene-room *,
+.scene-room *:before,
+.scene-room *:after {
+  box-sizing: border-box;
+}
+.scene-room .scene-bloom {
+  position: absolute;
+  inset: 10% -12% -10%;
+  background: radial-gradient(ellipse, #dfc4e646, transparent 67%);
+}
+.scene-room .scene-drawing {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  stroke: #a58ab879;
+  stroke-width: 1;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.scene-room .subject-reflection {
+  position: absolute;
+  object-fit: contain;
+  left: 10%;
+  width: 80%;
+  height: 75%;
+  top: 61%;
+  transform: scaleY(-0.75);
+  opacity: 0.16;
+  mix-blend-mode: multiply;
+  mask-image: linear-gradient(to top, #000, transparent 65%);
+  -webkit-mask-image: linear-gradient(to top, #000, transparent 65%);
+}
+.scene-room .surface-glint {
+  position: absolute;
+  left: 15%;
+  right: 8%;
+  bottom: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #fff, #b9a2ce44, transparent);
+  transform: rotate(-8deg);
+}
+.scene-room .glass-lens {
+  position: absolute;
+  right: 5%;
+  bottom: 16%;
+  width: 23%;
+  height: 3%;
+  border: 1px solid #fff8;
+  border-radius: 50%;
+  box-shadow:
+    0 2px 10px #a98aba33,
+    inset 0 0 6px #fff;
+  transform: rotate(-16deg);
+}
+
+/* Opening: wrap the sculpture in a transparent acoustic orbit. */
+.scene-room[data-scene="0"] .acoustic-orbit {
+  position: absolute;
+  left: 5%;
+  top: 9%;
+  width: 92%;
+  height: 72%;
+  border: 1px solid #b8a2c76b;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #ffffff05, #c7b2de15);
+  box-shadow:
+    inset 0 2px 1px #fff9,
+    0 18px 35px #b5a0c526;
+  transform: rotate(-22deg);
+}
+.scene-room[data-scene="0"] .orbit-back {
+  left: 14%;
+  top: -2%;
+  width: 74%;
+  height: 100%;
+  transform: rotate(29deg);
+  opacity: 0.6;
+}
+.scene-room[data-scene="0"] .opening-ribbon {
+  inset: 16% -22% auto;
+  width: 140%;
+  height: 100%;
+  stroke: #fff9;
+  stroke-width: 2;
+}
+.scene-room .listening-plinth {
+  position: absolute;
+  left: 16%;
+  right: 12%;
+  bottom: 13%;
+  height: 13%;
+  border-radius: 50%;
+  border: 1px solid #fff9;
+  background: linear-gradient(170deg, #ffffff80, #c5aed731);
+  box-shadow:
+    0 10px 0 -4px #a78ab332,
+    0 23px 28px #9a7aa724,
+    inset 0 3px 4px #fff;
+  transform: rotate(-6deg);
+}
+.reference-setup[data-composition="opening"] .intro-staff {
+  left: 15%;
+  top: 73%;
+  height: 60px;
+  color: #aa85bf;
+  opacity: 0.72;
+}
+
+/* Diagnostic: an optical screen, with circuits that actually land on the labels. */
+.scene-room[data-scene="1"] .diagnostic-pane {
+  position: absolute;
+  inset: 4% 8% 23%;
+  border: 1px solid #fff9;
+  border-radius: 19px;
+  background: linear-gradient(145deg, #fff8, #bfccdf25);
+  box-shadow:
+    inset 0 0 0 5px #ffffff2b,
+    14px 19px 35px #7c729b20;
+  transform: perspective(800px) rotateY(13deg) rotateZ(-5deg);
+}
+.scene-room[data-scene="1"] .diagnostic-pane i {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: #9f8cb961;
+}
+.diagnostic-pane i:nth-child(1) {
+  left: 12px;
+  top: 12px;
+  border-left: 1px solid;
+  border-top: 1px solid;
+}
+.diagnostic-pane i:nth-child(2) {
+  right: 12px;
+  top: 12px;
+  border-right: 1px solid;
+  border-top: 1px solid;
+}
+.diagnostic-pane i:nth-child(3) {
+  left: 12px;
+  bottom: 12px;
+  border-left: 1px solid;
+  border-bottom: 1px solid;
+}
+.diagnostic-pane i:nth-child(4) {
+  right: 12px;
+  bottom: 12px;
+  border-right: 1px solid;
+  border-bottom: 1px solid;
+}
+.scene-room[data-scene="1"] .screen-sheen {
+  position: absolute;
+  left: 0;
+  top: 33%;
+  width: 90%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #fff, #a3a9c180, transparent);
+  transform: rotate(-5deg);
+  opacity: 0;
+}
+.scene-room[data-scene="1"] .diagnostic-circuit {
+  inset: 0 0 -4%;
+  height: 104%;
+  stroke: #a5a5bc82;
+}
+.reference-setup[data-composition="diagnostic"] .art-stage .hero-object {
+  left: 10%;
+  top: 0;
+  width: 77%;
+  height: 82%;
+}
+.reference-setup[data-composition="diagnostic"] .art-stage .support-object {
+  left: 67%;
+  top: 48%;
+  width: 27%;
+  height: 27%;
+}
+.reference-setup[data-composition="diagnostic"] .spec-tags {
+  bottom: 6%;
+  left: 12%;
+  right: 10%;
+  color: #8b7d9b;
+  font-size: 11px;
+}
+.scene-room[data-scene="1"] .subject-reflection {
+  top: 48%;
+  left: 10%;
+  width: 77%;
+  height: 82%;
+}
+
+/* Engine: translucent coupling rings and a prism; not a white oval badge. */
+.scene-room[data-scene="2"] .mechanism-ring {
+  position: absolute;
+  inset: 1% 15% 8%;
+  border: 1px solid #a591ba66;
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 0 8px #fff3,
+    inset 2px 1px 2px #fff,
+    2px 8px 10px #ae98bc27;
+  transform: perspective(650px) rotateY(-25deg) rotateZ(-20deg);
+}
+.scene-room[data-scene="2"] .inner-ring {
+  inset: 14% 27% 22%;
+  border: 4px solid #ffffff78;
+  box-shadow: 0 0 0 1px #b5a2c244;
+}
+.scene-room[data-scene="2"] .engine-prism {
+  position: absolute;
+  left: 2%;
+  top: 50%;
+  width: 30%;
+  height: 35%;
+  border-radius: 9px;
+  border: 1px solid #fff9;
+  background: linear-gradient(120deg, #fff7, #dac6e32e);
+  box-shadow: 8px 9px 1px #c1aace1b;
+  transform: skewY(-12deg) rotate(-10deg);
+}
+.scene-room[data-scene="2"] .engine-arc {
+  stroke: #fff9;
+  stroke-width: 2;
+}
+.reference-setup[data-composition="engines"] .engine-route {
+  left: 5%;
+  right: 3%;
+  bottom: 0;
+  color: #90809b;
+}
+.scene-room[data-scene="2"] .subject-reflection {
+  top: 53%;
+  height: 70%;
+}
+
+/* Resources: two suspended sheets descend into a glass receiving tray. */
+.scene-room[data-scene="3"] .archive-sheet {
+  position: absolute;
+  left: 12%;
+  top: 6%;
+  width: 63%;
+  height: 54%;
+  border: 1px solid #fff9;
+  border-radius: 15px;
+  background: linear-gradient(140deg, #ffffff94, #d6b8cd28);
+  box-shadow: 12px 15px 30px #a38baf22;
+  transform: perspective(850px) rotateY(-15deg) rotateZ(-12deg);
+}
+.scene-room[data-scene="3"] .sheet-back {
+  left: 25%;
+  top: 1%;
+  transform: rotate(7deg);
+  opacity: 0.7;
+}
+.scene-room[data-scene="3"] .archive-sheet i {
+  display: block;
+  position: absolute;
+  left: 16%;
+  right: 16%;
+  height: 2px;
+  background: #b39bc34d;
+}
+.archive-sheet i:nth-child(1) {
+  top: 23%;
+}
+.archive-sheet i:nth-child(2) {
+  top: 34%;
+  right: 35% !important;
+}
+.archive-sheet i:nth-child(3) {
+  top: 45%;
+  right: 25% !important;
+}
+.scene-room[data-scene="3"] .archive-tray {
+  position: absolute;
+  left: 3%;
+  right: 1%;
+  bottom: 12%;
+  height: 25%;
+  border: 1px solid #fff9;
+  border-radius: 11px 11px 25px 25px;
+  background: linear-gradient(170deg, #ffffff5c, #cfb8d61a);
+  box-shadow:
+    inset 0 3px 2px #fff7,
+    7px 13px 20px #937b9f24;
+  transform: perspective(500px) rotateX(39deg) rotateZ(-6deg);
+}
+.reference-setup[data-composition="resources"] .art-stage .hero-object {
+  top: 22%;
+  left: 10%;
+  width: 80%;
+  height: 69%;
+}
+.reference-setup[data-composition="resources"] .art-stage .support-object {
+  left: 55%;
+  top: 4%;
+  width: 32%;
+  height: 33%;
+}
+.scene-room[data-scene="3"] .subject-reflection {
+  top: 54%;
+  height: 65%;
+}
+
+/* Environment: three pieces, three slots, one shared assembly bench. */
+.scene-room[data-scene="4"] .assembly-track {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  top: 69%;
+  height: 18%;
+  border-radius: 50%;
+  border: 1px solid #fff9;
+  background: linear-gradient(175deg, #fff5, #a78fb416);
+  box-shadow:
+    0 8px 1px #ad96bb28,
+    0 20px 25px #a18ca61f;
+}
+.assembly-track i {
+  position: absolute;
+  top: 40%;
+  left: 19%;
+  right: 19%;
+  height: 1px;
+  background: linear-gradient(90deg, #b5a2c588, #fff, #b5a2c588);
+}
+.assembly-track i:nth-child(2) {
+  top: 58%;
+}
+.scene-room[data-scene="4"] .assembly-cell {
+  position: absolute;
+  top: 3%;
+  height: 65%;
+  width: 22%;
+  border: 1px solid #fff9;
+  border-radius: 13px;
+  background: linear-gradient(145deg, #fff7, #c4d8d91a);
+  box-shadow:
+    5px 7px 1px #b7a5c027,
+    inset 0 2px 0 #fff7;
+  transform: perspective(500px) rotateY(-12deg) rotateZ(-5deg);
+}
+.scene-room[data-scene="4"] .cell-one {
+  left: 10%;
+}
+.scene-room[data-scene="4"] .cell-two {
+  left: 39%;
+  top: 0;
+}
+.scene-room[data-scene="4"] .cell-three {
+  left: 68%;
+}
+.scene-room[data-scene="4"] .scene-drawing {
+  stroke: #a89ab27a;
+  stroke-width: 4;
+}
+.reference-setup[data-composition="assembly"] .art-stage .hero-object {
+  left: 9%;
+  width: 24%;
+  top: -5%;
+  height: 79%;
+}
+.reference-setup[data-composition="assembly"] .art-stage .support-object {
+  left: 68%;
+  top: 0;
+  width: 22%;
+  height: 70%;
+}
+.reference-setup[data-composition="assembly"] .dependency-pins {
+  left: 18%;
+  right: 18%;
+  bottom: 3%;
+  color: #887b96;
+  font-size: 11px;
+}
+.scene-room[data-scene="4"] .subject-reflection {
+  left: 9%;
+  top: 45%;
+  width: 24%;
+  height: 70%;
+}
+.scene-room[data-scene="4"] .glass-lens {
+  display: none;
+}
+
+/* Voice: a recording capsule with a contour that continues outside its edge. */
+.scene-room[data-scene="5"] .recording-capsule {
+  position: absolute;
+  inset: 1% 12% 12%;
+  border-radius: 48% 48% 30% 30%;
+  border: 1px solid #fff9;
+  background: linear-gradient(120deg, #fff8, #ccb0db22);
+  box-shadow:
+    inset 2px 1px 2px #fff,
+    10px 15px 30px #a58db026,
+    0 0 0 8px #e8dfef24;
+  transform: perspective(750px) rotateY(-13deg) rotateZ(4deg);
+}
+.scene-room[data-scene="5"] .voice-halo {
+  position: absolute;
+  inset: 12% -3% 30%;
+  border: 1px solid #ad93c24d;
+  border-radius: 50%;
+  transform: rotate(-25deg);
+  box-shadow: inset 0 2px #fff9;
+}
+.scene-room[data-scene="5"] .voice-contour {
+  left: -30%;
+  width: 160%;
+  top: 11%;
+  height: 80%;
+  stroke: #b49ac567;
+}
+.reference-setup[data-composition="voice"] .art-stage .hero-object {
+  height: 76%;
+  top: 5%;
+}
+.reference-setup[data-composition="voice"] .voice-signature {
+  top: 10%;
+  left: 8%;
+  opacity: 0.5;
+}
+.scene-room[data-scene="5"] .subject-reflection {
+  top: 51%;
+}
+
+/* Listening: concentric sound pressure on a polished low stage. */
+.scene-room[data-scene="6"] .sound-ripple {
+  position: absolute;
+  inset: 7% -8% 13%;
+  border: 1px solid #af98c66b;
+  border-radius: 50%;
+  box-shadow: inset 0 1px #fff9;
+  transform: rotate(-5deg);
+}
+.scene-room[data-scene="6"] .ripple-two {
+  inset: -2% -23% 5%;
+  opacity: 0.55;
+}
+.scene-room[data-scene="6"] .ripple-three {
+  inset: -12% -40% -4%;
+  opacity: 0.25;
+}
+.scene-room[data-scene="6"] .listening-plinth {
+  left: 11%;
+  right: 11%;
+  bottom: 7%;
+  height: 30%;
+  box-shadow:
+    0 8px 0 -2px #c2a9cf47,
+    0 20px 25px #7f648d26,
+    inset 0 2px 2px #fff;
+}
+.scene-room[data-scene="6"] .plinth-edge {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #fff, transparent);
+  transform: rotate(-6deg);
+}
+.scene-room[data-scene="6"] .subject-reflection {
+  left: 24%;
+  width: 52%;
+  height: 100%;
+  top: 40%;
+  opacity: 0.13;
+}
+.reference-setup[data-composition="listening"] .listening-wave {
+  left: -10%;
+  right: -10%;
+  color: #af8ac3;
+  opacity: 0.65;
+  top: 34%;
+}
+
+/* Conversation: clear glass bubbles join the two real controls, never a green status. */
+.scene-room[data-scene="7"] .dialogue-glass {
+  position: absolute;
+  left: 12%;
+  top: 10%;
+  width: 70%;
+  height: 53%;
+  border: 1px solid #fff9;
+  border-radius: 25px;
+  background: linear-gradient(140deg, #fff9, #c2d0e822);
+  box-shadow: 7px 12px 20px #a08bb725;
+  transform: perspective(650px) rotateY(-12deg) rotateZ(-9deg);
+}
+.scene-room[data-scene="7"] .dialogue-glass:after {
+  content: "";
+  position: absolute;
+  left: 19%;
+  bottom: -13px;
+  width: 24px;
+  height: 24px;
+  border-bottom: 1px solid #fff9;
+  border-right: 1px solid #fff9;
+  background: #e9deef55;
+  transform: skewY(-35deg);
+}
+.scene-room[data-scene="7"] .dialogue-back {
+  left: 27%;
+  top: 0;
+  opacity: 0.6;
+  transform: rotate(9deg);
+}
+.scene-room[data-scene="7"] .dialogue-front i {
+  position: absolute;
+  left: 14%;
+  top: 26%;
+  width: 37%;
+  height: 2px;
+  background: #b9a5c64d;
+}
+.scene-room[data-scene="7"] .dialogue-front i:nth-child(2) {
+  top: 39%;
+  width: 59%;
+}
+.scene-room[data-scene="7"] .bridge-circuit {
+  left: -48%;
+  width: 196%;
+  top: -6%;
+  height: 107%;
+  stroke: #c4aed273;
+}
+.scene-room[data-scene="7"] .bridge-foot {
+  position: absolute;
+  bottom: 3%;
+  left: 13%;
+  right: 13%;
+  height: 15%;
+  border: 1px solid #fff9;
+  border-radius: 50%;
+  background: linear-gradient(170deg, #fff9, #c6acdb30);
+  box-shadow: 0 9px 12px #8e6c9a20;
+}
+.scene-room[data-scene="7"] .subject-reflection {
+  left: 13%;
+  width: 73%;
+  top: 51%;
+  height: 65%;
+}
+.scene-room[data-codex="off"] .codex-route,
+.scene-room[data-deepseek="off"] .deepseek-route {
+  opacity: 0.2;
+}
+.reference-setup[data-composition="conversation"] .art-stage .hero-object {
+  top: 3%;
+  left: 13%;
+  height: 70%;
+  width: 73%;
+}
+.reference-setup[data-composition="conversation"] .art-stage .support-object {
+  left: 37%;
+  top: 65%;
+  height: 25%;
+  width: 26%;
+}
+
+/* Completion: an assembled glass object, not a success claim. */
+.scene-room[data-scene="9"] .ready-module {
+  position: absolute;
+  width: 45%;
+  height: 49%;
+  border: 1px solid #fff9;
+  border-radius: 12px;
+  background: linear-gradient(140deg, #fff9, #c7b4da26);
+  box-shadow: 8px 9px 1px #b8a3c336;
+  transform: perspective(500px) rotateY(-18deg) rotateZ(-9deg);
+}
+.scene-room[data-scene="9"] .module-a {
+  left: 7%;
+  top: 20%;
+}
+.scene-room[data-scene="9"] .module-b {
+  left: 38%;
+  top: 5%;
+}
+.scene-room[data-scene="9"] .module-c {
+  left: 45%;
+  top: 45%;
+  width: 31%;
+  height: 32%;
+}
+.scene-room[data-scene="9"] .ready-foundation {
+  stroke: #fff9;
+  stroke-width: 1.5;
+}
+.reference-setup[data-composition="ready"] .art-stage .hero-object {
+  left: 25%;
+  top: 3%;
+  height: 75%;
+  width: 61%;
+}
+.scene-room[data-scene="9"] .subject-reflection {
+  left: 25%;
+  top: 48%;
+  height: 75%;
+  width: 61%;
+}
+.reference-setup[data-composition="ready"] .summary-list {
+  gap: 0;
+  border: 1px solid #cfbbdf36;
+  border-radius: 20px;
+  background: linear-gradient(120deg, #fff1, #d0b8e509);
+  padding: 0 25px;
+  box-shadow: inset 0 1px #fff1;
+}
+.reference-setup[data-composition="ready"] .summary-line {
+  border-top: 0;
+  padding: 23px 20px;
+}
+.reference-setup[data-composition="ready"] .summary-line + .summary-line {
+  border-left: 1px solid #d8c5e326;
+}
+
+/* Independent, finite secondary choreography. Main subject motions remain distinct. */
+.scene-room.scene-reveal .surface-glint {
+  animation: material-glint 1100ms 180ms both;
+}
+.scene-room.scene-reveal[data-scene="0"] .acoustic-orbit {
+  animation: orbit-unfold 1200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.scene-room.scene-reveal[data-scene="1"] .diagnostic-pane {
+  animation: screen-seat 1000ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.scene-room.scene-reveal[data-scene="1"] .screen-sheen {
+  animation: screen-scan 1100ms 200ms both;
+}
+.scene-room.scene-reveal[data-scene="2"] .outer-ring {
+  animation: coupling-turn 1200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.scene-room.scene-reveal[data-scene="2"] .inner-ring {
+  animation: coupling-turn 1000ms 150ms both;
+}
+.scene-room.scene-reveal[data-scene="3"] .archive-sheet {
+  animation: archive-land 1000ms 140ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.scene-room.scene-reveal[data-scene="3"] .sheet-back {
+  animation-delay: 40ms;
+}
+.scene-room.scene-reveal[data-scene="4"] .assembly-cell {
+  animation: slot-join 900ms 100ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.scene-room.scene-reveal[data-scene="4"] .cell-two {
+  animation-delay: 210ms;
+}
+.scene-room.scene-reveal[data-scene="4"] .cell-three {
+  animation-delay: 320ms;
+}
+.scene-room.scene-reveal[data-scene="5"] .voice-halo {
+  animation: voice-envelope 1200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.scene-room.scene-reveal[data-scene="6"] .sound-ripple {
+  animation: ripple-propagate 1050ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.scene-room.scene-reveal[data-scene="6"] .ripple-two {
+  animation-delay: 130ms;
+}
+.scene-room.scene-reveal[data-scene="6"] .ripple-three {
+  animation-delay: 260ms;
+}
+.scene-room.scene-reveal[data-scene="7"] .dialogue-glass {
+  animation: dialogue-pair 1100ms 100ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.scene-room.scene-reveal[data-scene="7"] .dialogue-back {
+  animation-delay: 0ms;
+}
+.scene-room.scene-reveal[data-scene="9"] .ready-module {
+  animation: module-interlock 900ms 100ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.scene-room.scene-reveal[data-scene="9"] .module-b {
+  animation-delay: 210ms;
+}
+.scene-room.scene-reveal[data-scene="9"] .module-c {
+  animation-delay: 320ms;
+}
+@keyframes material-glint {
+  from {
+    opacity: 0;
+    scale: 0.4 1;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes orbit-unfold {
+  from {
+    opacity: 0;
+    scale: 0.7;
+    rotate: -20deg;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+    rotate: 0deg;
+  }
+}
+@keyframes screen-seat {
+  from {
+    opacity: 0;
+    translate: -12px 22px;
+    rotate: -6deg;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    rotate: 0deg;
+  }
+}
+@keyframes screen-scan {
+  0% {
+    opacity: 0;
+    translate: 0 -35px;
+  }
+  25%,
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: 0 55px;
+  }
+}
+@keyframes coupling-turn {
+  from {
+    opacity: 0;
+    rotate: -50deg;
+    scale: 0.85;
+  }
+  to {
+    opacity: 1;
+    rotate: 0deg;
+    scale: 1;
+  }
+}
+@keyframes archive-land {
+  from {
+    opacity: 0;
+    translate: 10px -45px;
+    rotate: 8deg;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    rotate: 0deg;
+  }
+}
+@keyframes slot-join {
+  from {
+    opacity: 0;
+    translate: -28px -9px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes voice-envelope {
+  from {
+    opacity: 0;
+    scale: 0.75 0.9;
+    rotate: -12deg;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+    rotate: 0deg;
+  }
+}
+@keyframes ripple-propagate {
+  from {
+    opacity: 0;
+    scale: 0.6 0.85;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes dialogue-pair {
+  from {
+    opacity: 0;
+    translate: 22px 6px;
+    rotate: 5deg;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    rotate: 0deg;
+  }
+}
+@keyframes module-interlock {
+  from {
+    opacity: 0;
+    translate: -18px -13px;
+    rotate: -8deg;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    rotate: 0deg;
+  }
+}
+.scene-room.still *,
+.reduced .scene-room * {
+  animation: none !important;
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene-room * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+@media (max-width: 780px) {
+  .reference-setup[data-composition] .composition-aperture {
+    inset: 70px 0 96px;
+  }
+  .reference-setup[data-composition] .position {
+    color: #c5bdcf;
+  }
+  .reference-setup[data-composition] .brand {
+    color: #f3f5f8;
+  }
+  .reference-setup[data-composition="diagnostic"] .footer .back,
+  .reference-setup[data-composition="diagnostic"] .footer .quiet,
+  .reference-setup[data-composition="diagnostic"] .footer #skip {
+    color: #d0c5da;
+    border-color: #ddd4e35e;
+  }
+  .scene-room .scene-drawing {
+    stroke-width: 1.5;
+  }
+  .scene-room .subject-reflection {
+    opacity: 0.1;
+  }
+  .scene-room .glass-lens {
+    display: none;
+  }
+  .reference-setup[data-composition="engines"] .scene-room .engine-prism {
+    display: none;
+  }
+  .reference-setup[data-composition="ready"] .summary-list {
+    padding: 0 18px;
+  }
+  .reference-setup[data-composition="ready"] .summary-line {
+    padding: 18px 0;
+  }
+  .reference-setup[data-composition="ready"] .summary-line + .summary-line {
+    border-left: 0;
+    border-top: 1px solid #d8c5e326;
+  }
+}
+/* Layout revision: content and artwork share a reading axis. */
+.reference-setup[data-composition="engines"] .art-field {
+  background: radial-gradient(ellipse at 75% 75%, #a790c41a, transparent 62%);
+}
+.reference-setup[data-composition="engines"] .art-field:before,
+.reference-setup[data-composition="engines"] .art-field:after {
+  display: none;
+}
+.reference-setup[data-composition="engines"] .position,
+.reference-setup[data-composition="assembly"] .position,
+.reference-setup[data-composition="voice"] .position {
+  color: #c5bdcf;
+}
+.reference-setup[data-composition="conversation"] .position {
+  color: #65566e;
+}
+.reference-setup[data-composition="voice"] .brand {
+  color: #3e364b;
+}
+.reference-setup[data-composition="assembly"] .scene-heading h1 {
+  color: #332c3e;
+  text-shadow: none;
+}
+.reference-setup[data-composition="assembly"] .scene-heading .lead {
+  color: #766b80;
+  max-width: 20em;
+}
+.reference-setup[data-composition="assembly"] .footer .back,
+.reference-setup[data-composition="assembly"] .footer .quiet,
+.reference-setup[data-composition="assembly"] .footer #skip,
+.reference-setup[data-composition="voice"] .footer .back,
+.reference-setup[data-composition="voice"] .footer .quiet,
+.reference-setup[data-composition="voice"] .footer #skip {
+  color: #65566e;
+  border-color: #9a81b34a;
+}
+.scene-room[data-scene="6"] .sound-ripple {
+  transform: rotate(-2deg);
+}
+.scene-room[data-scene="6"] .ripple-two {
+  inset: 2% -20% 5%;
+}
+.scene-room[data-scene="6"] .ripple-three {
+  inset: 4% -30% -4%;
+}
+.scene-room[data-scene="7"] .bridge-circuit {
+  left: -15%;
+  width: 130%;
+}
+.screen[data-direction="2"] .choice-glass {
+  animation: screen-seat 900ms ease-out both;
+}
+@media (max-width: 780px) {
+  .reference-setup[data-composition] .position {
+    color: #c5bdcf;
+  }
+  .reference-setup[data-composition] .brand {
+    color: #f3f5f8;
+  }
+  .reference-setup[data-composition="assembly"] .scene-heading h1 {
+    color: #f3f5f8;
+  }
+  .reference-setup[data-composition="assembly"] .scene-heading .lead {
+    color: #c5c1cb;
+  }
+  .reference-setup[data-composition="assembly"] .footer .back,
+  .reference-setup[data-composition="assembly"] .footer .quiet,
+  .reference-setup[data-composition="assembly"] .footer #skip,
+  .reference-setup[data-composition="voice"] .footer .back,
+  .reference-setup[data-composition="voice"] .footer .quiet,
+  .reference-setup[data-composition="voice"] .footer #skip {
+    color: #d0c5da;
+    border-color: #ddd4e35e;
+  }
+}
+/* Client convergence and the final recap replace the rejected 7/9 scenery. */
+.reference-setup[data-composition="conversation"] .position {
+  color: #c5bdcf;
+}
+.reference-setup[data-composition="conversation"] .art-field {
+  clip-path: none !important;
+  background: radial-gradient(ellipse at 50% 75%, #a790c41a, transparent 65%);
+}
+.reference-setup[data-composition="conversation"] .art-field:before,
+.reference-setup[data-composition="conversation"] .art-field:after {
+  display: none;
+}
+.scene-room[data-scene="7"] .subject-reflection,
+.scene-room[data-scene="7"] .glass-lens,
+.scene-room[data-scene="7"] .surface-glint {
+  display: none;
+}
+.scene-room[data-scene="7"] .client-convergence {
+  stroke: #b5a0ce8c;
+  stroke-width: 1.2;
+}
+.convergence-core {
+  position: absolute;
+  left: calc(50% - 100px);
+  top: 24%;
+  width: 200px;
+  height: 55px;
+  border: 1px solid #c8b5e776;
+  border-radius: 99px;
+  background: linear-gradient(135deg, #fff2, #c2a3e014);
+  box-shadow:
+    inset 0 1px #fff2,
+    0 8px 20px #0002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  color: #e3d8ef;
+  font-size: 15px;
+}
+.core-bars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 28px;
+  color: #cbb4eb;
+}
+.core-bars i {
+  display: block;
+  width: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  height: 12px;
+}
+.core-bars i:nth-child(2),
+.core-bars i:nth-child(4) {
+  height: 21px;
+}
+.core-bars i:nth-child(3) {
+  height: 28px;
+}
+.scene-room.scene-reveal[data-scene="7"] .convergence-core {
+  animation: dialogue-pair 900ms 170ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.scene-room.scene-reveal[data-scene="7"] .client-convergence {
+  animation: material-glint 1000ms 70ms both;
+}
+.scene-room[data-scene="9"] .completion-frame {
+  position: absolute;
+  inset: 2% 12% 12%;
+  border: 1px solid #fff9;
+  border-radius: 22px;
+  background: linear-gradient(140deg, #fff7, #dac4e62a);
+  box-shadow:
+    inset 1px 1px #fff,
+    10px 13px 22px #9d7daf22;
+  transform: perspective(700px) rotateY(-14deg) rotateZ(-8deg);
+}
+.scene-room[data-scene="9"] .listening-plinth {
+  bottom: 7%;
+}
+.scene-room[data-scene="9"] .completion-ribbon {
+  stroke: #fff9;
+  stroke-width: 1.5;
+  left: -20%;
+  width: 140%;
+}
+.reference-setup[data-composition="ready"] .art-stage .hero-object {
+  left: 12%;
+  top: 1%;
+  height: 88%;
+  width: 75%;
+}
+.reference-setup[data-composition="ready"] .art-stage .support-object {
+  left: 74%;
+  top: 65%;
+  width: 20%;
+  height: 25%;
+}
+.scene-room[data-scene="9"] .subject-reflection {
+  left: 12%;
+  top: 45%;
+  height: 88%;
+  width: 75%;
+}
+.scene-room.scene-reveal[data-scene="9"] .completion-frame {
+  animation: module-interlock 1000ms 100ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (max-width: 780px) {
+  .convergence-core {
+    width: 145px;
+    left: calc(50% - 72.5px);
+    height: 42px;
+    top: 15%;
+    font-size: 12px;
+    gap: 9px;
+  }
+  .core-bars {
+    scale: 0.7;
+  }
+}

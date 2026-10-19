@@ -1,0 +1,82 @@
+[
+  {
+    "contentScroll": 0,
+    "figures": 1,
+    "horizontalOverflow": false,
+    "images": true,
+    "rooms": 1,
+    "step": "0"
+  },
+  {
+    "contentScroll": 0,
+    "figures": 1,
+    "horizontalOverflow": false,
+    "images": true,
+    "rooms": 1,
+    "step": "1"
+  },
+  {
+    "contentScroll": 0,
+    "figures": 1,
+    "horizontalOverflow": false,
+    "images": true,
+    "rooms": 1,
+    "step": "2"
+  },
+  {
+    "contentScroll": 0,
+    "figures": 1,
+    "horizontalOverflow": false,
+    "images": true,
+    "rooms": 1,
+    "step": "3"
+  },
+  {
+    "contentScroll": 0,
+    "figures": 1,
+    "horizontalOverflow": false,
+    "images": true,
+    "rooms": 1,
+    "step": "4"
+  },
+  {
+    "contentScroll": 0,
+    "figures": 1,
+    "horizontalOverflow": false,
+    "images": true,
+    "rooms": 1,
+    "step": "5"
+  },
+  {
+    "contentScroll": 0,
+    "figures": 1,
+    "horizontalOverflow": false,
+    "images": true,
+    "rooms": 1,
+    "step": "6"
+  },
+  {
+    "contentScroll": 0,
+    "figures": 1,
+    "horizontalOverflow": false,
+    "images": true,
+    "rooms": 1,
+    "step": "7"
+  },
+  {
+    "contentScroll": 0,
+    "figures": 1,
+    "horizontalOverflow": false,
+    "images": true,
+    "rooms": 0,
+    "step": "8"
+  },
+  {
+    "contentScroll": 0,
+    "figures": 1,
+    "horizontalOverflow": false,
+    "images": true,
+    "rooms": 1,
+    "step": "9"
+  }
+]
