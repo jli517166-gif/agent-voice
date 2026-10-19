@@ -13,6 +13,7 @@ namespace AgentVoice {
         readonly Stopwatch watch=new Stopwatch();
         double time=Duration;
         bool reduced;
+        internal bool SingleLine;
         internal WizardTitle(){
             SetStyle(ControlStyles.UserPaint|ControlStyles.OptimizedDoubleBuffer|ControlStyles.AllPaintingInWmPaint|ControlStyles.ResizeRedraw|ControlStyles.SupportsTransparentBackColor,true);
             BackColor=Color.Transparent;ForeColor=Color.FromArgb(243,245,248);
@@ -34,9 +35,20 @@ namespace AgentVoice {
             float height=Math.Max(1,Height*reveal);
             var clip=new RectangleF(0,(Height-height)/2f,Width,height);
             var old=g.Clip;g.SetClip(clip);
+            Font drawFont=Font;bool temporary=false;
+            if(SingleLine){
+                float size=Font.Size;
+                while(size>14){
+                    var test=new Font(Font.FontFamily,size,FontStyle.Bold);
+                    var measured=g.MeasureString(Text,test);
+                    if(measured.Width<=Width-8){drawFont=test;temporary=true;break;}
+                    test.Dispose();size-=1;
+                }
+            }
             using(var brush=new SolidBrush(ForeColor))
-            using(var format=new StringFormat{Alignment=StringAlignment.Near,LineAlignment=StringAlignment.Center,FormatFlags=0,Trimming=StringTrimming.None})
-                g.DrawString(Text,Font,brush,new RectangleF(0,0,Width,Height),format);
+            using(var format=new StringFormat{Alignment=StringAlignment.Near,LineAlignment=StringAlignment.Center,FormatFlags=SingleLine?StringFormatFlags.NoWrap:0,Trimming=StringTrimming.None})
+                g.DrawString(Text,drawFont,brush,new RectangleF(0,0,Width,Height),format);
+            if(temporary)drawFont.Dispose();
             g.Clip=old;
             if(progress>.82f){
                 float line=Width*.42f*Math.Min(1,(progress-.82f)/.18f);

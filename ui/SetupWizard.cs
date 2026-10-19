@@ -13,7 +13,7 @@ namespace AgentVoice {
         readonly bool testing;
         readonly InterfaceSounds sounds=new InterfaceSounds();
         readonly List<Panel> pages=new List<Panel>();
-        readonly List<WizardArt> art=new List<WizardArt>();readonly List<WizardTitle> titles=new List<WizardTitle>();
+        readonly List<WizardArt> art=new List<WizardArt>();readonly List<WizardTitle> titles=new List<WizardTitle>();readonly List<WizardPageSpec> pageSpecs=new List<WizardPageSpec>();
         readonly List<FlowLayoutPanel> choices=new List<FlowLayoutPanel>();
         readonly Panel stage;
         readonly Label stepLabel,status;
@@ -36,6 +36,7 @@ namespace AgentVoice {
         internal static bool NeedsSetup(WelcomePreferences p){return p.onboardingVersion<2||(!p.onboardingComplete&&!p.onboardingDeferred);}
         internal SetupWizard(SettingsStore store,bool test=false){
             Flow=new SetupWorkflow(store);testing=test;Flow.Report=SetStatus;
+            try{string layoutPath=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"assets","onboarding","layout.json");if(File.Exists(layoutPath))pageSpecs.AddRange(Json.Decode<List<WizardPageSpec>>(File.ReadAllText(layoutPath)));}catch{}
             Text="Agent Voice · 首次配置";Font=new Font("Microsoft YaHei UI",10F);BackColor=Color.FromArgb(11,13,18);ForeColor=Color.FromArgb(243,245,248);ClientSize=new Size(1120,780);MinimumSize=new Size(900,640);AutoScaleMode=AutoScaleMode.Dpi;StartPosition=FormStartPosition.CenterScreen;KeyPreview=true;
             SetStyle(ControlStyles.OptimizedDoubleBuffer|ControlStyles.AllPaintingInWmPaint|ControlStyles.ResizeRedraw,true);
             var root=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=1,RowCount=4,Padding=new Padding(32,18,32,12),BackColor=BackColor};root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));root.RowStyles.Add(new RowStyle(SizeType.Absolute,48));root.RowStyles.Add(new RowStyle(SizeType.Percent,100));root.RowStyles.Add(new RowStyle(SizeType.Absolute,65));root.RowStyles.Add(new RowStyle(SizeType.Absolute,64));Controls.Add(root);
@@ -84,12 +85,22 @@ namespace AgentVoice {
         void BuildPage(string title,string note,int step){
             var page=new Panel{Dock=DockStyle.Fill,BackColor=BackColor,Visible=false,Name="onboardingPage_"+step};pages.Add(page);stage.Controls.Add(page);
             string background=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"assets","onboarding","step-"+step+".png");if(File.Exists(background)){page.BackgroundImage=Image.FromFile(background);page.BackgroundImageLayout=ImageLayout.Stretch;}
-            var layout=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=2,RowCount=3,BackColor=Color.Transparent,Padding=new Padding(46,0,46,0)};layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,56));layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,44));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,112));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,60));layout.RowStyles.Add(new RowStyle(SizeType.Percent,100));page.Controls.Add(layout);
+            var a=new WizardArt(step){Dock=DockStyle.Fill,Name="onboardingArt_"+step,Visible=false};art.Add(a);
+            var spec=pageSpecs.Find(x=>x.step==step);
+            if(spec!=null&&spec.title!=null&&spec.title.box!=null&&spec.stage!=null){
+                var titleView=new WizardTitle{Text=title,Name="onboardingTitle_"+step,SingleLine=spec.title.box.h<100};titles.Add(titleView);page.Controls.Add(titleView);
+                var lead=new Label{Text=note,TextAlign=ContentAlignment.MiddleLeft,ForeColor=Color.FromArgb(157,160,177),AutoSize=true,BackColor=Color.Transparent,Font=new Font(Font.FontFamily,10)};page.Controls.Add(lead);
+                var viewport=new Panel{AutoScroll=true,BackColor=Color.Transparent,Name="onboardingScroll_"+step};page.Controls.Add(viewport);
+                var flow=new BufferedFlow{Dock=DockStyle.Top,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,BackColor=Color.Transparent,Padding=new Padding(2,8,22,12)};choices.Add(flow);viewport.Controls.Add(flow);
+                Action layout=()=>{if(page.ClientSize.Width<=0||page.ClientSize.Height<=0)return;float sx=page.ClientSize.Width/(float)Math.Max(1,spec.stage.w),sy=page.ClientSize.Height/(float)Math.Max(1,spec.stage.h);var tb=spec.title.box;int x=(int)(tb.x*sx),y=(int)(tb.y*sy),w=(int)(tb.w*sx),h=(int)(tb.h*sy);titleView.SetBounds(x,y,Math.Max(180,w),Math.Max(78,h));int leadW=spec.lead!=null&&spec.lead.box!=null?Math.Max(220,(int)(spec.lead.box.w*sx)):Math.Max(220,page.ClientSize.Width-x-40);if(spec.lead!=null&&spec.lead.box!=null){var lb=spec.lead.box;lead.MaximumSize=new Size(leadW,0);lead.Location=new Point((int)(lb.x*sx),(int)(lb.y*sy));lead.Width=leadW;lead.PerformLayout();}else lead.MaximumSize=new Size(leadW,0);lead.Location=new Point(x,y+titleView.Height+8);lead.Width=leadW;lead.PerformLayout();int top=Math.Max(titleView.Bottom,lead.Bottom)+14;viewport.SetBounds(x,top,leadW,Math.Max(80,page.ClientSize.Height-top-16));};
+                page.Resize+=(s,e)=>layout();page.HandleCreated+=(s,e)=>layout();viewport.SizeChanged+=(s,e)=>{foreach(Control c in flow.Controls){int width=Math.Max(220,viewport.ClientSize.Width-30);if(c is Label){((Label)c).MaximumSize=new Size(width,0);c.MinimumSize=new Size(width,0);}c.Width=width;}};layout();return;
+            }
+            var layoutPanel=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=2,RowCount=3,BackColor=Color.Transparent,Padding=new Padding(46,0,46,0)};layoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,56));layoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,44));layoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute,112));layoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute,60));layoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent,100));page.Controls.Add(layoutPanel);
             int textCol=(step==1||step==5)?1:0,artCol=1-textCol;
-            var titleView=new WizardTitle{Text=title,Dock=DockStyle.Fill,Name="onboardingTitle_"+step};titles.Add(titleView);layout.Controls.Add(titleView,0,0);layout.SetColumnSpan(titleView,2);
-            layout.Controls.Add(new Label{Text=note,Dock=DockStyle.Fill,TextAlign=ContentAlignment.MiddleLeft,ForeColor=Color.FromArgb(157,160,177),Margin=new Padding(2,0,10,6)},textCol,1);
-            var a=new WizardArt(step){Dock=DockStyle.Fill,Name="onboardingArt_"+step,Visible=false};art.Add(a);layout.Controls.Add(a,artCol,2);
-            var viewport=new Panel{Dock=DockStyle.Fill,AutoScroll=true,BackColor=Color.Transparent,Name="onboardingScroll_"+step};layout.Controls.Add(viewport,textCol,2);var flow=new BufferedFlow{Dock=DockStyle.Top,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,BackColor=Color.Transparent,Padding=new Padding(2,8,22,12)};choices.Add(flow);viewport.Controls.Add(flow);viewport.SizeChanged+=(s,e)=>{foreach(Control c in flow.Controls){int width=Math.Max(220,viewport.ClientSize.Width-30);if(c is Label){((Label)c).MaximumSize=new Size(width,0);c.MinimumSize=new Size(width,0);}c.Width=width;}};
+            var fallbackTitle=new WizardTitle{Text=title,Dock=DockStyle.Fill,Name="onboardingTitle_"+step};titles.Add(fallbackTitle);layoutPanel.Controls.Add(fallbackTitle,0,0);layoutPanel.SetColumnSpan(fallbackTitle,2);
+            layoutPanel.Controls.Add(new Label{Text=note,Dock=DockStyle.Fill,TextAlign=ContentAlignment.MiddleLeft,ForeColor=Color.FromArgb(157,160,177),Margin=new Padding(2,0,10,6)},textCol,1);
+            layoutPanel.Controls.Add(a,artCol,2);
+            var fallbackViewport=new Panel{Dock=DockStyle.Fill,AutoScroll=true,BackColor=Color.Transparent,Name="onboardingScroll_"+step};layoutPanel.Controls.Add(fallbackViewport,textCol,2);var fallbackFlow=new BufferedFlow{Dock=DockStyle.Top,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,BackColor=Color.Transparent,Padding=new Padding(2,8,22,12)};choices.Add(fallbackFlow);fallbackViewport.Controls.Add(fallbackFlow);fallbackViewport.SizeChanged+=(s,e)=>{foreach(Control c in fallbackFlow.Controls){int width=Math.Max(220,fallbackViewport.ClientSize.Width-30);if(c is Label){((Label)c).MaximumSize=new Size(width,0);c.MinimumSize=new Size(width,0);}c.Width=width;}};
         }
         Label AddCopy(int step,string value,bool prominent){var label=new Label{Text=value,AutoSize=true,MaximumSize=new Size(880,0),Width=800,Margin=new Padding(0,5,0,12),ForeColor=prominent?ForeColor:Color.FromArgb(157,160,177),Font=new Font(Font.FontFamily,prominent?10:9)};choices[step].Controls.Add(label);return label;}
         void Actions(int step,params AnimeButton[] buttons){var row=new BufferedFlow{AutoSize=true,WrapContents=true,BackColor=BackColor,Margin=new Padding(0,3,0,5)};foreach(var b in buttons)row.Controls.Add(b);choices[step].Controls.Add(row);}
