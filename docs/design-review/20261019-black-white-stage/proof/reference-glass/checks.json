@@ -1,0 +1,169 @@
+{
+  "scope": "Visual prototype only; not runtime acceptance",
+  "reference": "assets/AIRI-构图草图.png",
+  "desktopPages": [
+    {
+      "fields": 1,
+      "figures": 1,
+      "headingFont": "SimSun, \"Songti SC\", \"Noto Serif SC\", serif",
+      "images": [
+        true,
+        true
+      ],
+      "overflow": false,
+      "ribbons": 1,
+      "route": "#setup-0",
+      "width": 1280
+    },
+    {
+      "fields": 1,
+      "figures": 1,
+      "headingFont": "SimSun, \"Songti SC\", \"Noto Serif SC\", serif",
+      "images": [
+        true,
+        true
+      ],
+      "overflow": false,
+      "ribbons": 1,
+      "route": "#setup-1",
+      "width": 1280
+    },
+    {
+      "fields": 1,
+      "figures": 1,
+      "headingFont": "SimSun, \"Songti SC\", \"Noto Serif SC\", serif",
+      "images": [
+        true,
+        true
+      ],
+      "overflow": false,
+      "ribbons": 1,
+      "route": "#setup-2",
+      "width": 1280
+    },
+    {
+      "fields": 1,
+      "figures": 1,
+      "headingFont": "SimSun, \"Songti SC\", \"Noto Serif SC\", serif",
+      "images": [
+        true,
+        true
+      ],
+      "overflow": false,
+      "ribbons": 1,
+      "route": "#setup-3",
+      "width": 1280
+    },
+    {
+      "fields": 1,
+      "figures": 1,
+      "headingFont": "SimSun, \"Songti SC\", \"Noto Serif SC\", serif",
+      "images": [
+        true,
+        true
+      ],
+      "overflow": false,
+      "ribbons": 1,
+      "route": "#setup-4",
+      "width": 1280
+    },
+    {
+      "fields": 1,
+      "figures": 1,
+      "headingFont": "SimSun, \"Songti SC\", \"Noto Serif SC\", serif",
+      "images": [
+        true,
+        true
+      ],
+      "overflow": false,
+      "ribbons": 1,
+      "route": "#setup-5",
+      "width": 1280
+    },
+    {
+      "fields": 1,
+      "figures": 1,
+      "headingFont": "SimSun, \"Songti SC\", \"Noto Serif SC\", serif",
+      "images": [
+        true,
+        true
+      ],
+      "overflow": false,
+      "ribbons": 1,
+      "route": "#setup-6",
+      "width": 1280
+    },
+    {
+      "fields": 1,
+      "figures": 1,
+      "headingFont": "SimSun, \"Songti SC\", \"Noto Serif SC\", serif",
+      "images": [
+        true,
+        true
+      ],
+      "overflow": false,
+      "ribbons": 1,
+      "route": "#setup-7",
+      "width": 1280
+    },
+    {
+      "fields": 1,
+      "figures": 1,
+      "headingFont": "SimSun, \"Songti SC\", \"Noto Serif SC\", serif",
+      "images": [
+        true
+      ],
+      "overflow": false,
+      "ribbons": 1,
+      "route": "#setup-8",
+      "width": 1280
+    },
+    {
+      "fields": 1,
+      "figures": 1,
+      "headingFont": "SimSun, \"Songti SC\", \"Noto Serif SC\", serif",
+      "images": [
+        true,
+        true
+      ],
+      "overflow": false,
+      "ribbons": 1,
+      "route": "#setup-9",
+      "width": 1280
+    }
+  ],
+  "topLevelWorkspace": {
+    "fields": 0,
+    "figures": 0,
+    "overflow": false,
+    "referenceClass": false,
+    "width": 483
+  },
+  "toggles": {
+    "art": 1,
+    "enabled": "true",
+    "imageAnimation": "none",
+    "reduced": true
+  },
+  "backButton": {
+    "backCount": 1,
+    "replayCount": 1,
+    "route": "#setup-7"
+  },
+  "ids": {
+    "duplicateIds": [],
+    "route": "#setup-8",
+    "unresolvedIcons": []
+  },
+  "intro": {
+    "backVisible": false,
+    "route": "#setup-0"
+  },
+  "compact": {
+    "backCount": 1,
+    "height": 726,
+    "overflow": false,
+    "replayCount": 1,
+    "width": 483
+  }
+}

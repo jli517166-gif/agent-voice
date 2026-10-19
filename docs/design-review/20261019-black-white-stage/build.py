@@ -1,8 +1,12 @@
 from pathlib import Path
+import re
 root=Path(__file__).resolve().parent
 html=(root/'base-template.html').read_text(encoding='utf-8')
+# Keep icon definitions distinct from interactive controls (back/replay).
+html=re.sub(r'(<symbol\s+id=")([^"]+)',lambda m:m[1]+'av-symbol-'+m[2],html)
+html=re.sub(r'(<use\s+href="#)([^"]+)',lambda m:m[1]+'av-symbol-'+m[2],html)
 html=html.replace('<title>Agent Voice · 声音终端 · 设计审核</title>','<title>Agent Voice · 黑白声场设计审核</title>')
-html=html.replace('</head>','<link rel="stylesheet" href="art-direction.css"><link rel="stylesheet" href="workspace.css"></head>')
+html=html.replace('</head>','<link rel="stylesheet" href="art-direction.css"><link rel="stylesheet" href="workspace.css"><link rel="stylesheet" href="reference-glass.css"></head>')
 html=html.replace("history.replaceState(null,'',`#setup-${step}`)}","history.replaceState(null,'',`#setup-${step}`);window.dispatchEvent(new Event('design-route'))}")
 html=html.replace("$('#jump').value='desk';history.replaceState","$('#jump').value='desk';window.dispatchEvent(new Event('design-route'));history.replaceState")
 html=html.replace('function clearTransient(){',"function clearTransient(){window.dispatchEvent(new Event('design-dispose'));")
