@@ -1,0 +1,295 @@
+{
+  "scope": "Design-only UI checks. No real TTS or connection acceptance.",
+  "date": "2026-10-19",
+  "checks": [
+    {
+      "check": "failed switch retains previous voice",
+      "engine": "GPT-SoVITS · v5 Turbo · 1.00 倍语速",
+      "voice": "星见雅"
+    },
+    {
+      "check": "AIRI enabled but unverified stays local",
+      "destination": "本机播放"
+    },
+    {
+      "check": "pause",
+      "queued": 2,
+      "status": "已暂停 · 演示仅演示交互，不生成真实语音"
+    },
+    {
+      "check": "stop clears queue",
+      "queued": 0,
+      "status": "已停止仅演示交互，不生成真实语音"
+    },
+    {
+      "check": "connection verified is marked demo",
+      "text": [
+        "CodexMCP 语言控制与生成过程自动朗读。验证通过状态 · 仅演示",
+        "DeepSeek Harness聊天栏控制入口与生成过程自动朗读。未启用",
+        "AIRI使用你已经登录的原 AIRI，不另建副本。已选择，尚未验证"
+      ]
+    },
+    {
+      "check": "import requires file",
+      "message": "请先选择一个音色包。"
+    },
+    {
+      "check": "setup import returns to same step",
+      "route": "#setup-5",
+      "selected": "01导入音色包已选择：星见雅"
+    },
+    {
+      "check": "CosyVoice export types and engine suffix",
+      "suffix": "输出名会附带 .cosyvoice.ttsmodel。包类型影响内容与体积，不主动改变音色。不导出其他引擎或个人外观。",
+      "types": [
+        "轻量包 · 复用匹配的基础引擎",
+        "模型完整包 · 携带对应权重",
+        "训练增量包 · 高级训练结果",
+        "训练完整包 · 基础模型与训练权重"
+      ]
+    },
+    {
+      "check": "export preserves name and TTS suffix",
+      "output": "审核导出.cosyvoice.ttsmodel"
+    },
+    {
+      "check": "engine preparation continues to next setup page",
+      "route": "#setup-4"
+    },
+    {
+      "check": "desktop six workspace pages",
+      "pages": [
+        {
+          "artCount": 0,
+          "h": 720,
+          "horizontalOverflow": false,
+          "images": [],
+          "mainOverflow": false,
+          "route": "#desk-speech",
+          "taskCount": 0,
+          "title": "文字，有了声音。",
+          "w": 1280
+        },
+        {
+          "artCount": 0,
+          "h": 720,
+          "horizontalOverflow": false,
+          "images": [],
+          "mainOverflow": false,
+          "route": "#desk-voices",
+          "taskCount": 0,
+          "title": "音色包",
+          "w": 1280
+        },
+        {
+          "artCount": 0,
+          "h": 720,
+          "horizontalOverflow": false,
+          "images": [],
+          "mainOverflow": false,
+          "route": "#desk-schemes",
+          "taskCount": 0,
+          "title": "声音方案",
+          "w": 1280
+        },
+        {
+          "artCount": 0,
+          "h": 720,
+          "horizontalOverflow": false,
+          "images": [
+            {
+              "ok": true,
+              "src": "assets/airi-11-icon.png"
+            }
+          ],
+          "mainOverflow": false,
+          "route": "#desk-connections",
+          "taskCount": 0,
+          "title": "连接",
+          "w": 1280
+        },
+        {
+          "artCount": 0,
+          "h": 720,
+          "horizontalOverflow": false,
+          "images": [],
+          "mainOverflow": false,
+          "route": "#desk-settings",
+          "taskCount": 0,
+          "title": "设置",
+          "w": 1280
+        },
+        {
+          "artCount": 0,
+          "h": 720,
+          "horizontalOverflow": false,
+          "images": [
+            {
+              "ok": true,
+              "src": "assets/mic.webp"
+            }
+          ],
+          "mainOverflow": false,
+          "route": "#desk-training",
+          "taskCount": 0,
+          "title": "训练指南",
+          "w": 1280
+        }
+      ]
+    },
+    {
+      "check": "606x918 iframe actual workspace pages",
+      "pages": [
+        {
+          "documentOverflow": false,
+          "height": 918,
+          "mainOverflow": false,
+          "route": "#desk-speech",
+          "width": 606
+        },
+        {
+          "documentOverflow": false,
+          "height": 918,
+          "mainOverflow": false,
+          "route": "#desk-voices",
+          "width": 606
+        },
+        {
+          "documentOverflow": false,
+          "height": 918,
+          "mainOverflow": false,
+          "route": "#desk-schemes",
+          "width": 606
+        },
+        {
+          "documentOverflow": false,
+          "height": 918,
+          "mainOverflow": false,
+          "route": "#desk-connections",
+          "width": 606
+        },
+        {
+          "documentOverflow": false,
+          "height": 918,
+          "mainOverflow": false,
+          "route": "#desk-settings",
+          "width": 606
+        },
+        {
+          "documentOverflow": false,
+          "height": 918,
+          "mainOverflow": false,
+          "route": "#desk-training",
+          "width": 606
+        }
+      ]
+    },
+    {
+      "check": "cancel task removes overlay",
+      "count": 0
+    },
+    {
+      "check": "reduced motion keeps current task",
+      "imageAnimation": "none",
+      "reduced": true,
+      "taskCount": 1
+    },
+    {
+      "check": "updated setup ten pages in compact viewport",
+      "pages": [
+        {
+          "artCount": 1,
+          "heading": "声音，现在开始。",
+          "overflow": false,
+          "route": "#setup-0"
+        },
+        {
+          "artCount": 1,
+          "heading": "从这台电脑开始。",
+          "overflow": false,
+          "route": "#setup-1"
+        },
+        {
+          "artCount": 1,
+          "heading": "选择引擎。",
+          "overflow": false,
+          "route": "#setup-2"
+        },
+        {
+          "artCount": 1,
+          "heading": "准备引擎。",
+          "overflow": false,
+          "route": "#setup-3"
+        },
+        {
+          "artCount": 1,
+          "heading": "环境就位。",
+          "overflow": false,
+          "route": "#setup-4"
+        },
+        {
+          "artCount": 1,
+          "heading": "选择你的声音。",
+          "overflow": false,
+          "route": "#setup-5"
+        },
+        {
+          "artCount": 1,
+          "heading": "先听一听。",
+          "overflow": false,
+          "route": "#setup-6"
+        },
+        {
+          "artCount": 1,
+          "heading": "接住你的对话。",
+          "overflow": false,
+          "route": "#setup-7"
+        },
+        {
+          "artCount": 1,
+          "heading": "让桌宠开口。",
+          "overflow": false,
+          "route": "#setup-8"
+        },
+        {
+          "artCount": 1,
+          "heading": "准备好了。",
+          "overflow": false,
+          "route": "#setup-9"
+        }
+      ]
+    },
+    {
+      "check": "browser console warnings and errors",
+      "entries": []
+    },
+    {
+      "check": "observed scheme switches",
+      "observations": [
+        {
+          "scheme": "Fairy · 日常",
+          "speed": "1.00×",
+          "advanced": "false"
+        },
+        {
+          "scheme": "审核测试 · 1.10倍",
+          "speed": "1.10×",
+          "advanced": "true"
+        }
+      ]
+    },
+    {
+      "check": "delete cancellation preserves scheme",
+      "count": 1
+    },
+    {
+      "check": "delete confirmation shows empty state",
+      "text": "还没有保存的方案。先选择音色，再保存当前设置。"
+    },
+    {
+      "check": "direct hash route matches view",
+      "route": "#desk-speech",
+      "title": "文字，有了声音。"
+    }
+  ]
+}
