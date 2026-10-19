@@ -13,7 +13,7 @@ namespace AgentVoice {
         readonly bool testing;
         readonly InterfaceSounds sounds=new InterfaceSounds();
         readonly List<Panel> pages=new List<Panel>();
-        readonly List<WizardArt> art=new List<WizardArt>();readonly List<WizardTitle> titles=new List<WizardTitle>();readonly List<WizardPageSpec> pageSpecs=new List<WizardPageSpec>();
+        readonly List<WizardArt> art=new List<WizardArt>();readonly List<WizardTitle> titles=new List<WizardTitle>();readonly List<WizardPageSpec> pageSpecs=new List<WizardPageSpec>();readonly Dictionary<int,List<KeyValuePair<AnimeButton,WizardBox>>> placedButtons=new Dictionary<int,List<KeyValuePair<AnimeButton,WizardBox>>>();readonly HashSet<int> placedLayoutBound=new HashSet<int>();
         readonly List<FlowLayoutPanel> choices=new List<FlowLayoutPanel>();
         readonly Panel stage;
         readonly Label stepLabel,status;
