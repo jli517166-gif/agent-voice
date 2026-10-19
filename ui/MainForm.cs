@@ -1,4 +1,4 @@
-using Button = AgentVoice.AnimeButton;
+﻿using Button = AgentVoice.AnimeButton;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -168,7 +168,7 @@ namespace AgentVoice {
         ComboBox quickVoice;
         bool speechOperation;
         void BuildHomeWeb(){
-            var home=NewPage("home");home.AutoScroll=false;
+            var home=NewPage("home");home.AutoScroll=true;
             var title=new Label{Text="文字，有了声音。",Font=new Font(Font.FontFamily,26F,FontStyle.Bold),AutoSize=true,BackColor=Color.Transparent,ForeColor=ForeColor};title.SetBounds(38,12,620,70);home.Controls.Add(title);
             var lead=Hint("手动朗读与自动朗读，在这里统一控制。");lead.SetBounds(40,72,520,24);home.Controls.Add(lead);
             serviceToggle=Primary(AsyncBtn("开启服务",async()=>{if(await Service.Running()){await Service.Stop();Status("服务已关闭。");}else{await SaveDraft();await Service.Start();Status("服务已启动。");}await Poll();}));serviceToggle.AutoSize=false;serviceToggle.SetBounds(868,46,96,34);home.Controls.Add(serviceToggle);
