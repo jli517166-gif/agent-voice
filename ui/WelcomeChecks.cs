@@ -24,7 +24,7 @@ namespace AgentVoice {
                     foreach(var size in new[]{new Size(1120,780),new Size(900,640),new Size(1440,900)}){
                         wizard.ClientSize=size;
                         for(int step=0;step<10;step++){
-                            wizard.Go(step,false);Application.DoEvents();
+                            wizard.Go(step,false);Application.DoEvents();foreach(var title in wizard.Controls.Find("onboardingTitle_"+step,true).OfType<WizardTitle>())title.Preview();
                             if(wizard.Step!=step||wizard.VisiblePageCount!=1||wizard.RunningArtCount>1)errors.Add("Multiple steps or timers visible: "+step);
                             foreach(var c in new Control[]{wizard.Next,wizard.Back,wizard.Later,wizard.Skip,wizard.Motion,wizard.Sound}.Where(c=>c.Visible)){
                                 var rect=wizard.RectangleToClient(c.RectangleToScreen(c.ClientRectangle));if(!wizard.ClientRectangle.Contains(rect))errors.Add("Clipped primary navigation: "+c.Text+" @ "+size);
