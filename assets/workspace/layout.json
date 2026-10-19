@@ -1,0 +1,4736 @@
+{
+  "meta": {
+    "source": "http://127.0.0.1:51272/index.html",
+    "designDir": "E:\\App\\deepseek harness\\项目\\harness-1\\agent-voice\\docs\\design-review\\20261019-black-white-stage",
+    "viewport": {
+      "width": 1180,
+      "height": 800,
+      "deviceScaleFactor": 1
+    },
+    "waitMs": 2600,
+    "capturedAt": "2026-10-19T14:09:44.159Z",
+    "capturedAtLocal": "2026/10/19 22:09:44",
+    "coordinateSpace": "除 meta.windowBox 与 pages[].window.x/y 为页面内绝对位置外，所有 x/y/w/h 均为相对 #window 左上角的 CSS 像素；imageSize 与 window 尺寸一致。",
+    "windowBox": {
+      "x": 26,
+      "y": 32,
+      "w": 1128,
+      "h": 680
+    },
+    "edge": "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
+    "node": "v24.17.0",
+    "nativeReference": {
+      "mainFormClientSize": {
+        "w": 1180,
+        "h": 800
+      },
+      "note": "原生 MainForm.ClientSize=1180x800；设计稿 #window 在 1180x800 视口下为 1128x680（review 外壳占 26px 左右与 32/20px 上下）。若需要 1180x800 素材，可按 window 尺寸等比/非等比拉伸，或再次采集窗口铺满视口。"
+    },
+    "errors": []
+  },
+  "chrome": {
+    "header": {
+      "x": 0,
+      "y": 0,
+      "w": 1128,
+      "h": 67
+    },
+    "sidebar": {
+      "x": 0,
+      "y": 76,
+      "w": 150,
+      "h": 604
+    },
+    "content": {
+      "x": 150,
+      "y": 76,
+      "w": 978,
+      "h": 604
+    },
+    "footer": null,
+    "nav": [
+      {
+        "id": "speech",
+        "label": "朗读",
+        "current": true,
+        "box": {
+          "x": 28,
+          "y": 101,
+          "w": 101,
+          "h": 43
+        }
+      },
+      {
+        "id": "voices",
+        "label": "音色包",
+        "current": false,
+        "box": {
+          "x": 28,
+          "y": 148,
+          "w": 101,
+          "h": 43
+        }
+      },
+      {
+        "id": "schemes",
+        "label": "声音方案",
+        "current": false,
+        "box": {
+          "x": 28,
+          "y": 195,
+          "w": 101,
+          "h": 43
+        }
+      },
+      {
+        "id": "connections",
+        "label": "连接",
+        "current": false,
+        "box": {
+          "x": 28,
+          "y": 242,
+          "w": 101,
+          "h": 43
+        }
+      },
+      {
+        "id": "settings",
+        "label": "设置",
+        "current": false,
+        "box": {
+          "x": 28,
+          "y": 289,
+          "w": 101,
+          "h": 43
+        }
+      },
+      {
+        "id": "training",
+        "label": "训练指南",
+        "current": false,
+        "box": {
+          "x": 28,
+          "y": 564,
+          "w": 101,
+          "h": 43
+        }
+      }
+    ]
+  },
+  "pages": [
+    {
+      "id": "speech",
+      "route": "#desk-speech",
+      "documentTitle": "Agent Voice · 黑白声场设计审核",
+      "title": "文字，有了声音。",
+      "lead": "手动朗读与自动朗读，在这里统一控制。",
+      "image": "speech.png",
+      "imageSize": {
+        "w": 1128,
+        "h": 680
+      },
+      "imageSha256": "d0d1280da01bb701",
+      "pngBytes": 296322,
+      "window": {
+        "x": 26,
+        "y": 32,
+        "w": 1128,
+        "h": 680
+      },
+      "scroll": {
+        "box": {
+          "x": 150,
+          "y": 76,
+          "w": 978,
+          "h": 516
+        },
+        "scrollTop": 0,
+        "scrollHeight": 516,
+        "clientHeight": 516,
+        "clientWidth": 978,
+        "scrollWidth": 978
+      },
+      "regions": {
+        "header": {
+          "x": 0,
+          "y": 0,
+          "w": 1128,
+          "h": 67
+        },
+        "brand": {
+          "x": 48.5,
+          "y": 16.5,
+          "w": 142.8,
+          "h": 33
+        },
+        "headerActions": {
+          "x": 995.5,
+          "y": 22,
+          "w": 84,
+          "h": 22
+        },
+        "screenArea": {
+          "x": 0,
+          "y": 76,
+          "w": 1128,
+          "h": 604
+        },
+        "sidebar": {
+          "x": 0,
+          "y": 76,
+          "w": 150,
+          "h": 604
+        },
+        "content": {
+          "x": 150,
+          "y": 76,
+          "w": 978,
+          "h": 604
+        },
+        "footer": null,
+        "heading": {
+          "x": 188,
+          "y": 105,
+          "w": 902,
+          "h": 74.4
+        },
+        "scroll": {
+          "box": {
+            "x": 150,
+            "y": 76,
+            "w": 978,
+            "h": 516
+          },
+          "scrollTop": 0,
+          "scrollHeight": 516,
+          "clientHeight": 516,
+          "clientWidth": 978,
+          "scrollWidth": 978
+        }
+      },
+      "blocks": [
+        {
+          "name": "page-heading",
+          "selector": ".work-heading",
+          "box": {
+            "x": 188,
+            "y": 105,
+            "w": 902,
+            "h": 74.4
+          },
+          "textSample": "文字，有了声音。手动朗读与自动朗读，在这里统一控制。服务未开启开启服务"
+        },
+        {
+          "name": "scroll-area",
+          "selector": ".work-scroll",
+          "box": {
+            "x": 150,
+            "y": 76,
+            "w": 978,
+            "h": 516
+          },
+          "textSample": "文字，有了声音。手动朗读与自动朗读，在这里统一控制。服务未开启开启服务FairyCosyVoice · 1.00 倍语速切换声音工作好久啦，起来动一动、喝口水吧～本机播放17 字常"
+        },
+        {
+          "name": "play-deck",
+          "selector": ".play-deck",
+          "box": {
+            "x": 150,
+            "y": 592,
+            "w": 978,
+            "h": 88
+          },
+          "textSample": "准备就绪仅演示交互，不生成真实语音停止生成并播放"
+        },
+        {
+          "name": "current-voice-card",
+          "selector": ".current-voice",
+          "box": {
+            "x": 188,
+            "y": 202.4,
+            "w": 658,
+            "h": 65
+          },
+          "textSample": "FairyCosyVoice · 1.00 倍语速切换声音"
+        },
+        {
+          "name": "composer-card",
+          "selector": ".composer",
+          "box": {
+            "x": 188,
+            "y": 284.4,
+            "w": 658,
+            "h": 171
+          },
+          "textSample": "工作好久啦，起来动一动、喝口水吧～本机播放17 字"
+        },
+        {
+          "name": "phrase-block",
+          "selector": ".phrase-block",
+          "box": {
+            "x": 188,
+            "y": 478.4,
+            "w": 658,
+            "h": 75
+          },
+          "textSample": "常用句管理休息一下任务完成"
+        },
+        {
+          "name": "queue-pane",
+          "selector": ".queue-pane",
+          "box": {
+            "x": 875,
+            "y": 202.4,
+            "w": 215,
+            "h": 355.4
+          },
+          "textSample": "朗读队列清空暂时没有朗读任务。来自客户端的完整句子会按顺序出现在这里。自动朗读 已启用 · 演示待服务开启后接收任务。体验对话进入队列管理客户端接入"
+        }
+      ],
+      "texts": [
+        {
+          "text": "Agent Voice",
+          "kind": "text",
+          "tag": "span",
+          "cls": "",
+          "box": {
+            "x": 95.5,
+            "y": 20.5,
+            "w": 95.8,
+            "h": 25
+          }
+        },
+        {
+          "text": "本地声音工作室设计审核 · 不连接服务",
+          "kind": "hint",
+          "tag": "div",
+          "cls": "nav-foot",
+          "box": {
+            "x": 28,
+            "y": 611,
+            "w": 101,
+            "h": 49
+          }
+        },
+        {
+          "text": "文字，有了声音。",
+          "kind": "title",
+          "tag": "h1",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 105,
+            "w": 277.8,
+            "h": 45
+          }
+        },
+        {
+          "text": "手动朗读与自动朗读，在这里统一控制。",
+          "kind": "lead",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 159,
+            "w": 277.8,
+            "h": 20.4
+          }
+        },
+        {
+          "text": "Fairy",
+          "kind": "text",
+          "tag": "strong",
+          "cls": "",
+          "box": {
+            "x": 250,
+            "y": 218.4,
+            "w": 31.7,
+            "h": 18
+          }
+        },
+        {
+          "text": "CosyVoice · 1.00 倍语速",
+          "kind": "text",
+          "tag": "small",
+          "cls": "",
+          "box": {
+            "x": 250,
+            "y": 240.4,
+            "w": 110,
+            "h": 13
+          }
+        },
+        {
+          "text": "本机播放",
+          "kind": "status",
+          "tag": "div",
+          "cls": "destination",
+          "box": {
+            "x": 211,
+            "y": 419.4,
+            "w": 50,
+            "h": 13
+          }
+        },
+        {
+          "text": "17 字",
+          "kind": "text",
+          "tag": "span",
+          "cls": "",
+          "box": {
+            "x": 798.3,
+            "y": 419.4,
+            "w": 24.7,
+            "h": 13
+          }
+        },
+        {
+          "text": "常用句",
+          "kind": "section",
+          "tag": "div",
+          "cls": "section-label",
+          "box": {
+            "x": 188,
+            "y": 494.4,
+            "w": 658,
+            "h": 15
+          }
+        },
+        {
+          "text": "朗读队列",
+          "kind": "section",
+          "tag": "div",
+          "cls": "section-label",
+          "box": {
+            "x": 896,
+            "y": 223.4,
+            "w": 173,
+            "h": 15
+          }
+        },
+        {
+          "text": "暂时没有朗读任务。来自客户端的完整句子会按顺序出现在这里。",
+          "kind": "text",
+          "tag": "div",
+          "cls": "queue-empty",
+          "box": {
+            "x": 896,
+            "y": 250.4,
+            "w": 173,
+            "h": 155.4
+          }
+        },
+        {
+          "text": "准备就绪",
+          "kind": "status",
+          "tag": "span",
+          "cls": "play-state-text",
+          "box": {
+            "x": 219,
+            "y": 621.5,
+            "w": 44,
+            "h": 14
+          }
+        },
+        {
+          "text": "仅演示交互，不生成真实语音",
+          "kind": "text",
+          "tag": "small",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 638.2,
+            "w": 586,
+            "h": 15.3
+          }
+        }
+      ],
+      "controls": [
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "globalStop",
+          "text": "停止朗读",
+          "aria": "停止全部朗读",
+          "work": "",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 995.5,
+            "y": 22,
+            "w": 84,
+            "h": 22
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "朗读",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "speech",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 101,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "音色包",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "voices",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 148,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "声音方案",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "schemes",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 195,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "连接",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "connections",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 242,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "设置",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "settings",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 289,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "训练指南",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "training",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 564,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "开启服务",
+          "aria": "",
+          "work": "service",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 1018,
+            "y": 126.2,
+            "w": 72,
+            "h": 32
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "切换声音",
+          "aria": "",
+          "work": "pickVoice",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 769,
+            "y": 219.4,
+            "w": 60,
+            "h": 31
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "textarea",
+          "role": "",
+          "type": "textarea",
+          "name": "studioText",
+          "text": "工作好久啦，起来动一动、喝口水吧～",
+          "aria": "朗读文本",
+          "work": "",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "工作好久啦，起来动一动、喝口水吧～",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 211,
+            "y": 307.4,
+            "w": 612,
+            "h": 100
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "管理",
+          "aria": "",
+          "work": "phrases",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 814,
+            "y": 494.4,
+            "w": 32,
+            "h": 15
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "休息一下",
+          "aria": "",
+          "work": "phrase",
+          "dataId": "0",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 188,
+            "y": 521.4,
+            "w": 68,
+            "h": 32
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "任务完成",
+          "aria": "",
+          "work": "phrase",
+          "dataId": "1",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 264,
+            "y": 521.4,
+            "w": 68,
+            "h": 32
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "清空",
+          "aria": "",
+          "work": "clearQueue",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 1037,
+            "y": 223.4,
+            "w": 32,
+            "h": 15
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "体验对话进入队列",
+          "aria": "",
+          "work": "demoQueue",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 896,
+            "y": 480.8,
+            "w": 80,
+            "h": 28
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "管理客户端接入",
+          "aria": "",
+          "work": "connections",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 896,
+            "y": 508.8,
+            "w": 70,
+            "h": 28
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "停止",
+          "aria": "",
+          "work": "stop",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 788,
+            "y": 617,
+            "w": 80,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "",
+          "aria": "重新播放当前文本",
+          "work": "replay",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 882,
+            "y": 617,
+            "w": 47,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "studioPlay",
+          "text": "生成并播放",
+          "aria": "",
+          "work": "play",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 943,
+            "y": 617,
+            "w": 147,
+            "h": 39
+          },
+          "inWindow": true
+        }
+      ],
+      "dynamic": [
+        {
+          "name": "当前音色 / 引擎 / 语速",
+          "selector": ".current-voice strong, .current-voice small",
+          "note": "随选中音色与语速变化",
+          "count": 2,
+          "samples": [
+            "Fairy",
+            "CosyVoice · 1.00 倍语速"
+          ],
+          "boxes": [
+            {
+              "x": 250,
+              "y": 218.4,
+              "w": 31.7,
+              "h": 18
+            },
+            {
+              "x": 250,
+              "y": 240.4,
+              "w": 110,
+              "h": 13
+            }
+          ]
+        },
+        {
+          "name": "服务状态胶囊",
+          "selector": ".service-pill",
+          "note": "服务开关状态与按钮文案随状态变化",
+          "count": 1,
+          "samples": [
+            "服务未开启开启服务"
+          ],
+          "boxes": [
+            {
+              "x": 936,
+              "y": 126.2,
+              "w": 154,
+              "h": 32
+            }
+          ]
+        },
+        {
+          "name": "朗读正文",
+          "selector": "#studioText",
+          "note": "用户可编辑的文本",
+          "count": 1,
+          "samples": [
+            "工作好久啦，起来动一动、喝口水吧～"
+          ],
+          "boxes": [
+            {
+              "x": 211,
+              "y": 307.4,
+              "w": 612,
+              "h": 100
+            }
+          ]
+        },
+        {
+          "name": "字数统计",
+          "selector": "#studioCount",
+          "note": "随正文长度变化",
+          "count": 1,
+          "samples": [
+            "17 字"
+          ],
+          "boxes": [
+            {
+              "x": 798.3,
+              "y": 419.4,
+              "w": 24.7,
+              "h": 13
+            }
+          ]
+        },
+        {
+          "name": "播放目的地",
+          "selector": ".destination",
+          "note": "本机播放 / AIRI 桌宠二态",
+          "count": 1,
+          "samples": [
+            "本机播放"
+          ],
+          "boxes": [
+            {
+              "x": 211,
+              "y": 419.4,
+              "w": 50,
+              "h": 13
+            }
+          ]
+        },
+        {
+          "name": "常用句列表",
+          "selector": ".phrase-chips button",
+          "note": "可增删的常用句 chips",
+          "count": 2,
+          "samples": [
+            "休息一下",
+            "任务完成"
+          ],
+          "boxes": [
+            {
+              "x": 188,
+              "y": 521.4,
+              "w": 68,
+              "h": 32
+            },
+            {
+              "x": 264,
+              "y": 521.4,
+              "w": 68,
+              "h": 32
+            }
+          ]
+        },
+        {
+          "name": "朗读队列",
+          "selector": "#queueList",
+          "note": "空状态或运行时生成的队列条目",
+          "count": 1,
+          "samples": [
+            "暂时没有朗读任务。来自客户端的完整句子会按顺序出现在这里。"
+          ],
+          "boxes": [
+            {
+              "x": 896,
+              "y": 250.4,
+              "w": 173,
+              "h": 155.4
+            }
+          ]
+        },
+        {
+          "name": "播放状态",
+          "selector": ".play-status",
+          "note": "准备 / 生成 / 播放 / 暂停 / 完成 / 停止",
+          "count": 1,
+          "samples": [
+            "准备就绪仅演示交互，不生成真实语音"
+          ],
+          "boxes": [
+            {
+              "x": 188,
+              "y": 619.5,
+              "w": 586,
+              "h": 34
+            }
+          ]
+        },
+        {
+          "name": "自动朗读提示",
+          "selector": ".connection-mini",
+          "note": "自动朗读与服务状态组合文案",
+          "count": 1,
+          "samples": [
+            "自动朗读 已启用 · 演示待服务开启后接收任务。体验对话进入队列管理客户端接入"
+          ],
+          "boxes": [
+            {
+              "x": 896,
+              "y": 425.8,
+              "w": 173,
+              "h": 111
+            }
+          ]
+        }
+      ],
+      "animations": {
+        "atWait": 0,
+        "afterWait": 0
+      },
+      "capture": {
+        "hiddenTextNodes": 20,
+        "hiddenButtons": 22,
+        "hiddenInputs": 1,
+        "leftoverText": 0
+      }
+    },
+    {
+      "id": "voices",
+      "route": "#desk-voices",
+      "documentTitle": "Agent Voice · 黑白声场设计审核",
+      "title": "音色包",
+      "lead": "声音文件放在这里，参数组合放在“声音方案”。",
+      "image": "voices.png",
+      "imageSize": {
+        "w": 1128,
+        "h": 680
+      },
+      "imageSha256": "8e343beb7b07541a",
+      "pngBytes": 212237,
+      "window": {
+        "x": 26,
+        "y": 32,
+        "w": 1128,
+        "h": 680
+      },
+      "scroll": {
+        "box": {
+          "x": 150,
+          "y": 76,
+          "w": 978,
+          "h": 604
+        },
+        "scrollTop": 0,
+        "scrollHeight": 604,
+        "clientHeight": 604,
+        "clientWidth": 978,
+        "scrollWidth": 978
+      },
+      "regions": {
+        "header": {
+          "x": 0,
+          "y": 0,
+          "w": 1128,
+          "h": 67
+        },
+        "brand": {
+          "x": 48.5,
+          "y": 16.5,
+          "w": 142.8,
+          "h": 33
+        },
+        "headerActions": {
+          "x": 995.5,
+          "y": 22,
+          "w": 84,
+          "h": 22
+        },
+        "screenArea": {
+          "x": 0,
+          "y": 76,
+          "w": 1128,
+          "h": 604
+        },
+        "sidebar": {
+          "x": 0,
+          "y": 76,
+          "w": 150,
+          "h": 604
+        },
+        "content": {
+          "x": 150,
+          "y": 76,
+          "w": 978,
+          "h": 604
+        },
+        "footer": null,
+        "heading": {
+          "x": 188,
+          "y": 105,
+          "w": 902,
+          "h": 74.4
+        },
+        "scroll": {
+          "box": {
+            "x": 150,
+            "y": 76,
+            "w": 978,
+            "h": 604
+          },
+          "scrollTop": 0,
+          "scrollHeight": 604,
+          "clientHeight": 604,
+          "clientWidth": 978,
+          "scrollWidth": 978
+        }
+      },
+      "blocks": [
+        {
+          "name": "page-heading",
+          "selector": ".work-heading",
+          "box": {
+            "x": 188,
+            "y": 105,
+            "w": 902,
+            "h": 74.4
+          },
+          "textSample": "音色包声音文件放在这里，参数组合放在“声音方案”。导入音色包导出音色包"
+        },
+        {
+          "name": "scroll-area",
+          "selector": ".work-scroll",
+          "box": {
+            "x": 150,
+            "y": 76,
+            "w": 978,
+            "h": 604
+          },
+          "textSample": "音色包声音文件放在这里，参数组合放在“声音方案”。导入音色包导出音色包Fairy当前声音CosyVoice · 轻量音色包调整设置详情星见雅GPT-SoVITS · v5 Turb"
+        },
+        {
+          "name": "voice-list",
+          "selector": ".voice-list",
+          "box": {
+            "x": 188,
+            "y": 202.4,
+            "w": 902,
+            "h": 275.1
+          },
+          "textSample": "Fairy当前声音CosyVoice · 轻量音色包调整设置详情星见雅GPT-SoVITS · v5 Turbo · 轻量音色包应用声音详情自定义声音GPT-SoVITS · Pr"
+        },
+        {
+          "name": "voice-row[0]",
+          "selector": ".voice-row",
+          "box": {
+            "x": 188,
+            "y": 202.4,
+            "w": 902,
+            "h": 91.7
+          },
+          "textSample": "Fairy当前声音CosyVoice · 轻量音色包调整设置详情"
+        },
+        {
+          "name": "voice-row[1]",
+          "selector": ".voice-row",
+          "box": {
+            "x": 188,
+            "y": 294.1,
+            "w": 902,
+            "h": 91.7
+          },
+          "textSample": "星见雅GPT-SoVITS · v5 Turbo · 轻量音色包应用声音详情"
+        },
+        {
+          "name": "voice-row[2]",
+          "selector": ".voice-row",
+          "box": {
+            "x": 188,
+            "y": 385.8,
+            "w": 902,
+            "h": 91.7
+          },
+          "textSample": "自定义声音GPT-SoVITS · ProPlus · 模型完整包应用声音详情"
+        },
+        {
+          "name": "detail-footer",
+          "selector": ".detail-footer",
+          "box": {
+            "x": 188,
+            "y": 537.3,
+            "w": 902,
+            "h": 62
+          },
+          "textSample": "训练自己的音色打开音色包文件夹"
+        }
+      ],
+      "texts": [
+        {
+          "text": "Agent Voice",
+          "kind": "text",
+          "tag": "span",
+          "cls": "",
+          "box": {
+            "x": 95.5,
+            "y": 20.5,
+            "w": 95.8,
+            "h": 25
+          }
+        },
+        {
+          "text": "本地声音工作室设计审核 · 不连接服务",
+          "kind": "hint",
+          "tag": "div",
+          "cls": "nav-foot",
+          "box": {
+            "x": 28,
+            "y": 611,
+            "w": 101,
+            "h": 49
+          }
+        },
+        {
+          "text": "音色包",
+          "kind": "title",
+          "tag": "h1",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 105,
+            "w": 249,
+            "h": 45
+          }
+        },
+        {
+          "text": "声音文件放在这里，参数组合放在“声音方案”。",
+          "kind": "lead",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 159,
+            "w": 249,
+            "h": 20.4
+          }
+        },
+        {
+          "text": "Fairy",
+          "kind": "heading",
+          "tag": "h2",
+          "cls": "",
+          "box": {
+            "x": 246,
+            "y": 222.4,
+            "w": 713,
+            "h": 25
+          }
+        },
+        {
+          "text": "当前声音",
+          "kind": "text",
+          "tag": "span",
+          "cls": "tag",
+          "box": {
+            "x": 295.3,
+            "y": 227.5,
+            "w": 46.8,
+            "h": 19
+          }
+        },
+        {
+          "text": "CosyVoice · 轻量音色包",
+          "kind": "body",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 246,
+            "y": 254.4,
+            "w": 713,
+            "h": 18.7
+          }
+        },
+        {
+          "text": "星见雅",
+          "kind": "heading",
+          "tag": "h2",
+          "cls": "",
+          "box": {
+            "x": 246,
+            "y": 314.1,
+            "w": 713,
+            "h": 25
+          }
+        },
+        {
+          "text": "GPT-SoVITS · v5 Turbo · 轻量音色包",
+          "kind": "body",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 246,
+            "y": 346.1,
+            "w": 713,
+            "h": 18.7
+          }
+        },
+        {
+          "text": "自定义声音",
+          "kind": "heading",
+          "tag": "h2",
+          "cls": "",
+          "box": {
+            "x": 246,
+            "y": 405.8,
+            "w": 713,
+            "h": 25
+          }
+        },
+        {
+          "text": "GPT-SoVITS · ProPlus · 模型完整包",
+          "kind": "body",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 246,
+            "y": 437.8,
+            "w": 713,
+            "h": 18.7
+          }
+        },
+        {
+          "text": "这里的三个声音仅为布局示例，不读取或修改你的真实音色包。",
+          "kind": "body",
+          "tag": "p",
+          "cls": "compact-hint",
+          "box": {
+            "x": 188,
+            "y": 497.5,
+            "w": 902,
+            "h": 19.8
+          }
+        }
+      ],
+      "controls": [
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "globalStop",
+          "text": "停止朗读",
+          "aria": "停止全部朗读",
+          "work": "",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 995.5,
+            "y": 22,
+            "w": 84,
+            "h": 22
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "朗读",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "speech",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 101,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "音色包",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "voices",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 148,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "声音方案",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "schemes",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 195,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "连接",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "connections",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 242,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "设置",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "settings",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 289,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "训练指南",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "training",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 564,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "导入音色包",
+          "aria": "",
+          "work": "importVoice",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 896,
+            "y": 122.7,
+            "w": 92,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "导出音色包",
+          "aria": "",
+          "work": "exportVoice",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 998,
+            "y": 122.7,
+            "w": 92,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "调整设置",
+          "aria": "",
+          "work": "voiceSettings",
+          "dataId": "fairy",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 974,
+            "y": 228.2,
+            "w": 80,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "详情",
+          "aria": "",
+          "work": "voiceDetails",
+          "dataId": "fairy",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 1064,
+            "y": 228.2,
+            "w": 26,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "应用声音",
+          "aria": "",
+          "work": "applyVoice",
+          "dataId": "miyabi",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 974,
+            "y": 319.9,
+            "w": 80,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "详情",
+          "aria": "",
+          "work": "voiceDetails",
+          "dataId": "miyabi",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 1064,
+            "y": 319.9,
+            "w": 26,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "应用声音",
+          "aria": "",
+          "work": "applyVoice",
+          "dataId": "custom",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 974,
+            "y": 411.6,
+            "w": 80,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "详情",
+          "aria": "",
+          "work": "voiceDetails",
+          "dataId": "custom",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 1064,
+            "y": 411.6,
+            "w": 26,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "训练自己的音色",
+          "aria": "",
+          "work": "training",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 188,
+            "y": 560.3,
+            "w": 86,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "打开音色包文件夹",
+          "aria": "",
+          "work": "packageFolder",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 992,
+            "y": 560.3,
+            "w": 98,
+            "h": 39
+          },
+          "inWindow": true
+        }
+      ],
+      "dynamic": [
+        {
+          "name": "音色行",
+          "selector": ".voice-row",
+          "note": "音色数量、名称、引擎、类型都来自数据",
+          "count": 3,
+          "samples": [
+            "Fairy当前声音CosyVoice · 轻量音色包调整设置详情",
+            "星见雅GPT-SoVITS · v5 Turbo · 轻量音色包应用声音详情",
+            "自定义声音GPT-SoVITS · ProPlus · 模型完整包应用声音详情"
+          ],
+          "boxes": [
+            {
+              "x": 188,
+              "y": 202.4,
+              "w": 902,
+              "h": 91.7
+            },
+            {
+              "x": 188,
+              "y": 294.1,
+              "w": 902,
+              "h": 91.7
+            },
+            {
+              "x": 188,
+              "y": 385.8,
+              "w": 902,
+              "h": 91.7
+            }
+          ]
+        },
+        {
+          "name": "当前声音标签",
+          "selector": ".tag",
+          "note": "随当前音色移动",
+          "count": 1,
+          "samples": [
+            "当前声音"
+          ],
+          "boxes": [
+            {
+              "x": 295.3,
+              "y": 227.5,
+              "w": 46.8,
+              "h": 19
+            }
+          ]
+        },
+        {
+          "name": "行内操作按钮",
+          "selector": ".row-actions button",
+          "note": "应用声音 / 调整设置、详情",
+          "count": 6,
+          "samples": [
+            "调整设置",
+            "详情",
+            "应用声音",
+            "详情"
+          ],
+          "boxes": [
+            {
+              "x": 974,
+              "y": 228.2,
+              "w": 80,
+              "h": 39
+            },
+            {
+              "x": 1064,
+              "y": 228.2,
+              "w": 26,
+              "h": 39
+            },
+            {
+              "x": 974,
+              "y": 319.9,
+              "w": 80,
+              "h": 39
+            },
+            {
+              "x": 1064,
+              "y": 319.9,
+              "w": 26,
+              "h": 39
+            }
+          ]
+        }
+      ],
+      "animations": {
+        "atWait": 0,
+        "afterWait": 0
+      },
+      "capture": {
+        "hiddenTextNodes": 14,
+        "hiddenButtons": 21,
+        "hiddenInputs": 0,
+        "leftoverText": 0
+      }
+    },
+    {
+      "id": "schemes",
+      "route": "#desk-schemes",
+      "documentTitle": "Agent Voice · 黑白声场设计审核",
+      "title": "声音方案",
+      "lead": "保存当前声音和参数，随时切回熟悉的听感。",
+      "image": "schemes.png",
+      "imageSize": {
+        "w": 1128,
+        "h": 680
+      },
+      "imageSha256": "021814ed1eca9078",
+      "pngBytes": 193299,
+      "window": {
+        "x": 26,
+        "y": 32,
+        "w": 1128,
+        "h": 680
+      },
+      "scroll": {
+        "box": {
+          "x": 150,
+          "y": 76,
+          "w": 978,
+          "h": 604
+        },
+        "scrollTop": 0,
+        "scrollHeight": 604,
+        "clientHeight": 604,
+        "clientWidth": 978,
+        "scrollWidth": 978
+      },
+      "regions": {
+        "header": {
+          "x": 0,
+          "y": 0,
+          "w": 1128,
+          "h": 67
+        },
+        "brand": {
+          "x": 48.5,
+          "y": 16.5,
+          "w": 142.8,
+          "h": 33
+        },
+        "headerActions": {
+          "x": 995.5,
+          "y": 22,
+          "w": 84,
+          "h": 22
+        },
+        "screenArea": {
+          "x": 0,
+          "y": 76,
+          "w": 1128,
+          "h": 604
+        },
+        "sidebar": {
+          "x": 0,
+          "y": 76,
+          "w": 150,
+          "h": 604
+        },
+        "content": {
+          "x": 150,
+          "y": 76,
+          "w": 978,
+          "h": 604
+        },
+        "footer": null,
+        "heading": {
+          "x": 188,
+          "y": 105,
+          "w": 902,
+          "h": 74.4
+        },
+        "scroll": {
+          "box": {
+            "x": 150,
+            "y": 76,
+            "w": 978,
+            "h": 604
+          },
+          "scrollTop": 0,
+          "scrollHeight": 604,
+          "clientHeight": 604,
+          "clientWidth": 978,
+          "scrollWidth": 978
+        }
+      },
+      "blocks": [
+        {
+          "name": "page-heading",
+          "selector": ".work-heading",
+          "box": {
+            "x": 188,
+            "y": 105,
+            "w": 902,
+            "h": 74.4
+          },
+          "textSample": "声音方案保存当前声音和参数，随时切回熟悉的听感。保存当前设置打开方案文件夹"
+        },
+        {
+          "name": "scroll-area",
+          "selector": ".work-scroll",
+          "box": {
+            "x": 150,
+            "y": 76,
+            "w": 978,
+            "h": 604
+          },
+          "textSample": "声音方案保存当前声音和参数，随时切回熟悉的听感。保存当前设置打开方案文件夹Fairy · 日常Fairy · 1.00 倍语速 · 音量 80%声音细调关闭应用删除方案记录设置；音"
+        },
+        {
+          "name": "scheme-list",
+          "selector": ".scheme-list",
+          "box": {
+            "x": 188,
+            "y": 202.4,
+            "w": 902,
+            "h": 110.4
+          },
+          "textSample": "Fairy · 日常Fairy · 1.00 倍语速 · 音量 80%声音细调关闭应用删除"
+        },
+        {
+          "name": "scheme-row",
+          "selector": ".scheme-row",
+          "box": {
+            "x": 188,
+            "y": 202.4,
+            "w": 902,
+            "h": 110.4
+          },
+          "textSample": "Fairy · 日常Fairy · 1.00 倍语速 · 音量 80%声音细调关闭应用删除"
+        }
+      ],
+      "texts": [
+        {
+          "text": "Agent Voice",
+          "kind": "text",
+          "tag": "span",
+          "cls": "",
+          "box": {
+            "x": 95.5,
+            "y": 20.5,
+            "w": 95.8,
+            "h": 25
+          }
+        },
+        {
+          "text": "本地声音工作室设计审核 · 不连接服务",
+          "kind": "hint",
+          "tag": "div",
+          "cls": "nav-foot",
+          "box": {
+            "x": 28,
+            "y": 611,
+            "w": 101,
+            "h": 49
+          }
+        },
+        {
+          "text": "声音方案",
+          "kind": "title",
+          "tag": "h1",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 105,
+            "w": 240,
+            "h": 45
+          }
+        },
+        {
+          "text": "保存当前声音和参数，随时切回熟悉的听感。",
+          "kind": "lead",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 159,
+            "w": 240,
+            "h": 20.4
+          }
+        },
+        {
+          "text": "Fairy · 日常",
+          "kind": "heading",
+          "tag": "h2",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 222.4,
+            "w": 149.4,
+            "h": 25
+          }
+        },
+        {
+          "text": "Fairy · 1.00 倍语速 · 音量 80%声音细调关闭",
+          "kind": "body",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 254.4,
+            "w": 149.4,
+            "h": 37.4
+          }
+        },
+        {
+          "text": "方案记录设置；音色包保存声音文件。两者分开管理，避免重复导出模型。",
+          "kind": "body",
+          "tag": "p",
+          "cls": "compact-hint",
+          "box": {
+            "x": 188,
+            "y": 332.8,
+            "w": 902,
+            "h": 19.8
+          }
+        }
+      ],
+      "controls": [
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "globalStop",
+          "text": "停止朗读",
+          "aria": "停止全部朗读",
+          "work": "",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 995.5,
+            "y": 22,
+            "w": 84,
+            "h": 22
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "朗读",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "speech",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 101,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "音色包",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "voices",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 148,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "声音方案",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "schemes",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 195,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "连接",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "connections",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 242,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "设置",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "settings",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 289,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "训练指南",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "training",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 564,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "保存当前设置",
+          "aria": "",
+          "work": "saveScheme",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 860,
+            "y": 122.7,
+            "w": 104,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "打开方案文件夹",
+          "aria": "",
+          "work": "schemeFolder",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 974,
+            "y": 122.7,
+            "w": 116,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "应用",
+          "aria": "",
+          "work": "applyScheme",
+          "dataId": "daily",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 978,
+            "y": 240.1,
+            "w": 50,
+            "h": 34
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "删除",
+          "aria": "",
+          "work": "deleteScheme",
+          "dataId": "daily",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 1040,
+            "y": 240.1,
+            "w": 50,
+            "h": 34
+          },
+          "inWindow": true
+        }
+      ],
+      "dynamic": [
+        {
+          "name": "方案行",
+          "selector": ".scheme-row",
+          "note": "方案数量、名称、音色、语速、音量、细调状态",
+          "count": 1,
+          "samples": [
+            "Fairy · 日常Fairy · 1.00 倍语速 · 音量 80%声音细调关闭应用删除"
+          ],
+          "boxes": [
+            {
+              "x": 188,
+              "y": 202.4,
+              "w": 902,
+              "h": 110.4
+            }
+          ]
+        },
+        {
+          "name": "空状态",
+          "selector": ".empty-library",
+          "note": "无方案时显示",
+          "count": 0,
+          "samples": [],
+          "boxes": []
+        }
+      ],
+      "animations": {
+        "atWait": 0,
+        "afterWait": 0
+      },
+      "capture": {
+        "hiddenTextNodes": 10,
+        "hiddenButtons": 15,
+        "hiddenInputs": 0,
+        "leftoverText": 0
+      }
+    },
+    {
+      "id": "connections",
+      "route": "#desk-connections",
+      "documentTitle": "Agent Voice · 黑白声场设计审核",
+      "title": "连接",
+      "lead": "先选目录，再验证真实回复与播放回执。",
+      "image": "connections.png",
+      "imageSize": {
+        "w": 1128,
+        "h": 680
+      },
+      "imageSha256": "16330aeb07e38ad7",
+      "pngBytes": 212662,
+      "window": {
+        "x": 26,
+        "y": 32,
+        "w": 1128,
+        "h": 680
+      },
+      "scroll": {
+        "box": {
+          "x": 150,
+          "y": 76,
+          "w": 978,
+          "h": 604
+        },
+        "scrollTop": 0,
+        "scrollHeight": 661,
+        "clientHeight": 604,
+        "clientWidth": 978,
+        "scrollWidth": 978
+      },
+      "regions": {
+        "header": {
+          "x": 0,
+          "y": 0,
+          "w": 1128,
+          "h": 67
+        },
+        "brand": {
+          "x": 48.5,
+          "y": 16.5,
+          "w": 142.8,
+          "h": 33
+        },
+        "headerActions": {
+          "x": 995.5,
+          "y": 22,
+          "w": 84,
+          "h": 22
+        },
+        "screenArea": {
+          "x": 0,
+          "y": 76,
+          "w": 1128,
+          "h": 604
+        },
+        "sidebar": {
+          "x": 0,
+          "y": 76,
+          "w": 150,
+          "h": 604
+        },
+        "content": {
+          "x": 150,
+          "y": 76,
+          "w": 978,
+          "h": 604
+        },
+        "footer": null,
+        "heading": {
+          "x": 188,
+          "y": 105,
+          "w": 902,
+          "h": 74.4
+        },
+        "scroll": {
+          "box": {
+            "x": 150,
+            "y": 76,
+            "w": 978,
+            "h": 604
+          },
+          "scrollTop": 0,
+          "scrollHeight": 661,
+          "clientHeight": 604,
+          "clientWidth": 978,
+          "scrollWidth": 978
+        }
+      },
+      "blocks": [
+        {
+          "name": "page-heading",
+          "selector": ".work-heading",
+          "box": {
+            "x": 188,
+            "y": 105,
+            "w": 902,
+            "h": 74.4
+          },
+          "textSample": "连接先选目录，再验证真实回复与播放回执。接入验证说明"
+        },
+        {
+          "name": "scroll-area",
+          "selector": ".work-scroll",
+          "box": {
+            "x": 150,
+            "y": 76,
+            "w": 978,
+            "h": 604
+          },
+          "textSample": "连接先选目录，再验证真实回复与播放回执。接入验证说明CxCodexMCP 语言控制与生成过程自动朗读。已选择，尚未验证选择目录并验证DSDeepSeek Harness聊天栏控制入"
+        },
+        {
+          "name": "client-row[0]",
+          "selector": ".client-row",
+          "box": {
+            "x": 188,
+            "y": 202.4,
+            "w": 902,
+            "h": 116.7
+          },
+          "textSample": "CxCodexMCP 语言控制与生成过程自动朗读。已选择，尚未验证选择目录并验证"
+        },
+        {
+          "name": "client-row[1]",
+          "selector": ".client-row",
+          "box": {
+            "x": 188,
+            "y": 319.1,
+            "w": 902,
+            "h": 116.7
+          },
+          "textSample": "DSDeepSeek Harness聊天栏控制入口与生成过程自动朗读。未启用选择目录并验证"
+        },
+        {
+          "name": "client-row[2]",
+          "selector": ".client-row",
+          "box": {
+            "x": 188,
+            "y": 435.8,
+            "w": 902,
+            "h": 116.7
+          },
+          "textSample": "AIRI使用你已经登录的原 AIRI，不另建副本。未启用选择目录并验证"
+        },
+        {
+          "name": "setting-line",
+          "selector": ".setting-line",
+          "box": {
+            "x": 188,
+            "y": 552.5,
+            "w": 902,
+            "h": 79.8
+          },
+          "textSample": "自动朗读任务执行过程中的正文与最终回复都可朗读；完整句子按顺序播放。"
+        },
+        {
+          "name": "detail-footer",
+          "selector": ".detail-footer",
+          "box": {
+            "x": 188,
+            "y": 632.3,
+            "w": 902,
+            "h": 82.8
+          },
+          "textSample": "开发其他客户端连接器当前实测支持范围：Codex、DeepSeek Harness"
+        }
+      ],
+      "texts": [
+        {
+          "text": "Agent Voice",
+          "kind": "text",
+          "tag": "span",
+          "cls": "",
+          "box": {
+            "x": 95.5,
+            "y": 20.5,
+            "w": 95.8,
+            "h": 25
+          }
+        },
+        {
+          "text": "本地声音工作室设计审核 · 不连接服务",
+          "kind": "hint",
+          "tag": "div",
+          "cls": "nav-foot",
+          "box": {
+            "x": 28,
+            "y": 611,
+            "w": 101,
+            "h": 49
+          }
+        },
+        {
+          "text": "连接",
+          "kind": "title",
+          "tag": "h1",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 105,
+            "w": 216,
+            "h": 45
+          }
+        },
+        {
+          "text": "先选目录，再验证真实回复与播放回执。",
+          "kind": "lead",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 159,
+            "w": 216,
+            "h": 20.4
+          }
+        },
+        {
+          "text": "Codex",
+          "kind": "heading",
+          "tag": "h2",
+          "cls": "",
+          "box": {
+            "x": 248,
+            "y": 225.4,
+            "w": 710,
+            "h": 24
+          }
+        },
+        {
+          "text": "MCP 语言控制与生成过程自动朗读。",
+          "kind": "body",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 248,
+            "y": 256.4,
+            "w": 710,
+            "h": 18.7
+          }
+        },
+        {
+          "text": "已选择，尚未验证",
+          "kind": "status",
+          "tag": "span",
+          "cls": "client-state",
+          "box": {
+            "x": 248,
+            "y": 282.1,
+            "w": 710,
+            "h": 13
+          }
+        },
+        {
+          "text": "DeepSeek Harness",
+          "kind": "heading",
+          "tag": "h2",
+          "cls": "",
+          "box": {
+            "x": 248,
+            "y": 342.1,
+            "w": 710,
+            "h": 24
+          }
+        },
+        {
+          "text": "聊天栏控制入口与生成过程自动朗读。",
+          "kind": "body",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 248,
+            "y": 373.1,
+            "w": 710,
+            "h": 18.7
+          }
+        },
+        {
+          "text": "未启用",
+          "kind": "status",
+          "tag": "span",
+          "cls": "client-state",
+          "box": {
+            "x": 248,
+            "y": 398.8,
+            "w": 710,
+            "h": 13
+          }
+        },
+        {
+          "text": "AIRI",
+          "kind": "heading",
+          "tag": "h2",
+          "cls": "",
+          "box": {
+            "x": 248,
+            "y": 458.8,
+            "w": 665,
+            "h": 24
+          }
+        },
+        {
+          "text": "使用你已经登录的原 AIRI，不另建副本。",
+          "kind": "body",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 248,
+            "y": 489.8,
+            "w": 665,
+            "h": 18.7
+          }
+        },
+        {
+          "text": "未启用",
+          "kind": "status",
+          "tag": "span",
+          "cls": "client-state",
+          "box": {
+            "x": 248,
+            "y": 515.5,
+            "w": 665,
+            "h": 13
+          }
+        },
+        {
+          "text": "自动朗读",
+          "kind": "text",
+          "tag": "div",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 570.5,
+            "w": 330,
+            "h": 42.8
+          }
+        },
+        {
+          "text": "任务执行过程中的正文与最终回复都可朗读；完整句子按顺序播放。",
+          "kind": "body",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 593.5,
+            "w": 330,
+            "h": 19.8
+          }
+        },
+        {
+          "text": "当前实测支持范围：Codex、DeepSeek Harness",
+          "kind": "hint",
+          "tag": "span",
+          "cls": "compact-hint",
+          "box": {
+            "x": 848.9,
+            "y": 675.3,
+            "w": 241.1,
+            "h": 19.8
+          }
+        }
+      ],
+      "controls": [
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "globalStop",
+          "text": "停止朗读",
+          "aria": "停止全部朗读",
+          "work": "",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 995.5,
+            "y": 22,
+            "w": 84,
+            "h": 22
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "朗读",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "speech",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 101,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "音色包",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "voices",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 148,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "声音方案",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "schemes",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 195,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "连接",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "connections",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 242,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "设置",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "settings",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 289,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "训练指南",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "training",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 564,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "接入验证说明",
+          "aria": "",
+          "work": "connectionHelp",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 986,
+            "y": 122.7,
+            "w": 104,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "选择目录并验证",
+          "aria": "",
+          "work": "connect",
+          "dataId": "Codex",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 974,
+            "y": 240.7,
+            "w": 116,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "选择目录并验证",
+          "aria": "",
+          "work": "connect",
+          "dataId": "DeepSeek Harness",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 974,
+            "y": 357.4,
+            "w": 116,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "switch",
+          "type": "submit",
+          "name": "",
+          "text": "",
+          "aria": "AIRI 联动",
+          "work": "toggleAiri",
+          "dataId": "",
+          "dataValue": "",
+          "checked": "false",
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 929,
+            "y": 483.6,
+            "w": 35,
+            "h": 20
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "选择目录并验证",
+          "aria": "",
+          "work": "connect",
+          "dataId": "AIRI",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": true,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 974,
+            "y": 474.1,
+            "w": 116,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "switch",
+          "type": "submit",
+          "name": "",
+          "text": "",
+          "aria": "自动朗读",
+          "work": "auto",
+          "dataId": "",
+          "dataValue": "",
+          "checked": "true",
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 1055,
+            "y": 581.8,
+            "w": 35,
+            "h": 20
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "开发其他客户端连接器",
+          "aria": "",
+          "work": "extension",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 188,
+            "y": 665.6,
+            "w": 122,
+            "h": 39
+          },
+          "inWindow": false
+        }
+      ],
+      "dynamic": [
+        {
+          "name": "客户端状态徽章",
+          "selector": ".client-state",
+          "note": "未启用 / 已选择未验证 / 验证通过 / 验证未通过",
+          "count": 3,
+          "samples": [
+            "已选择，尚未验证",
+            "未启用",
+            "未启用"
+          ],
+          "boxes": [
+            {
+              "x": 248,
+              "y": 282.1,
+              "w": 710,
+              "h": 13
+            },
+            {
+              "x": 248,
+              "y": 398.8,
+              "w": 710,
+              "h": 13
+            },
+            {
+              "x": 248,
+              "y": 515.5,
+              "w": 665,
+              "h": 13
+            }
+          ]
+        },
+        {
+          "name": "AIRI 联动开关",
+          "selector": ".small-switch[aria-label=\"AIRI 联动\"]",
+          "note": "开 / 关二态",
+          "count": 1,
+          "samples": [
+            ""
+          ],
+          "boxes": [
+            {
+              "x": 929,
+              "y": 483.6,
+              "w": 35,
+              "h": 20
+            }
+          ]
+        },
+        {
+          "name": "自动朗读开关",
+          "selector": ".small-switch[aria-label=\"自动朗读\"]",
+          "note": "开 / 关二态",
+          "count": 1,
+          "samples": [
+            ""
+          ],
+          "boxes": [
+            {
+              "x": 1055,
+              "y": 581.8,
+              "w": 35,
+              "h": 20
+            }
+          ]
+        },
+        {
+          "name": "行内按钮文案",
+          "selector": ".row-actions button",
+          "note": "重新验证 / 选择目录并验证随状态变化",
+          "count": 4,
+          "samples": [
+            "选择目录并验证",
+            "选择目录并验证",
+            "",
+            "选择目录并验证"
+          ],
+          "boxes": [
+            {
+              "x": 974,
+              "y": 240.7,
+              "w": 116,
+              "h": 39
+            },
+            {
+              "x": 974,
+              "y": 357.4,
+              "w": 116,
+              "h": 39
+            },
+            {
+              "x": 929,
+              "y": 483.6,
+              "w": 35,
+              "h": 20
+            },
+            {
+              "x": 974,
+              "y": 474.1,
+              "w": 116,
+              "h": 39
+            }
+          ]
+        }
+      ],
+      "animations": {
+        "atWait": 0,
+        "afterWait": 0
+      },
+      "capture": {
+        "hiddenTextNodes": 20,
+        "hiddenButtons": 18,
+        "hiddenInputs": 0,
+        "leftoverText": 0
+      }
+    },
+    {
+      "id": "settings",
+      "route": "#desk-settings",
+      "documentTitle": "Agent Voice · 黑白声场设计审核",
+      "title": "设置",
+      "lead": "需要时再展开，常用操作留在前台。",
+      "image": "settings.png",
+      "imageSize": {
+        "w": 1128,
+        "h": 680
+      },
+      "imageSha256": "09780789d6bd081c",
+      "pngBytes": 193230,
+      "window": {
+        "x": 26,
+        "y": 32,
+        "w": 1128,
+        "h": 680
+      },
+      "scroll": {
+        "box": {
+          "x": 150,
+          "y": 76,
+          "w": 978,
+          "h": 604
+        },
+        "scrollTop": 0,
+        "scrollHeight": 604,
+        "clientHeight": 604,
+        "clientWidth": 978,
+        "scrollWidth": 978
+      },
+      "regions": {
+        "header": {
+          "x": 0,
+          "y": 0,
+          "w": 1128,
+          "h": 67
+        },
+        "brand": {
+          "x": 48.5,
+          "y": 16.5,
+          "w": 142.8,
+          "h": 33
+        },
+        "headerActions": {
+          "x": 995.5,
+          "y": 22,
+          "w": 84,
+          "h": 22
+        },
+        "screenArea": {
+          "x": 0,
+          "y": 76,
+          "w": 1128,
+          "h": 604
+        },
+        "sidebar": {
+          "x": 0,
+          "y": 76,
+          "w": 150,
+          "h": 604
+        },
+        "content": {
+          "x": 150,
+          "y": 76,
+          "w": 978,
+          "h": 604
+        },
+        "footer": null,
+        "heading": {
+          "x": 188,
+          "y": 105,
+          "w": 902,
+          "h": 74.4
+        },
+        "scroll": {
+          "box": {
+            "x": 150,
+            "y": 76,
+            "w": 978,
+            "h": 604
+          },
+          "scrollTop": 0,
+          "scrollHeight": 604,
+          "clientHeight": 604,
+          "clientWidth": 978,
+          "scrollWidth": 978
+        }
+      },
+      "blocks": [
+        {
+          "name": "page-heading",
+          "selector": ".work-heading",
+          "box": {
+            "x": 188,
+            "y": 105,
+            "w": 902,
+            "h": 74.4
+          },
+          "textSample": "设置需要时再展开，常用操作留在前台。"
+        },
+        {
+          "name": "scroll-area",
+          "selector": ".work-scroll",
+          "box": {
+            "x": 150,
+            "y": 76,
+            "w": 978,
+            "h": 604
+          },
+          "textSample": "设置需要时再展开，常用操作留在前台。引擎与环境声音外观存储本地 TTS 引擎CosyVoice、GPT-SoVITS v5 Turbo / ProPlus 分开匹配环境。管理引擎检"
+        },
+        {
+          "name": "settings-tabs",
+          "selector": ".settings-tabs",
+          "box": {
+            "x": 188,
+            "y": 202.4,
+            "w": 902,
+            "h": 31
+          },
+          "textSample": "引擎与环境声音外观存储"
+        },
+        {
+          "name": "setting-line[0]",
+          "selector": ".setting-line",
+          "box": {
+            "x": 188,
+            "y": 257.4,
+            "w": 902,
+            "h": 79.8
+          },
+          "textSample": "本地 TTS 引擎CosyVoice、GPT-SoVITS v5 Turbo / ProPlus 分开匹配环境。管理引擎"
+        },
+        {
+          "name": "setting-line[1]",
+          "selector": ".setting-line",
+          "box": {
+            "x": 188,
+            "y": 337.2,
+            "w": 902,
+            "h": 79.8
+          },
+          "textSample": "检查与补齐环境联网准备或导入离线环境包，文件保存在软件目录内。检查环境"
+        },
+        {
+          "name": "setting-line[2]",
+          "selector": ".setting-line",
+          "box": {
+            "x": 188,
+            "y": 417,
+            "w": 902,
+            "h": 79.8
+          },
+          "textSample": "首次配置重新进入独立向导；已有设置可保留。重新配置"
+        }
+      ],
+      "texts": [
+        {
+          "text": "Agent Voice",
+          "kind": "text",
+          "tag": "span",
+          "cls": "",
+          "box": {
+            "x": 95.5,
+            "y": 20.5,
+            "w": 95.8,
+            "h": 25
+          }
+        },
+        {
+          "text": "本地声音工作室设计审核 · 不连接服务",
+          "kind": "hint",
+          "tag": "div",
+          "cls": "nav-foot",
+          "box": {
+            "x": 28,
+            "y": 611,
+            "w": 101,
+            "h": 49
+          }
+        },
+        {
+          "text": "设置",
+          "kind": "title",
+          "tag": "h1",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 105,
+            "w": 192,
+            "h": 45
+          }
+        },
+        {
+          "text": "需要时再展开，常用操作留在前台。",
+          "kind": "lead",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 159,
+            "w": 192,
+            "h": 20.4
+          }
+        },
+        {
+          "text": "本地 TTS 引擎",
+          "kind": "text",
+          "tag": "div",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 275.4,
+            "w": 307,
+            "h": 42.8
+          }
+        },
+        {
+          "text": "CosyVoice、GPT-SoVITS v5 Turbo / ProPlus 分开匹配环境。",
+          "kind": "body",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 298.4,
+            "w": 307,
+            "h": 19.8
+          }
+        },
+        {
+          "text": "检查与补齐环境",
+          "kind": "text",
+          "tag": "div",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 355.2,
+            "w": 264,
+            "h": 42.8
+          }
+        },
+        {
+          "text": "联网准备或导入离线环境包，文件保存在软件目录内。",
+          "kind": "body",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 378.2,
+            "w": 264,
+            "h": 19.8
+          }
+        },
+        {
+          "text": "首次配置",
+          "kind": "text",
+          "tag": "div",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 435,
+            "w": 187,
+            "h": 42.8
+          }
+        },
+        {
+          "text": "重新进入独立向导；已有设置可保留。",
+          "kind": "body",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 458,
+            "w": 187,
+            "h": 19.8
+          }
+        }
+      ],
+      "controls": [
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "globalStop",
+          "text": "停止朗读",
+          "aria": "停止全部朗读",
+          "work": "",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 995.5,
+            "y": 22,
+            "w": 84,
+            "h": 22
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "朗读",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "speech",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 101,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "音色包",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "voices",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 148,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "声音方案",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "schemes",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 195,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "连接",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "connections",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 242,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "设置",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "settings",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 289,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "训练指南",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "training",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 564,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "tab",
+          "type": "submit",
+          "name": "",
+          "text": "引擎与环境",
+          "aria": "",
+          "work": "settingTab",
+          "dataId": "engine",
+          "dataValue": "",
+          "checked": null,
+          "selected": "true",
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 188,
+            "y": 202.4,
+            "w": 60,
+            "h": 30
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "tab",
+          "type": "submit",
+          "name": "",
+          "text": "声音",
+          "aria": "",
+          "work": "settingTab",
+          "dataId": "sound",
+          "dataValue": "",
+          "checked": null,
+          "selected": "false",
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 271,
+            "y": 202.4,
+            "w": 24,
+            "h": 30
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "tab",
+          "type": "submit",
+          "name": "",
+          "text": "外观",
+          "aria": "",
+          "work": "settingTab",
+          "dataId": "appearance",
+          "dataValue": "",
+          "checked": null,
+          "selected": "false",
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 318,
+            "y": 202.4,
+            "w": 24,
+            "h": 30
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "tab",
+          "type": "submit",
+          "name": "",
+          "text": "存储",
+          "aria": "",
+          "work": "settingTab",
+          "dataId": "storage",
+          "dataValue": "",
+          "checked": null,
+          "selected": "false",
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 365,
+            "y": 202.4,
+            "w": 24,
+            "h": 30
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "管理引擎",
+          "aria": "",
+          "work": "engineManager",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 1010,
+            "y": 277.3,
+            "w": 80,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "检查环境",
+          "aria": "",
+          "work": "environment",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 1010,
+            "y": 357.1,
+            "w": 80,
+            "h": 39
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "重新配置",
+          "aria": "",
+          "work": "setup",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 1010,
+            "y": 436.9,
+            "w": 80,
+            "h": 39
+          },
+          "inWindow": true
+        }
+      ],
+      "dynamic": [
+        {
+          "name": "设置分类内容",
+          "selector": ".settings-tabs + .setting-line, .settings-tabs ~ * .setting-line",
+          "note": "四个 tab 的内容完全不同",
+          "count": 1,
+          "samples": [
+            "本地 TTS 引擎CosyVoice、GPT-SoVITS v5 Turbo / ProPlus 分开匹配环境。管理引擎"
+          ],
+          "boxes": [
+            {
+              "x": 188,
+              "y": 257.4,
+              "w": 902,
+              "h": 79.8
+            }
+          ]
+        },
+        {
+          "name": "tab 选中态",
+          "selector": ".settings-tabs button",
+          "note": "引擎与环境 / 声音 / 外观 / 存储",
+          "count": 4,
+          "samples": [
+            "引擎与环境",
+            "声音",
+            "外观",
+            "存储"
+          ],
+          "boxes": [
+            {
+              "x": 188,
+              "y": 202.4,
+              "w": 60,
+              "h": 30
+            },
+            {
+              "x": 271,
+              "y": 202.4,
+              "w": 24,
+              "h": 30
+            },
+            {
+              "x": 318,
+              "y": 202.4,
+              "w": 24,
+              "h": 30
+            },
+            {
+              "x": 365,
+              "y": 202.4,
+              "w": 24,
+              "h": 30
+            }
+          ]
+        },
+        {
+          "name": "滑块数值",
+          "selector": "output",
+          "note": "语速、音量实时数值（仅声音 tab）",
+          "count": 0,
+          "samples": [],
+          "boxes": []
+        },
+        {
+          "name": "背景预览",
+          "selector": ".background-preview",
+          "note": "用户选择的背景图（仅外观 tab）",
+          "count": 0,
+          "samples": [],
+          "boxes": []
+        }
+      ],
+      "animations": {
+        "atWait": 0,
+        "afterWait": 0
+      },
+      "capture": {
+        "hiddenTextNodes": 12,
+        "hiddenButtons": 18,
+        "hiddenInputs": 0,
+        "leftoverText": 0
+      }
+    },
+    {
+      "id": "training",
+      "route": "#desk-training",
+      "documentTitle": "Agent Voice · 黑白声场设计审核",
+      "title": "训练指南",
+      "lead": "先选引擎，再按当前阶段继续。",
+      "image": "training.png",
+      "imageSize": {
+        "w": 1128,
+        "h": 680
+      },
+      "imageSha256": "780d183da3f7ab95",
+      "pngBytes": 215182,
+      "window": {
+        "x": 26,
+        "y": 32,
+        "w": 1128,
+        "h": 680
+      },
+      "scroll": {
+        "box": {
+          "x": 150,
+          "y": 76,
+          "w": 978,
+          "h": 604
+        },
+        "scrollTop": 0,
+        "scrollHeight": 766,
+        "clientHeight": 604,
+        "clientWidth": 978,
+        "scrollWidth": 978
+      },
+      "regions": {
+        "header": {
+          "x": 0,
+          "y": 0,
+          "w": 1128,
+          "h": 67
+        },
+        "brand": {
+          "x": 48.5,
+          "y": 16.5,
+          "w": 142.8,
+          "h": 33
+        },
+        "headerActions": {
+          "x": 995.5,
+          "y": 22,
+          "w": 84,
+          "h": 22
+        },
+        "screenArea": {
+          "x": 0,
+          "y": 76,
+          "w": 1128,
+          "h": 604
+        },
+        "sidebar": {
+          "x": 0,
+          "y": 76,
+          "w": 150,
+          "h": 604
+        },
+        "content": {
+          "x": 150,
+          "y": 76,
+          "w": 978,
+          "h": 604
+        },
+        "footer": null,
+        "heading": {
+          "x": 188,
+          "y": 105,
+          "w": 902,
+          "h": 74.4
+        },
+        "scroll": {
+          "box": {
+            "x": 150,
+            "y": 76,
+            "w": 978,
+            "h": 604
+          },
+          "scrollTop": 0,
+          "scrollHeight": 766,
+          "clientHeight": 604,
+          "clientWidth": 978,
+          "scrollWidth": 978
+        }
+      },
+      "blocks": [
+        {
+          "name": "page-heading",
+          "selector": ".work-heading",
+          "box": {
+            "x": 188,
+            "y": 105,
+            "w": 902,
+            "h": 74.4
+          },
+          "textSample": "训练指南先选引擎，再按当前阶段继续。"
+        },
+        {
+          "name": "scroll-area",
+          "selector": ".work-scroll",
+          "box": {
+            "x": 150,
+            "y": 76,
+            "w": 978,
+            "h": 604
+          },
+          "textSample": "训练指南先选引擎，再按当前阶段继续。CosyVoiceGPT-SoVITS · v5 TurboGPT-SoVITS · ProPlus从一段干净的参考录音开始。先完成参考克隆，再"
+        },
+        {
+          "name": "training-tabs",
+          "selector": ".training-tabs",
+          "box": {
+            "x": 188,
+            "y": 202.4,
+            "w": 902,
+            "h": 31
+          },
+          "textSample": "CosyVoiceGPT-SoVITS · v5 TurboGPT-SoVITS · ProPlus"
+        },
+        {
+          "name": "training-intro",
+          "selector": ".training-intro",
+          "box": {
+            "x": 188,
+            "y": 257.4,
+            "w": 902,
+            "h": 110
+          },
+          "textSample": "从一段干净的参考录音开始。先完成参考克隆，再决定是否需要训练权重。"
+        },
+        {
+          "name": "training-steps",
+          "selector": ".training-steps",
+          "box": {
+            "x": 188,
+            "y": 387.4,
+            "w": 902,
+            "h": 311.2
+          },
+          "textSample": "准备声音录音清楚、无背景音乐，逐字台词与声音一致。保留人工合成机械音的特点，不强行自然化。选择训练路线参考克隆使用录音与台词；硬件条件较好时按高级指南准备训练数据、基础模型与检查点"
+        },
+        {
+          "name": "training-step[0]",
+          "selector": ".training-step",
+          "box": {
+            "x": 188,
+            "y": 387.4,
+            "w": 902,
+            "h": 77.8
+          },
+          "textSample": "准备声音录音清楚、无背景音乐，逐字台词与声音一致。保留人工合成机械音的特点，不强行自然化。"
+        },
+        {
+          "name": "training-step[1]",
+          "selector": ".training-step",
+          "box": {
+            "x": 188,
+            "y": 465.2,
+            "w": 902,
+            "h": 77.8
+          },
+          "textSample": "选择训练路线参考克隆使用录音与台词；硬件条件较好时按高级指南准备训练数据、基础模型与检查点。"
+        },
+        {
+          "name": "training-step[2]",
+          "selector": ".training-step",
+          "box": {
+            "x": 188,
+            "y": 543,
+            "w": 902,
+            "h": 77.8
+          },
+          "textSample": "本地试听并验证确认引擎版本、模型结构、台词和参考音频一致；用短句及长句分别验证。"
+        },
+        {
+          "name": "training-step[3]",
+          "selector": ".training-step",
+          "box": {
+            "x": 188,
+            "y": 620.8,
+            "w": 902,
+            "h": 77.8
+          },
+          "textSample": "导出训练结果按实际内容选择轻量、模型完整、训练增量或训练完整包；文件名附带 .cosyvoice.ttsmodel。"
+        },
+        {
+          "name": "detail-footer",
+          "selector": ".detail-footer",
+          "box": {
+            "x": 188,
+            "y": 698.6,
+            "w": 902,
+            "h": 62
+          },
+          "textSample": "查看详细操作手册打开训练界面"
+        }
+      ],
+      "texts": [
+        {
+          "text": "Agent Voice",
+          "kind": "text",
+          "tag": "span",
+          "cls": "",
+          "box": {
+            "x": 95.5,
+            "y": 20.5,
+            "w": 95.8,
+            "h": 25
+          }
+        },
+        {
+          "text": "本地声音工作室设计审核 · 不连接服务",
+          "kind": "hint",
+          "tag": "div",
+          "cls": "nav-foot",
+          "box": {
+            "x": 28,
+            "y": 611,
+            "w": 101,
+            "h": 49
+          }
+        },
+        {
+          "text": "训练指南",
+          "kind": "title",
+          "tag": "h1",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 105,
+            "w": 168,
+            "h": 45
+          }
+        },
+        {
+          "text": "先选引擎，再按当前阶段继续。",
+          "kind": "lead",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 159,
+            "w": 168,
+            "h": 20.4
+          }
+        },
+        {
+          "text": "从一段干净的参考录音开始。",
+          "kind": "heading",
+          "tag": "h2",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 282.6,
+            "w": 772,
+            "h": 27
+          }
+        },
+        {
+          "text": "先完成参考克隆，再决定是否需要训练权重。",
+          "kind": "body",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 188,
+            "y": 320.6,
+            "w": 772,
+            "h": 21.6
+          }
+        },
+        {
+          "text": "准备声音",
+          "kind": "subheading",
+          "tag": "h3",
+          "cls": "",
+          "box": {
+            "x": 230,
+            "y": 403.4,
+            "w": 860,
+            "h": 18
+          }
+        },
+        {
+          "text": "录音清楚、无背景音乐，逐字台词与声音一致。保留人工合成机械音的特点，不强行自然化。",
+          "kind": "body",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 230,
+            "y": 428.4,
+            "w": 860,
+            "h": 19.8
+          }
+        },
+        {
+          "text": "选择训练路线",
+          "kind": "subheading",
+          "tag": "h3",
+          "cls": "",
+          "box": {
+            "x": 230,
+            "y": 481.2,
+            "w": 860,
+            "h": 18
+          }
+        },
+        {
+          "text": "参考克隆使用录音与台词；硬件条件较好时按高级指南准备训练数据、基础模型与检查点。",
+          "kind": "body",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 230,
+            "y": 506.2,
+            "w": 860,
+            "h": 19.8
+          }
+        },
+        {
+          "text": "本地试听并验证",
+          "kind": "subheading",
+          "tag": "h3",
+          "cls": "",
+          "box": {
+            "x": 230,
+            "y": 559,
+            "w": 860,
+            "h": 18
+          }
+        },
+        {
+          "text": "确认引擎版本、模型结构、台词和参考音频一致；用短句及长句分别验证。",
+          "kind": "body",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 230,
+            "y": 584,
+            "w": 860,
+            "h": 19.8
+          }
+        },
+        {
+          "text": "导出训练结果",
+          "kind": "subheading",
+          "tag": "h3",
+          "cls": "",
+          "box": {
+            "x": 230,
+            "y": 636.8,
+            "w": 860,
+            "h": 18
+          }
+        },
+        {
+          "text": "按实际内容选择轻量、模型完整、训练增量或训练完整包；文件名附带 .cosyvoice.ttsmodel。",
+          "kind": "body",
+          "tag": "p",
+          "cls": "",
+          "box": {
+            "x": 230,
+            "y": 661.8,
+            "w": 860,
+            "h": 19.8
+          }
+        },
+        {
+          "text": "本页是指南信息架构审核。正式训练能力、硬件条件与兼容边界以项目对应手册为准。",
+          "kind": "body",
+          "tag": "p",
+          "cls": "compact-hint",
+          "box": {
+            "x": 188,
+            "y": 780.6,
+            "w": 902,
+            "h": 19.8
+          }
+        }
+      ],
+      "controls": [
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "globalStop",
+          "text": "停止朗读",
+          "aria": "停止全部朗读",
+          "work": "",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 995.5,
+            "y": 22,
+            "w": 84,
+            "h": 22
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "朗读",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "speech",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 101,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "音色包",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "voices",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 148,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "声音方案",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "schemes",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 195,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "连接",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "connections",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 242,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "设置",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "settings",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 289,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "训练指南",
+          "aria": "",
+          "work": "navigate",
+          "dataId": "training",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 28,
+            "y": 564,
+            "w": 101,
+            "h": 43
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "tab",
+          "type": "submit",
+          "name": "",
+          "text": "CosyVoice",
+          "aria": "",
+          "work": "trainingTab",
+          "dataId": "cosy",
+          "dataValue": "",
+          "checked": null,
+          "selected": "true",
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 188,
+            "y": 202.4,
+            "w": 58.5,
+            "h": 30
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "tab",
+          "type": "submit",
+          "name": "",
+          "text": "GPT-SoVITS · v5 Turbo",
+          "aria": "",
+          "work": "trainingTab",
+          "dataId": "turbo",
+          "dataValue": "",
+          "checked": null,
+          "selected": "false",
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 269.5,
+            "y": 202.4,
+            "w": 128.3,
+            "h": 30
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "tab",
+          "type": "submit",
+          "name": "",
+          "text": "GPT-SoVITS · ProPlus",
+          "aria": "",
+          "work": "trainingTab",
+          "dataId": "pro",
+          "dataValue": "",
+          "checked": null,
+          "selected": "false",
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 420.8,
+            "y": 202.4,
+            "w": 121.2,
+            "h": 30
+          },
+          "inWindow": true
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "查看详细操作手册",
+          "aria": "",
+          "work": "manual",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 188,
+            "y": 721.6,
+            "w": 128,
+            "h": 39
+          },
+          "inWindow": false
+        },
+        {
+          "tag": "button",
+          "role": "",
+          "type": "submit",
+          "name": "",
+          "text": "打开训练界面",
+          "aria": "",
+          "work": "trainingTool",
+          "dataId": "",
+          "dataValue": "",
+          "checked": null,
+          "selected": null,
+          "disabled": false,
+          "value": "",
+          "placeholder": "",
+          "visible": true,
+          "box": {
+            "x": 986,
+            "y": 721.6,
+            "w": 104,
+            "h": 39
+          },
+          "inWindow": false
+        }
+      ],
+      "dynamic": [
+        {
+          "name": "训练引擎指南",
+          "selector": ".training-intro h2, .training-intro p",
+          "note": "CosyVoice / v5 Turbo / ProPlus 三套内容",
+          "count": 2,
+          "samples": [
+            "从一段干净的参考录音开始。",
+            "先完成参考克隆，再决定是否需要训练权重。"
+          ],
+          "boxes": [
+            {
+              "x": 188,
+              "y": 282.6,
+              "w": 772,
+              "h": 27
+            },
+            {
+              "x": 188,
+              "y": 320.6,
+              "w": 772,
+              "h": 21.6
+            }
+          ]
+        },
+        {
+          "name": "步骤列表",
+          "selector": ".training-step",
+          "note": "每个引擎 4 个步骤，标题与说明来自数据",
+          "count": 4,
+          "samples": [
+            "准备声音录音清楚、无背景音乐，逐字台词与声音一致。保留人工合成机械音的特点，不强行自然化。",
+            "选择训练路线参考克隆使用录音与台词；硬件条件较好时按高级指南准备训练数据、基础模型与检查点。",
+            "本地试听并验证确认引擎版本、模型结构、台词和参考音频一致；用短句及长句分别验证。",
+            "导出训练结果按实际内容选择轻量、模型完整、训练增量或训练完整包；文件名附带 .cosyvoice.ttsmodel。"
+          ],
+          "boxes": [
+            {
+              "x": 188,
+              "y": 387.4,
+              "w": 902,
+              "h": 77.8
+            },
+            {
+              "x": 188,
+              "y": 465.2,
+              "w": 902,
+              "h": 77.8
+            },
+            {
+              "x": 188,
+              "y": 543,
+              "w": 902,
+              "h": 77.8
+            },
+            {
+              "x": 188,
+              "y": 620.8,
+              "w": 902,
+              "h": 77.8
+            }
+          ]
+        },
+        {
+          "name": "tab 选中态",
+          "selector": ".training-tabs button",
+          "note": "当前引擎 tab",
+          "count": 3,
+          "samples": [
+            "CosyVoice",
+            "GPT-SoVITS · v5 Turbo",
+            "GPT-SoVITS · ProPlus"
+          ],
+          "boxes": [
+            {
+              "x": 188,
+              "y": 202.4,
+              "w": 58.5,
+              "h": 30
+            },
+            {
+              "x": 269.5,
+              "y": 202.4,
+              "w": 128.3,
+              "h": 30
+            },
+            {
+              "x": 420.8,
+              "y": 202.4,
+              "w": 121.2,
+              "h": 30
+            }
+          ]
+        }
+      ],
+      "animations": {
+        "atWait": 0,
+        "afterWait": 0
+      },
+      "capture": {
+        "hiddenTextNodes": 17,
+        "hiddenButtons": 16,
+        "hiddenInputs": 0,
+        "leftoverText": 0
+      }
+    }
+  ]
+}
