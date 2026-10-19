@@ -1,0 +1,130 @@
+{
+  "date": "2026-10-19",
+  "repository": "E:\\App\\deepseek harness\\项目\\harness-1\\agent-voice",
+  "baseCommit": "c13d0a09b737ecfead20235111aad544b14dc0e6",
+  "snapshotBranch": "handoff/native-ui-wip-20261019",
+  "snapshotCommit": "3f5293021e6ca22b0888576b4a236296fbb05481",
+  "snapshotTree": "a0c4ba0bd937e896df680a07b1d59548ade52aef",
+  "status": "UNVERIFIED_WIP_NOT_FOR_RELEASE",
+  "sourceFiles": [
+    {
+      "status": " M",
+      "path": "ui/ConnectionPages.cs",
+      "snapshotBlob": "2c83cc9f3cef29664a6ce48189d1206b87353581",
+      "workingFileSha256": "eb46c6b384ad572f70f9d06f57d96e5f775ef5d2770b7f1adec074e0e04e4bad"
+    },
+    {
+      "status": " D",
+      "path": "ui/KeynoteArt.cs",
+      "snapshotBlob": null
+    },
+    {
+      "status": " M",
+      "path": "ui/MainForm.cs",
+      "snapshotBlob": "d042fa6e7d107c1ab1f6ffd0b1b96ca1d42f5f35",
+      "workingFileSha256": "741e5a90d3b749abba962f3292054920fcf649d4adaf3d83dc0f46acddb29a82"
+    },
+    {
+      "status": " M",
+      "path": "ui/Program.cs",
+      "snapshotBlob": "9b2db59fe1dcb71d4c672222569043a7bcb83d95",
+      "workingFileSha256": "37c082578c7a09edf35751cc80074966a8553148dcc64ba69ad40c275356e620"
+    },
+    {
+      "status": " M",
+      "path": "ui/ScrollChecks.cs",
+      "snapshotBlob": "7354f6ece8b4ecf4ee1120ee5a7bc9aaa10ed7b4",
+      "workingFileSha256": "2c0e5b1612831743a8185f3395e426b75d6d68a64bbef52aaa44751e882804b4"
+    },
+    {
+      "status": " M",
+      "path": "ui/SettingsPages.cs",
+      "snapshotBlob": "ff45093e84b552ee2c4a6555dc9d362f3362b586",
+      "workingFileSha256": "e8c654d1606ea65320e72cb44f8acfaab814cd74d16d04cb9069962e60f35d21"
+    },
+    {
+      "status": " D",
+      "path": "ui/SetupAnimation.cs",
+      "snapshotBlob": null
+    },
+    {
+      "status": " M",
+      "path": "ui/SetupPage.cs",
+      "snapshotBlob": "6472ece130a91ca3f7ddfcfd18137d40e75d1cba",
+      "workingFileSha256": "7751df74b98d35d634645f3f1826de33fbbd034b1ade3d5bfc20910bf5d07aad"
+    },
+    {
+      "status": " M",
+      "path": "ui/UiChecks.cs",
+      "snapshotBlob": "4317d8dab0ba466a8fb06c9f672bcd0a8660f1c9",
+      "workingFileSha256": "d6ab211969ae498e624e1f355494eb6ea73e4aef5c8de840a3d3ebfc6f7636c3"
+    },
+    {
+      "status": " M",
+      "path": "ui/WelcomeChecks.cs",
+      "snapshotBlob": "2101c3f8415e07902321d8db81e12c0684a10111",
+      "workingFileSha256": "0dd777129301ac861bdfc22b1673f9a1b7cfddaaf959eda43427977e362697cc"
+    },
+    {
+      "status": " D",
+      "path": "ui/WelcomeForm.cs",
+      "snapshotBlob": null
+    },
+    {
+      "status": " M",
+      "path": "ui/WelcomeState.cs",
+      "snapshotBlob": "9e42406f304524b4afaf4f9880327e243264889c",
+      "workingFileSha256": "3df277fa9d72d9593f842445dc3717334277c89aec4d881f36b37b4a37b39e6e"
+    },
+    {
+      "status": "??",
+      "path": "tools/finish_onboarding_refactor.py",
+      "snapshotBlob": "cc2176cf6b68ec69c8ceb6f1c7fa85b46a67040d",
+      "workingFileSha256": "b8e47ed854359d520c28ef9e29ff8ca5d983e0c56de10f00ce29e325e427ca17"
+    },
+    {
+      "status": "??",
+      "path": "tools/refactor_onboarding_ui.py",
+      "snapshotBlob": "5991abf5b12a17ac03455eec8ebb4d79a35bb87a",
+      "workingFileSha256": "b4e8a6652ce155804bb8fb1e7fdb07d8bb6f8d5a4e1776d1875586a08ceaa1f1"
+    },
+    {
+      "status": "??",
+      "path": "ui/ChoiceStyle.cs",
+      "snapshotBlob": "5c8205ec45c9e5514a3b43fc380fe8ba11fa0064",
+      "workingFileSha256": "09e8287ffa54d505ffaeaa161c54733d85afa04c952397f54fabf5e0e047de00"
+    },
+    {
+      "status": "??",
+      "path": "ui/ConnectionSetup.cs",
+      "snapshotBlob": "13b528dace1897729befc03052efa04f86012eb8",
+      "workingFileSha256": "feba4e13f13f6053e9aa81fd35300a392bde7bfd289b6108a4ffc233fac50cf1"
+    },
+    {
+      "status": "??",
+      "path": "ui/SetupWizard.cs",
+      "snapshotBlob": "441a45254ca06efbd1c897b41fd0f1b342c7d714",
+      "workingFileSha256": "57f6ddc65d4eb0d246282b2cf9892a4863928dfff5a8998ffc4e5454ebb4e6bb"
+    },
+    {
+      "status": "??",
+      "path": "ui/SetupWizardActions.cs",
+      "snapshotBlob": "802c64931fe1edf21d5dc71873aaaa3c38b6c279",
+      "workingFileSha256": "47fd120b3d05623b49cff3c745f77d27e105751b576fc94eed92181943e935c3"
+    },
+    {
+      "status": "??",
+      "path": "ui/SetupWorkflow.cs",
+      "snapshotBlob": "3ae6f49f627143480d20711a123542b3015bce4a",
+      "workingFileSha256": "4a1765fd8c340b02e33625ea6dc96be20b1508662a07345de36801bb7a9fa083"
+    },
+    {
+      "status": "??",
+      "path": "ui/WizardMotion.cs",
+      "snapshotBlob": "41babf6ced6d627fb02e34fa796dc1bedcd0ddac",
+      "workingFileSha256": "0d25d0595cfe86e77426a4c6f49ac94ab54ebb84da369f1f72ed0c34b7b5fc5e"
+    }
+  ],
+  "additionalSnapshotDocument": "docs/原生UI快照状态-20261019.md",
+  "verification": "Each source blob/deletion verified against unchanged working tree; no native build or functional test performed."
+}
