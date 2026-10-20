@@ -52,12 +52,12 @@ namespace AgentVoice {
             float sx=page.ClientSize.Width/(float)baseWidth,sy=page.ClientSize.Height/(float)baseHeight;
             // One uniform zoom for both axes and the font: a per-axis stretch
             // would re-wrap copy and change which lines fit.
-            float zoom=Math.Min(1.4f,Math.Min(sx,sy));
+            float zoom=Math.Min(sx,sy);
             foreach(var pair in map){
                 var control=pair.Key;var b=pair.Value;
                 control.MinimumSize=Size.Empty;
                 control.SetBounds((int)Math.Round(b.Bounds.X*zoom),(int)Math.Round(b.Bounds.Y*zoom),Math.Max(1,(int)Math.Ceiling(b.Bounds.Width*zoom)),Math.Max(1,(int)Math.Ceiling(b.Bounds.Height*zoom)));
-                float size=Math.Max(4.5f,b.FontSize*zoom);
+                float size=Math.Max(4.5f,b.FontSize*zoom*0.95f);
                 if(Math.Abs(control.Font.Size-size)>.1f)control.Font=new Font(b.Family,size,b.Style);
             }
             // Resizing children alone can leave stale label surfaces behind;
