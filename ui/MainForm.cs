@@ -1,4 +1,4 @@
-﻿using Button = AgentVoice.AnimeButton;
+using Button = AgentVoice.AnimeButton;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -55,8 +55,8 @@ namespace AgentVoice {
             SetStyle(ControlStyles.OptimizedDoubleBuffer|ControlStyles.AllPaintingInWmPaint|ControlStyles.ResizeRedraw,true);
             shell=new ScenePanel{Host=this,Dock=DockStyle.Fill};Controls.Add(shell);
             outer=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=2,RowCount=1,BackColor=Color.Transparent,Padding=new Padding(0)};outer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,150));outer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));shell.Controls.Add(outer);
-            sidebar=new ScenePanel{Host=this,Dock=DockStyle.Fill,Padding=new Padding(8),Margin=new Padding(0)};outer.Controls.Add(sidebar,0,0);var sideBack=new Panel{Dock=DockStyle.Fill,BackColor=Color.FromArgb(11,13,18)};sidebar.Controls.Add(sideBack);sideBack.SendToBack();
-            var sideLayout=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=1,RowCount=3,BackColor=Color.Transparent};sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,70));sideLayout.RowStyles.Add(new RowStyle(SizeType.Percent,100));sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,210));sidebar.Controls.Add(sideLayout);
+            sidebar=new ScenePanel{Host=this,Dock=DockStyle.Fill,Padding=new Padding(8),Margin=new Padding(0)};outer.Controls.Add(sidebar,0,0);
+            var sideLayout=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=1,RowCount=3,BackColor=Color.FromArgb(11,13,18)};sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,70));sideLayout.RowStyles.Add(new RowStyle(SizeType.Percent,100));sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,210));sidebar.Controls.Add(sideLayout);
             var brand=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,BackColor=Color.Transparent,Padding=new Padding(5,8,0,0)};brand.Controls.Add(new Label{Text="AGENT VOICE",Font=new Font("Segoe UI",9F,FontStyle.Bold),AutoSize=true,Margin=new Padding(0,0,0,3)});brand.Controls.Add(new Label{Text="本地语音工作台",Font=new Font(Font.FontFamily,8.5F),AutoSize=true,Margin=new Padding(0)});sideLayout.Controls.Add(brand,0,0);
             var navigation=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoScroll=true,BackColor=Color.Transparent,Padding=new Padding(0,4,0,4)};sideLayout.Controls.Add(navigation,0,1);
             AddNav(navigation,"朗读","home","输入文字、常用句与播放控制。",true);
@@ -169,25 +169,24 @@ namespace AgentVoice {
         bool speechOperation;
         void BuildHomeWeb(){
             var home=NewPage("home");home.AutoScroll=true;
-            var headerScrim=new Panel{BackColor=Color.FromArgb(11,13,18),Bounds=new Rectangle(0,0,978,118)};home.Controls.Add(headerScrim);headerScrim.SendToBack();
-            var title=new Label{Text="文字，有了声音。",Font=new Font(Font.FontFamily,26F,FontStyle.Bold),AutoSize=true,BackColor=Color.FromArgb(11,13,18),ForeColor=ForeColor};title.SetBounds(38,12,620,70);home.Controls.Add(title);
-            var lead=Hint("手动朗读与自动朗读，在这里统一控制。");lead.BackColor=Color.FromArgb(11,13,18);lead.SetBounds(40,72,520,24);home.Controls.Add(lead);title.BringToFront();lead.BringToFront();
-            serviceToggle=Primary(AsyncBtn("开启服务",async()=>{if(await Service.Running()){await Service.Stop();Status("服务已关闭。");}else{await SaveDraft();await Service.Start();Status("服务已启动。");}await Poll();}));serviceToggle.AutoSize=false;serviceToggle.SetBounds(868,46,96,34);home.Controls.Add(serviceToggle);serviceToggle.BringToFront();
+            var title=new Label{Text="文字，有了声音。",Font=new Font(Font.FontFamily,26F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent,ForeColor=ForeColor};title.SetBounds(38,12,620,64);home.Controls.Add(title);
+            var lead=Hint("手动朗读与自动朗读，在这里统一控制。");lead.AutoSize=false;lead.BackColor=Color.Transparent;lead.SetBounds(40,80,720,30);home.Controls.Add(lead);title.BringToFront();lead.BringToFront();
+            serviceToggle=Primary(AsyncBtn("开启服务",async()=>{if(await Service.Running()){await Service.Stop();Status("服务已关闭。");}else{await SaveDraft();await Service.Start();Status("服务已启动。");}await Poll();}));serviceToggle.AutoSize=false;serviceToggle.MinimumSize=Size.Empty;serviceToggle.SetBounds(808,46,132,38);home.Controls.Add(serviceToggle);serviceToggle.BringToFront();
             var voice=new ScenePanel{Host=this,Card=true,Location=new Point(38,120),Size=new Size(658,104),Padding=new Padding(16,10,16,10)};home.Controls.Add(voice);
-            homeVoiceSummary=Hint("");homeVoiceSummary.Font=new Font(Font.FontFamily,12F,FontStyle.Bold);homeVoiceSummary.SetBounds(0,0,620,24);voice.Controls.Add(homeVoiceSummary);
+            homeVoiceSummary=Hint("");homeVoiceSummary.AutoSize=false;homeVoiceSummary.AutoEllipsis=true;homeVoiceSummary.Font=new Font(Font.FontFamily,12F,FontStyle.Bold);homeVoiceSummary.SetBounds(0,0,620,28);voice.Controls.Add(homeVoiceSummary);
             quickVoice=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=330,AccessibleName="快速选择已保存的声音方案"};quickVoice.SetBounds(0,30,330,28);voice.Controls.Add(quickVoice);
             var switchVoice=Btn("切换声音",async()=>{var item=quickVoice.SelectedItem as SavedVoice;if(item==null)throw new InvalidOperationException("请先在声音方案中保存或选择一个声音。");await ProfileOperation("apply",item.id,null);BindVoice();Status("声音已切换："+item.name);});switchVoice.SetBounds(342,30,132,30);voice.Controls.Add(switchVoice);
             var adjust=EntryBtn("调整声音","选择引擎、模型和语速。",()=>ShowPage("voiceEditor"));adjust.SetBounds(482,30,132,30);voice.Controls.Add(adjust);
             harnessSummary=Hint("Harness：服务关闭");harnessSummary.Font=new Font(Font.FontFamily,9F);harnessSummary.SetBounds(0,66,620,20);voice.Controls.Add(harnessSummary);
             var speech=new ScenePanel{Host=this,Card=true,Location=new Point(38,240),Size=new Size(658,176),Padding=new Padding(16,10,16,10)};home.Controls.Add(speech);
-            var speechTitle=new Label{Text="想说什么？",Font=new Font(Font.FontFamily,13F,FontStyle.Bold),AutoSize=true,BackColor=Color.Transparent};speechTitle.SetBounds(0,0,300,26);speech.Controls.Add(speechTitle);
-            body=Input(true);body.SetBounds(0,32,626,106);body.Text="工作好久啦，起来动一动、喝口水吧～";body.AccessibleName="朗读文本";speech.Controls.Add(body);
+            var speechTitle=new Label{Text="想说什么？",Font=new Font(Font.FontFamily,13F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent};speechTitle.SetBounds(0,0,300,32);speech.Controls.Add(speechTitle);
+            body=Input(true);body.SetBounds(0,44,626,104);body.Text="工作好久啦，起来动一动、喝口水吧～";body.AccessibleName="朗读文本";speech.Controls.Add(body);
             var phraseCard=new ScenePanel{Host=this,Card=true,Location=new Point(38,430),Size=new Size(658,72),Padding=new Padding(16,8,16,8)};home.Controls.Add(phraseCard);
-            var phraseTitle=new Label{Text="常用句",Font=new Font(Font.FontFamily,10F,FontStyle.Bold),AutoSize=true,BackColor=Color.Transparent};phraseTitle.SetBounds(0,0,160,20);phraseCard.Controls.Add(phraseTitle);
-            phrases=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=420,AccessibleName="常用句选择"};phrases.SetBounds(0,26,420,26);phraseCard.Controls.Add(phrases);
-            var manage=Btn("管理",()=>ShowPage("home"));manage.SetBounds(590,26,50,26);phraseCard.Controls.Add(manage);
+            var phraseTitle=new Label{Text="常用句",Font=new Font(Font.FontFamily,10F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent};phraseTitle.SetBounds(0,0,160,24);phraseCard.Controls.Add(phraseTitle);
+            phrases=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=420,AccessibleName="常用句选择"};phrases.SetBounds(0,30,420,26);phraseCard.Controls.Add(phrases);
+            var manage=Btn("管理",()=>ShowPage("home"));manage.AutoSize=false;manage.MinimumSize=Size.Empty;manage.SetBounds(562,30,80,32);phraseCard.Controls.Add(manage);
             var queue=new ScenePanel{Host=this,Card=true,Location=new Point(725,120),Size=new Size(215,355),Padding=new Padding(16,14,16,14)};home.Controls.Add(queue);
-            var queueTitle=new Label{Text="朗读队列",Font=new Font(Font.FontFamily,10F,FontStyle.Bold),AutoSize=true,BackColor=Color.Transparent};queueTitle.SetBounds(0,0,150,24);queue.Controls.Add(queueTitle);
+            var queueTitle=new Label{Text="朗读队列",Font=new Font(Font.FontFamily,10F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent};queueTitle.SetBounds(0,0,150,28);queue.Controls.Add(queueTitle);
             var queueEmpty=Hint("暂时没有朗读任务。\r\n来自客户端的完整句子\r\n会按顺序出现在这里。");queueEmpty.SetBounds(0,46,185,120);queue.Controls.Add(queueEmpty);
             var deck=new ScenePanel{Host=this,Card=true,Location=new Point(0,516),Size=new Size(978,88),Padding=new Padding(16,10,16,10)};home.Controls.Add(deck);
             var stop=Btn("停止",async()=>await StopSpeech());stop.SetBounds(0,20,96,38);deck.Controls.Add(stop);
@@ -358,8 +357,9 @@ namespace AgentVoice {
         protected override bool ProcessCmdKey(ref Message msg,Keys key){if(key==Keys.Escape){ShowPage("home");return true;}return base.ProcessCmdKey(ref msg,key);}
         protected override void OnFormClosing(FormClosingEventArgs e){if(!exiting&&tray!=null){e.Cancel=true;Hide();return;}poll.Stop();tips.Dispose();if(tray!=null){tray.Visible=false;tray.Dispose();}if(background!=null)background.Dispose();if(scaledBackground!=null)scaledBackground.Dispose();if(defaultBackdrop!=null)defaultBackdrop.Dispose();if(pageBackdrop!=null)pageBackdrop.Dispose();if(scaledPageBackdrop!=null)scaledPageBackdrop.Dispose();base.OnFormClosing(e);}
         string DefaultMascotPath(){return Path.Combine(Store.Root,".agents","plugins","agent-voice-control","assets","voice-core.png");}
-        void LoadPageBackdrop(string id){if(pageBackdrop!=null){pageBackdrop.Dispose();pageBackdrop=null;}if(scaledPageBackdrop!=null){scaledPageBackdrop.Dispose();scaledPageBackdrop=null;}if(background!=null)return;string name=id=="home"?"speech":id=="configuration"?"voices":id=="voices"?"schemes":id;string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"assets","workspace",name+".png");if(File.Exists(path))using(var source=Image.FromFile(path))pageBackdrop=new Bitmap(source);}
+        void LoadPageBackdrop(string id){if(pageBackdrop!=null){pageBackdrop.Dispose();pageBackdrop=null;}if(scaledPageBackdrop!=null){scaledPageBackdrop.Dispose();scaledPageBackdrop=null;}if(background!=null||id=="home"||IsWebLayoutPage(id))return;string name=id=="home"?"speech":id=="configuration"?"voices":id=="voices"?"schemes":id;string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"assets","workspace",name+".png");if(File.Exists(path))using(var source=Image.FromFile(path))pageBackdrop=new Bitmap(source);}
         public void PaintScene(Graphics g,Control control){
+            g.Clear(BackColor);
             Bitmap active=background??pageBackdrop;Bitmap scaled=background!=null?scaledBackground:scaledPageBackdrop;
             if(active!=null&&(scaled==null||scaled.Size!=ClientSize)){
                 if(scaled!=null)scaled.Dispose();
@@ -368,7 +368,14 @@ namespace AgentVoice {
                     graphics.Clear(BackColor);graphics.InterpolationMode=System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
                     float scale=Math.Max((float)ClientSize.Width/active.Width,(float)ClientSize.Height/active.Height);
                     float w=active.Width*scale,h=active.Height*scale;
-                    graphics.DrawImage(active,(ClientSize.Width-w)/2,(ClientSize.Height-h)/2,w,h);
+                    // Mirror the source edges so bicubic filtering never samples
+                    // transparent pixels outside the image and leaves a dark halo.
+                    using(var attributes=new System.Drawing.Imaging.ImageAttributes()){
+                        attributes.SetWrapMode(System.Drawing.Drawing2D.WrapMode.TileFlipXY);
+                        int left=(int)Math.Floor((ClientSize.Width-w)/2),top=(int)Math.Floor((ClientSize.Height-h)/2);
+                        var destination=Rectangle.FromLTRB(left,top,(int)Math.Ceiling((ClientSize.Width+w)/2),(int)Math.Ceiling((ClientSize.Height+h)/2));
+                        graphics.DrawImage(active,destination,0,0,active.Width,active.Height,GraphicsUnit.Pixel,attributes);
+                    }
                 }
                 if(background!=null)scaledBackground=scaled;else scaledPageBackdrop=scaled;
             }

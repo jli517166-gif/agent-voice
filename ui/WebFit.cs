@@ -1,73 +1,68 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Runtime.CompilerServices;
 
 namespace AgentVoice {
-    // Keeps the absolute web-derived pages usable below the design width.
-    // Every page is laid out at the default window size first, so the first
-    // real page size becomes the shared design base; after that each page is
-    // scaled from that base instead of letting cards and buttons clip.
+    // Map the design canvas to available space. Text uses its native point size
+    // on large windows; enlarging coordinates must not magnify fonts a second time.
     internal static class WebFit {
-        // The web design canvas inside the content area (see
-        // assets/workspace/report.md: 978 x 604). Pages are created before the
-        // form has a handle and report the default 200 x 100 panel size, so a
-        // smaller observation is never a real layout pass.
-        const int DesignWidth=978,DesignHeight=604;
+        internal static readonly Size DesignCanvas=new Size(978,604);
         sealed class Base {
             internal Rectangle Bounds;
             internal float FontSize;
-            internal FontFamily Family;
+            internal string Family;
             internal FontStyle Style;
-            internal Size Minimum;
+            internal Font RenderFont;
         }
-        static Size reference;
+        sealed class Layout {internal Dictionary<Control,Base> Map;internal Size Canvas;}
+        static readonly ConditionalWeakTable<ScenePanel,Layout> layouts=new ConditionalWeakTable<ScenePanel,Layout>();
+        internal static Size CanvasFor(ScenePanel page){Layout layout;return layouts.TryGetValue(page,out layout)?layout.Canvas:DesignCanvas;}
         internal static void Attach(ScenePanel page){
-            if(page.Tag as string=="webfit")return;
+            Layout existing;if(layouts.TryGetValue(page,out existing))return;
             page.Tag="webfit";page.AutoScroll=false;
-            var map=new Dictionary<Control,Base>();
-            Capture(page,map);
-            page.SizeChanged+=(s,e)=>Fit(page,map);
-            Fit(page,map);
-        }
-        static void Fit(ScenePanel page,Dictionary<Control,Base> map){
-            if(page.IsDisposed||map.Count==0)return;
-            var size=page.ClientSize;
-            if(size.Width<=0||size.Height<=0)return;
-            if(reference.IsEmpty){
-                if(size.Width<DesignWidth||size.Height<DesignHeight)return;
-                reference=size;
-            }
-            Apply(page,map,reference.Width,reference.Height);FitLabels(page);
+            var map=new Dictionary<Control,Base>();Capture(page,map);
+            int right=DesignCanvas.Width,bottom=DesignCanvas.Height;
+            foreach(var pair in map)if(pair.Key.Parent==page){right=Math.Max(right,pair.Value.Bounds.Right);bottom=Math.Max(bottom,pair.Value.Bounds.Bottom);}
+            if(bottom>DesignCanvas.Height)bottom+=12;
+            var layout=new Layout{Map=map,Canvas=new Size(right,bottom)};layouts.Add(page,layout);
+            page.SizeChanged+=(s,e)=>Fit(page,layout);
+            page.Disposed+=(s,e)=>{foreach(var b in map.Values)if(b.RenderFont!=null)b.RenderFont.Dispose();layouts.Remove(page);};
+            Fit(page,layout);
         }
         static void Capture(Control parent,Dictionary<Control,Base> map){
             foreach(Control child in parent.Controls){
                 if(child.Dock!=DockStyle.None)continue;
-                map[child]=new Base{Bounds=child.Bounds,FontSize=child.Font.Size,Family=child.Font.FontFamily,Style=child.Font.Style,Minimum=child.MinimumSize};
+                map[child]=new Base{Bounds=child.Bounds,FontSize=child.Font.Size,Family=child.Font.FontFamily.Name,Style=child.Font.Style};
                 Capture(child,map);
             }
         }
-        static void Apply(ScenePanel page,Dictionary<Control,Base> map,int baseWidth,int baseHeight){
-            if(page.ClientSize.Width<=0||page.ClientSize.Height<=0)return;
-            float sx=page.ClientSize.Width/(float)baseWidth,sy=page.ClientSize.Height/(float)baseHeight;
-            // One uniform zoom for both axes and the font: a per-axis stretch
-            // would re-wrap copy and change which lines fit.
-            float zoom=Math.Min(sx,sy);
-            foreach(var pair in map){
-                var control=pair.Key;var b=pair.Value;
-                control.MinimumSize=Size.Empty;
-                control.SetBounds((int)Math.Round(b.Bounds.X*zoom),(int)Math.Round(b.Bounds.Y*zoom),Math.Max(1,(int)Math.Ceiling(b.Bounds.Width*zoom)),Math.Max(1,(int)Math.Ceiling(b.Bounds.Height*zoom)));
-                float size=Math.Max(4.5f,b.FontSize*zoom*0.95f);
-                if(Math.Abs(control.Font.Size-size)>.1f)control.Font=new Font(b.Family,size,b.Style);
-            }
-            // Resizing children alone can leave stale label surfaces behind;
-            // force one synchronous repaint of the whole scaled page.
-            page.Invalidate(true);page.Update();
+        static void Fit(ScenePanel page,Layout layout){
+            var map=layout.Map;
+            if(page.IsDisposed||map.Count==0||page.ClientSize.Width<=0||page.ClientSize.Height<=0)return;
+            float sx=page.ClientSize.Width/(float)layout.Canvas.Width,sy=page.ClientSize.Height/(float)layout.Canvas.Height;
+            float textScale=Math.Min(1F,Math.Min(sx,sy));
+            page.SuspendLayout();
+            try {
+                foreach(var pair in map){
+                    var control=pair.Key;var b=pair.Value;
+                    control.MinimumSize=Size.Empty;control.MaximumSize=Size.Empty;
+                    if(control is Label||control is System.Windows.Forms.Button)control.AutoSize=false;
+                    control.SetBounds((int)Math.Round(b.Bounds.X*sx),(int)Math.Round(b.Bounds.Y*sy),Math.Max(1,(int)Math.Ceiling(b.Bounds.Width*sx)),Math.Max(1,(int)Math.Ceiling(b.Bounds.Height*sy)));
+                    float size=Math.Max(4.5f,b.FontSize*textScale*.95f);
+                    if(Math.Abs(control.Font.Size-size)>.1f){
+                        var old=b.RenderFont;b.RenderFont=new Font(b.Family,size,b.Style);control.Font=b.RenderFont;if(old!=null)old.Dispose();
+                    }
+                }
+                FitLabels(page);
+            } finally {page.ResumeLayout(false);}
+            page.Invalidate(true);
         }
         static void FitLabels(Control parent){
             foreach(Control child in parent.Controls){
                 var label=child as Label;
-                if(label!=null&&!label.AutoSize){
+                if(label!=null&&!label.AutoSize&&!label.AutoEllipsis){
                     int needed=TextRenderer.MeasureText(label.Text,label.Font,new Size(Math.Max(1,label.Width),0),TextFormatFlags.WordBreak).Height;
                     if(label.Height<needed)label.Height=needed;
                 }

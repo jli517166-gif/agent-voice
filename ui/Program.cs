@@ -20,6 +20,8 @@ namespace AgentVoice {
             string root=AppPaths.CanonicalDirectory(AppDomain.CurrentDomain.BaseDirectory);
             var store=new SettingsStore(root);
             if(args.Contains("--environmenttest"))return UiChecks.Environment(store,args);
+            if(args.Contains("--layout-preview")){using(var preview=new MainForm(store,true)){preview.Text+=" · 布局验收";Application.Run(preview);}return 0;}
+            if(args.Contains("--layouttest"))return WindowLayoutRunner.Run(store,args);
             if(args.Contains("--selftest"))return UiChecks.Run(store,args);
             if(args.Contains("--scrolltest"))return ScrollChecks.Run(store,args);
             if(args.Contains("--flowtest"))return UiChecks.Flow(store,args);
