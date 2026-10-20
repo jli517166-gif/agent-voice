@@ -1,6 +1,7 @@
 # Build output and local runtime
 dist/
 build-*/
+.build-deps/
 runtime/
 engines/
 tts-engines/

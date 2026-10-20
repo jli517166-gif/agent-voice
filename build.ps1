@@ -1,6 +1,7 @@
 ﻿param([string]$OutputDirectory = '')
 $ErrorActionPreference = 'Stop'
 $sourceRoot = $PSScriptRoot
+$webSdk = & (Join-Path $sourceRoot 'tools\restore_webview2.ps1') -Root $sourceRoot
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) { $OutputDirectory = Join-Path $sourceRoot 'dist' }
 $compiler = Join-Path $env:SystemRoot 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
@@ -8,9 +9,15 @@ $compiledExecutable = Join-Path $OutputDirectory 'agent-voice-build.exe'
 $finalExecutable = Join-Path $OutputDirectory ('agent' + [char]0x8BED + [char]0x97F3 + '.exe')
 $arguments = @('/nologo','/target:winexe','/optimize+','/platform:x64',('/out:' + $compiledExecutable),'/r:System.dll','/r:System.Core.dll','/r:System.Drawing.dll','/r:System.Windows.Forms.dll','/r:System.Web.Extensions.dll','/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll','/r:Microsoft.CSharp.dll',('/win32manifest:' + (Join-Path $sourceRoot 'ui\app.manifest')))
 $sources = Get-ChildItem -LiteralPath (Join-Path $sourceRoot 'ui') -Filter '*.cs' | ForEach-Object FullName
+$arguments += @(('/r:'+(Join-Path $webSdk 'lib\net462\Microsoft.Web.WebView2.Core.dll')),('/r:'+(Join-Path $webSdk 'lib\net462\Microsoft.Web.WebView2.WinForms.dll')))
 & $compiler @arguments @sources
 if ($LASTEXITCODE -ne 0) { throw 'Native UI compilation failed' }
 Move-Item -LiteralPath $compiledExecutable -Destination $finalExecutable -Force
+foreach ($dependency in @('lib\net462\Microsoft.Web.WebView2.Core.dll','lib\net462\Microsoft.Web.WebView2.WinForms.dll','build\native\x64\WebView2Loader.dll')) {
+    Copy-Item -LiteralPath (Join-Path $webSdk $dependency) -Destination (Join-Path $OutputDirectory (Split-Path $dependency -Leaf)) -Force
+}
+New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'docs\licenses') -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $webSdk 'LICENSE.txt') -Destination (Join-Path $OutputDirectory 'docs\licenses\WebView2.txt') -Force
 foreach ($folder in @('service','integrations','tools')) {
     $target = Join-Path $OutputDirectory $folder
     New-Item -ItemType Directory -Path $target -Force | Out-Null

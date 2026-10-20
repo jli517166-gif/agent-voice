@@ -86,18 +86,20 @@ def application_package(build,output):
     build=Path(build).resolve();output=Path(output).resolve()
     if output.exists():raise ValueError('不能覆盖已有软件包')
     if not (build/'agent语音.exe').is_file():raise ValueError('请先构建软件本体')
+    ui_libraries=['Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll']
     roots=['agent语音.exe','service','tools','integrations','docs','.agents']
+    roots.extend(name for name in ui_libraries if (build/name).is_file())
     paths=[entry for relative in roots for entry in inventory(build,relative)]
     paths.extend((p.name,p) for p in build.glob('*.md'))
     # Public stock graphics only; no bundled-voice manifest or user imagery.
-    if (build/'assets').is_dir():paths.extend((n,p) for n,p in inventory(build,'assets') if n.startswith('assets/') and (p.suffix.lower() in {'.png','.ico','.svg'} or re.fullmatch(r'assets/sfx/step-[0-8]\.wav',n)))
+    if (build/'assets').is_dir():paths.extend((n,p) for n,p in inventory(build,'assets') if n.startswith('assets/') and (p.suffix.lower() in {'.png','.ico','.svg'} or re.fullmatch(r'assets/sfx/step-[0-8]\.wav',n) or n=='assets/onboarding/layout.json' or (n.startswith('assets/setup/') and p.suffix.lower() in {'.html','.css','.js','.json','.webp'})))
     output.parent.mkdir(parents=True,exist_ok=True)
     temporary=output.with_name(output.name+'.partial')
     if temporary.exists():raise ValueError('存在未完成的软件包，请检查后重试')
     try:
         with zipfile.ZipFile(temporary,'x',compression=zipfile.ZIP_DEFLATED,compresslevel=1) as archive:
             for name,path in paths:
-                if path.suffix.lower() in {'.exe','.dll'} and name!='agent语音.exe':continue
+                if path.suffix.lower() in {'.exe','.dll'} and name not in ['agent语音.exe']+ui_libraries:continue
                 archive.write(path,'Agent语音/'+name)
         with zipfile.ZipFile(temporary) as archive:
             if archive.testzip():raise ValueError('软件本体 CRC 校验失败')
