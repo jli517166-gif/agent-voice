@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
@@ -8,9 +9,14 @@ namespace AgentVoice {
         TextBox gptModelPath;
         readonly List<Control> gptOnlyControls=new List<Control>();
         void BuildVariantControls(ScenePanel card){
-            int start=Inside(card).Controls.Count;
-            Add(card,Hint("GPT-SoVITS 权重目录（留空使用设置中的默认目录）"));gptModelPath=Input();Add(card,gptModelPath);Add(card,Row(EntryBtn("选择 GPT 模型目录","选择包含语义模型、声学模型与编码器的 GPT-SoVITS 权重目录。",()=>SelectPath(gptModelPath,"",true)),Btn("使用默认 GPT 模型",()=>gptModelPath.Text="")));
-            gptOnlyControls.AddRange(Inside(card).Controls.Cast<Control>().Skip(start));
+            // Absolute twin of the CosyVoice model row: only one engine's rows
+            // are visible, so both sets share the same card region.
+            int start=card.Controls.Count;
+            card.Controls.Add(WebText("GPT-SoVITS 权重目录（留空使用设置中的默认目录）",9.5F,FontStyle.Regular,16,42,700,25,ContentAlignment.MiddleLeft));
+            gptModelPath=Input();gptModelPath.SetBounds(16,72,600,30);card.Controls.Add(gptModelPath);
+            card.Controls.Add(WebButton("选择 GPT 模型目录","选择包含语义模型、声学模型与编码器的 GPT-SoVITS 权重目录。",()=>SelectPath(gptModelPath,"",true),16,108,190,38));
+            card.Controls.Add(WebButton("使用默认 GPT 模型",null,()=>gptModelPath.Text="",214,108,200,38));
+            gptOnlyControls.AddRange(card.Controls.Cast<Control>().Skip(start));
         }
         void UpdateVoiceControls(){
             string engine=SelectedEngine();

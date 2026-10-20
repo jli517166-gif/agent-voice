@@ -10,7 +10,8 @@ namespace AgentVoice {
     // page content area, which starts at (150, 76) inside the window.
     public sealed partial class MainForm {
         internal bool IsWebLayoutPage(string id){
-            return id=="configuration"||id=="voices"||id=="connections"||id=="settings"||id=="training";
+            return id=="configuration"||id=="voices"||id=="connections"||id=="settings"||id=="training"
+                ||id=="voiceEditor"||id=="harness"||id=="airi"||id=="connectionGuide"||id=="advancedTraining";
         }
         internal ScenePanel WebPage(string id){
             var page=NewPage(id);
@@ -19,9 +20,11 @@ namespace AgentVoice {
             return page;
         }
         internal Label WebText(string text,float size,FontStyle style,int x,int y,int width,int height,ContentAlignment align){
+            var font=new Font(Font.FontFamily,size,style);
+            int needed=TextRenderer.MeasureText(text,font,new Size(Math.Max(1,width),0),TextFormatFlags.WordBreak).Height;
             var label=new Label{
-                Text=text,Font=new Font(Font.FontFamily,size,style),AutoSize=false,
-                Bounds=new Rectangle(x,y,width,height),TextAlign=align,BackColor=Color.Transparent,UseMnemonic=false
+                Text=text,Font=font,AutoSize=false,
+                Bounds=new Rectangle(x,y,width,Math.Max(height,needed)),TextAlign=align,BackColor=Color.Transparent,UseMnemonic=false
             };
             return label;
         }
@@ -63,6 +66,19 @@ namespace AgentVoice {
         }
         internal Button WebAsyncButton(string text,string note,Func<Task> action,int x,int y,int width,int height){
             return WebAsyncButton(text,note,action,x,y,width,height,false);
+        }
+        internal Label WebCardTitle(ScenePanel card,string title){
+            var label=WebText(title,10F,FontStyle.Bold,16,12,Math.Max(120,card.Width-32),24,ContentAlignment.MiddleLeft);
+            card.Controls.Add(label);
+            return label;
+        }
+        internal Label WebCardTitle(ScenePanel card,string title,int width){
+            var label=WebText(title,10F,FontStyle.Bold,16,12,width,24,ContentAlignment.MiddleLeft);
+            card.Controls.Add(label);
+            return label;
+        }
+        internal CheckBox WebCheck(string text,int x,int y,int width,int height,bool value){
+            return new CheckBox{Text=text,Checked=value,AutoSize=false,Bounds=new Rectangle(x,y,width,height),BackColor=Color.Transparent,Margin=new Padding(0)};
         }
         internal void WebDivider(Control parent,int x,int y,int width){
             parent.Controls.Add(new Panel{BackColor=Mix(CardColor,ForeColor,22),Bounds=new Rectangle(x,y,width,1),Margin=new Padding(0)});

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -20,17 +20,28 @@ namespace AgentVoice {
         [DllImport("user32.dll",EntryPoint="ShowWindow")]static extern bool ShowAiriWindow(IntPtr window,int command);
 
         void BuildConnectionGuide(){
-            var stack=Stack(NewPage("connectionGuide"));var card=Card(stack,"接入步骤与真实验证");
-            Add(card,Hint("① 首页先试听声音并启动服务。② Harness 只需选择安装目录或用户配置目录，程序会识别类型；AIRI 先手动启用，再选择原安装目录。③ 程序自动安装连接器、启动真实验证、等待最终回复并确认播放。全部通过后显示绿色状态和礼炮；失败会停在具体步骤并给出处理方法。"));
-            foreach(var entry in new[]{
-                new[]{"Codex","程序定位 CODEX_HOME/sessions（默认当前用户 .codex/sessions），或你所选目录中的会话目录，重新加载监听后开始复验。在 Codex 发送验证提示；最终回复进入队列。若未收到，检查是否是同一 Windows 用户及会话目录。"},
-                new[]{"DeepSeek Harness","自动定位 .dsh/profiles/desktop，同时为 headless 真实验证配置连接器，并同步桌面端当前模型账号与已配置的本机受信任 CA。程序备份配置并关闭旧 dsh-tts-autoread，防止重复朗读。验证会自动调用安装包内的 dsh headless；桌面端重启后，turn/end 才提交日常回复。"},
-                new[]{"其他 Harness","正式版不提供未经真机验证的开关。请从 Harness 页面打开二次开发指南，新增独立适配器后执行同样的随机回复与真实播放验证。"},
-                new[]{"AIRI","默认不启用。勾选并保存联动后，点击“选择目录并接入验证”，选择含 airi.exe 的安装目录。程序在该 AIRI 中安装桥接并保留 app.asar 单文件备份，不再生成完整副本。桥接连通后自动提交播放验证，收到桌宠原生播放完成回执才通过，心跳不算成功。AIRI 更新可能覆盖桥接，失效后重新连接验证即可自动修复。"}
-            }){var section=Card(stack,entry[0]);Add(section,Hint(entry[1]));}
-            var end=Card(stack,"结果与故障提示");verificationHint=Hint("尚未开始验证。监听就绪和连接器心跳只表示可用状态。换机、服务重启或超过 15 分钟需重新验证。");Add(end,verificationHint);
-            Add(end,Hint("收不到正文：确认目标已启用、配置目录正确、客户端已重载、验证提示发给了对应 Harness。收到正文但失败：检查声音资源／输出设备与日志。Harness 配置备份在 data/connection-backups；AIRI 原 app.asar 备份在所选 AIRI 的 resources 目录。可打开服务日志排查。"));
-            Add(end,Row(Btn("返回",()=>ShowPage("connections")),Btn("打开 Harness",()=>ShowPage("harness")),Btn("打开 AIRI",()=>ShowPage("airi")),EntryBtn("打开日志","查看连接与播放诊断记录。",()=>{Directory.CreateDirectory(Store.Resolve("data/logs"));ServiceClient.Open(Store.Resolve("data/logs"));})));
+            var page=WebPage("connectionGuide");
+            WebTitle(page,"连接帮助","接入步骤、真实验证标准和故障处理。");
+            var intro=WebCard(page,38,126,902,392);
+            WebCardTitle(intro,"接入步骤与真实验证");
+            intro.Controls.Add(WebText("① 先在首页试听声音并启动服务。② Harness 选择安装目录即可自动识别；AIRI 需先启用联动再选目录。③ 程序自动安装连接器并验证真实回复与播放，失败会停在具体步骤并给出处理方法。",7.5F,FontStyle.Regular,16,44,870,40,ContentAlignment.TopLeft));
+            intro.Controls.Add(WebText("Codex",9F,FontStyle.Bold,16,86,300,24,ContentAlignment.MiddleLeft));
+            intro.Controls.Add(WebText("定位 CODEX_HOME/sessions（默认 .codex/sessions）；在 Codex 发送验证短句，最终回复进入队列。收不到时确认使用同一 Windows 用户和会话目录。",7.5F,FontStyle.Regular,16,110,870,40,ContentAlignment.TopLeft));
+            intro.Controls.Add(WebText("DeepSeek Harness",9F,FontStyle.Bold,16,154,300,24,ContentAlignment.MiddleLeft));
+            intro.Controls.Add(WebText("自动定位 .dsh/profiles/desktop，为 headless 验证配置连接器并同步桌面账号与受信任 CA；备份配置并关闭旧 dsh-tts-autoread。桌面端重启后 turn/end 才提交日常回复。",7.5F,FontStyle.Regular,16,178,870,40,ContentAlignment.TopLeft));
+            intro.Controls.Add(WebText("其他 Harness",9F,FontStyle.Bold,16,222,300,24,ContentAlignment.MiddleLeft));
+            intro.Controls.Add(WebText("正式版不提供未真机验证的开关；请按二次开发指南新增适配器后执行同样的随机回复与真实播放验证。",7.5F,FontStyle.Regular,16,246,870,20,ContentAlignment.MiddleLeft));
+            intro.Controls.Add(WebText("AIRI",9F,FontStyle.Bold,16,270,300,24,ContentAlignment.MiddleLeft));
+            intro.Controls.Add(WebText("默认不启用。勾选并保存联动后选择含 airi.exe 的原安装目录；程序安装桥接并保留 app.asar 备份。收到桌宠实际播放回执才算通过，心跳不算成功。",7.5F,FontStyle.Regular,16,294,870,40,ContentAlignment.TopLeft));
+            intro.Controls.Add(WebText("收不到正文：确认目标已启用、目录正确、客户端已重载。收到正文但失败：检查声音资源与输出设备。Harness 备份在 data/connection-backups，AIRI 备份在 resources 目录。",7.5F,FontStyle.Regular,16,340,870,40,ContentAlignment.TopLeft));
+
+            var end=WebCard(page,38,526,902,133);
+            verificationHint=WebText("尚未开始验证。监听就绪和连接器心跳只表示可用状态。换机、服务重启或超过 15 分钟需重新验证。",8F,FontStyle.Regular,16,14,870,63,ContentAlignment.TopLeft);
+            end.Controls.Add(verificationHint);
+            end.Controls.Add(WebButton("返回",null,()=>ShowPage("connections"),16,83,70,38));
+            end.Controls.Add(WebButton("打开 Harness",null,()=>ShowPage("harness"),94,83,170,38));
+            end.Controls.Add(WebButton("打开 AIRI",null,()=>ShowPage("airi"),272,83,150,38));
+            end.Controls.Add(WebButton("打开日志","查看连接与播放诊断记录。",()=>{Directory.CreateDirectory(Store.Resolve("data/logs"));ServiceClient.Open(Store.Resolve("data/logs"));},430,83,110,38));
         }
         string HarnessManualHelp(string source){
             if(source=="codex")return "请确认 Codex CLI 已登录且可运行 codex exec；也可在 Codex 中手动发送页面显示的验证短句。";

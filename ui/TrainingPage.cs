@@ -1,4 +1,4 @@
-using Button = AgentVoice.AnimeButton;
+﻿using Button = AgentVoice.AnimeButton;
 using System;
 using System.Drawing;
 using System.IO;
@@ -94,15 +94,27 @@ namespace AgentVoice {
             MessageBox.Show(this,Json.Text(r,"message"),"训练环境检查");
         }
         void BuildAdvancedTraining(){
-            var stack=Stack(NewPage("advancedTraining"));
-            var intro=Card(stack,"高级 CosyVoice 训练");
-            Add(intro,Hint("适合显存和算力较强的电脑。目标是使用多段带准确台词的数据训练专属权重，并用未见文本验收；训练仍由 CosyVoice 官方脚本完成。"));
-            Add(intro,Row(EntryBtn("打开完整手册","查看硬件、数据、训练、验收和导出标准。",()=>ServiceClient.Open(Store.Resolve("高级CosyVoice训练手册.md"))),EntryBtn("打开训练目录","整理数据和训练结果。",OpenTrainingWorkspace),EntryBtn("打开官方训练脚本","查看当前 CosyVoice3 recipe。",()=>ServiceClient.Open("https://github.com/FunAudioLLM/CosyVoice/blob/main/examples/libritts/cosyvoice3/run.sh"))));
-            var flow=Card(stack,"四个阶段");
-            Add(flow,Hint("1. 固定 CosyVoice、基础模型、Python、PyTorch 和 CUDA 版本。\r\n2. 清洗多段录音，准备逐字台词、训练集、验证集和试听集。\r\n3. 按官方 recipe 训练、选择或平均 checkpoint，并整理完整模型目录。\r\n4. 用未见文本验收，再导出高级训练包或高级完整包。"));
-            var packages=Card(stack,"导出选择");
-            Add(packages,Hint("高级训练包只保存相对基础模型变化的权重，体积较小，但导入电脑必须有完全一致的基础模型。高级完整包保存完整训练模型，迁移更方便；两者都不包含 CosyVoice 源码、Python 或 CUDA。"));
-            Add(packages,Row(EntryBtn("校验训练模型","选择完整训练结果并填到首页。",SelectTrainedModel),EntryBtn("打开音色包","选择高级训练包或高级完整包。",()=>ShowPage("configuration")),EntryBtn("返回基础训练","查看基础流程。",()=>ShowPage("training"))));
+            var page=WebPage("advancedTraining");
+            WebTitle(page,"高级训练","高配置电脑训练专属权重的完整流程。");
+            page.Controls.Add(WebButton("返回基础训练","回到引擎选择与基础流程。",()=>ShowPage("training"),784,46,150,39));
+            var intro=WebCard(page,38,126,902,142);
+            WebCardTitle(intro,"高级 CosyVoice 训练");
+            intro.Controls.Add(WebText("适合显存和算力较强的电脑。目标是使用多段带准确台词的数据训练专属权重，并用未见文本验收；训练仍由 CosyVoice 官方脚本完成。",8F,FontStyle.Regular,16,44,870,42,ContentAlignment.TopLeft));
+            intro.Controls.Add(WebButton("打开完整手册","查看硬件、数据、训练、验收和导出标准。",()=>ServiceClient.Open(Store.Resolve("高级CosyVoice训练手册.md")),16,92,150,38));
+            intro.Controls.Add(WebButton("打开训练目录","整理数据和训练结果。",OpenTrainingWorkspace,174,92,150,38));
+            intro.Controls.Add(WebButton("打开官方训练脚本","查看当前 CosyVoice3 recipe。",()=>ServiceClient.Open("https://github.com/FunAudioLLM/CosyVoice/blob/main/examples/libritts/cosyvoice3/run.sh"),332,92,190,38));
+
+            var flow=WebCard(page,38,276,902,158);
+            WebCardTitle(flow,"四个阶段");
+            flow.Controls.Add(WebText("1. 固定 CosyVoice、基础模型、Python、PyTorch 和 CUDA 版本。\r\n2. 清洗多段录音，准备逐字台词、训练集、验证集和试听集。\r\n3. 按官方 recipe 训练、选择或平均 checkpoint，并整理完整模型目录。\r\n4. 用未见文本验收，再导出高级训练包或高级完整包。",8F,FontStyle.Regular,16,44,870,102,ContentAlignment.TopLeft));
+
+            var packages=WebCard(page,38,442,902,218);
+            WebCardTitle(packages,"导出选择与验收");
+            packages.Controls.Add(WebText("高级训练包只保存相对基础模型变化的权重，体积较小，但导入电脑必须有完全一致的基础模型。高级完整包保存完整训练模型，迁移更方便；两者都不包含 CosyVoice 源码、Python 或 CUDA。",8F,FontStyle.Regular,16,44,870,42,ContentAlignment.TopLeft));
+            packages.Controls.Add(WebText("验收清单",9F,FontStyle.Bold,16,94,300,24,ContentAlignment.MiddleLeft));
+            packages.Controls.Add(WebText("导出前确认基础模型与训练环境一致；验证集与试听句不参与训练；完整模型目录包含全部权重文件；用未见文本试听通过后再导出。",7.5F,FontStyle.Regular,16,118,870,40,ContentAlignment.TopLeft));
+            packages.Controls.Add(WebButton("校验训练模型","选择完整训练结果并填到首页。",SelectTrainedModel,16,168,150,38));
+            packages.Controls.Add(WebButton("打开音色包","选择高级训练包或高级完整包。",()=>ShowPage("configuration"),174,168,140,38));
         }
         string TrainingWorkspace(){string directory=Path.Combine(VoicePackageDirectory(),"训练输出");Directory.CreateDirectory(directory);return directory;}
         async Task CheckTraining(bool prepare){

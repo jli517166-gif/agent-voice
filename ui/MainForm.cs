@@ -113,7 +113,7 @@ namespace AgentVoice {
             if(id=="home")pageHistory.Clear();
             else if(remember){if(pageHistory.Count==64)pageHistory.RemoveAt(0);pageHistory.Add(page);}
             SendMessage(content.Handle,0x000B,IntPtr.Zero,IntPtr.Zero);content.SuspendLayout();
-            try{foreach(var pair in pages)pair.Value.Visible=pair.Key==id;pages[id].BringToFront();page=id;if(id=="home"||IsWebLayoutPage(id))WebFit.Attach(pages[id]);sidebar.Visible=true;outer.ColumnStyles[0].Width=150;workspace.RowStyles[0].Height=76;backButton.Visible=id!="home";pageTitle.Text=PageName(id);pageTitle.Visible=id!="home"&&!IsWebLayoutPage(id);statusBar.Visible=false;workspace.RowStyles[1].Height=0;foreach(var pair in navigationButtons)StyleButton(pair.Value,pair.Key==id);}
+            try{foreach(var pair in pages)pair.Value.Visible=pair.Key==id;pages[id].BringToFront();page=id;if(id=="home"||id=="harness"||id=="airi"||id=="connectionGuide"||id=="advancedTraining"||IsWebLayoutPage(id))WebFit.Attach(pages[id]);sidebar.Visible=true;outer.ColumnStyles[0].Width=150;workspace.RowStyles[0].Height=76;backButton.Visible=id!="home";pageTitle.Text=PageName(id);pageTitle.Visible=id!="home"&&!IsWebLayoutPage(id);statusBar.Visible=false;workspace.RowStyles[1].Height=0;foreach(var pair in navigationButtons)StyleButton(pair.Value,pair.Key==id);}
             finally{content.ResumeLayout(true);SendMessage(content.Handle,0x000B,new IntPtr(1),IntPtr.Zero);content.Invalidate(true);}
 
         }
@@ -213,12 +213,41 @@ namespace AgentVoice {
         }
         Button LiveSpeechButton(string text,Func<Task> action){return Btn(text,async()=>{if(speechOperation){Status("已有手动朗读任务进行中。可随时点击左侧停止朗读。");return;}speechOperation=true;try{await action();}catch(Exception error){StatusError(error.Message);}finally{speechOperation=false;}});}
         void BuildVoiceEditor(){
-            var voice=Card(Stack(NewPage("voiceEditor")),"引擎、模型与参考声音");
-            engineChoice=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=280};engineChoice.Items.AddRange(EngineChoices);Add(voice,Hint("TTS 引擎"));Add(voice,engineChoice);engineChoice.SelectedIndexChanged+=(s,e)=>UpdateVoiceControls();engineDetails=Hint("选择引擎后显示对应的模型设置。");Add(voice,engineDetails);int cosyStart=Inside(voice).Controls.Count;
-            Add(voice,Hint("CosyVoice 模型目录（留空使用默认模型）"));baseModelPath=Input();Add(voice,baseModelPath);Add(voice,ActionGrid(2,EntryBtn("选择模型目录","选择已经训练完成的完整 CosyVoice3 模型目录。",()=>SelectPath(baseModelPath,"",true)),Btn("恢复默认模型",()=>baseModelPath.Text="")));
-            cosyOnlyControls.AddRange(Inside(voice).Controls.Cast<Control>().Skip(cosyStart));BuildVariantControls(voice);
-            Add(voice,Row(Primary(AsyncBtn("选择音色包",SelectVoiceModelPackage)),EntryBtn("参考声音","为当前引擎选择参考录音和逐字一致的台词。",()=>ShowPage("cosyReference"))));NumberField(voice,"speed","语速（1 为原速）",.7M,1.3M,.01M,2);
-            saveVoiceButton=Primary(AsyncBtn("使用当前声音",async()=>{await SaveDraft();Status("已使用当前声音：之后的新任务会采用当前模型、参考声音和语速。");}));tips.SetToolTip(saveVoiceButton,"保存声音页当前选择，并用于之后的新语音；不会训练或复制模型。");Add(voice,Row(saveVoiceButton,EntryBtn("保存或切换声音方案","把当前声音保存为可复用方案。",()=>ShowPage("voices"))));voiceHint=Hint("当前引擎直接生成最终语音。");Add(voice,voiceHint);
+            var page=WebPage("voiceEditor");
+            WebTitle(page,"声音设置","选择引擎、模型和参考声音；这里只影响之后的新任务。");
+            saveVoiceButton=WebAsyncButton("使用当前声音","保存声音页当前选择，并用于之后的新语音；不会训练或复制模型。",async()=>{await SaveDraft();Status("已使用当前声音：之后的新任务会采用当前模型、参考声音和语速。");},746,46,194,39,true);
+            page.Controls.Add(saveVoiceButton);
+            var engine=WebCard(page,38,126,902,142);
+            WebCardTitle(engine,"引擎");
+            engine.Controls.Add(WebText("TTS 引擎",9.5F,FontStyle.Regular,16,42,110,26,ContentAlignment.MiddleLeft));
+            engineChoice=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,AccessibleName="TTS 引擎"};
+            engineChoice.SetBounds(16,68,300,30);
+            engineChoice.Items.AddRange(EngineChoices);
+            engineChoice.SelectedIndexChanged+=(s,e)=>UpdateVoiceControls();
+            engine.Controls.Add(engineChoice);
+            engineDetails=WebText("选择引擎后显示对应的模型设置。",9F,FontStyle.Regular,16,104,870,26,ContentAlignment.MiddleLeft);
+            engine.Controls.Add(engineDetails);
+
+            var model=WebCard(page,38,276,902,184);
+            WebCardTitle(model,"模型与权重");
+            int cosyStart=model.Controls.Count;
+            model.Controls.Add(WebText("CosyVoice 模型目录（留空使用默认模型）",9.5F,FontStyle.Regular,16,42,700,25,ContentAlignment.MiddleLeft));
+            baseModelPath=Input();baseModelPath.SetBounds(16,72,600,30);model.Controls.Add(baseModelPath);
+            model.Controls.Add(WebButton("选择模型目录","选择已经训练完成的完整 CosyVoice3 模型目录。",()=>SelectPath(baseModelPath,"",true),16,108,150,38));
+            model.Controls.Add(WebButton("恢复默认模型",null,()=>baseModelPath.Text="",174,108,150,38));
+            cosyOnlyControls.AddRange(model.Controls.Cast<Control>().Skip(cosyStart));
+            BuildVariantControls(model);
+            model.Controls.Add(WebText("模型目录留空时使用设置中的默认路径；切换引擎只改变显示，不会改动音量与句首空白。",8F,FontStyle.Regular,16,152,870,21,ContentAlignment.MiddleLeft));
+
+            var reference=WebCard(page,38,468,902,176);
+            WebCardTitle(reference,"参考声音与语速");
+            reference.Controls.Add(WebText("语速（1 为原速）",9.5F,FontStyle.Regular,16,42,200,25,ContentAlignment.MiddleLeft));
+            var speed=Number(.7M,1.3M,.01M,2);speed.SetBounds(228,40,110,30);numbers["speed"]=speed;reference.Controls.Add(speed);
+            reference.Controls.Add(WebButton("参考声音","为当前引擎选择参考录音和逐字一致的台词。",()=>ShowPage("cosyReference"),16,78,110,38));
+            reference.Controls.Add(WebAsyncButton("选择音色包","导入并应用 CosyVoice 或 GPT-SoVITS 音色包。",SelectVoiceModelPackage,134,78,140,38,false));
+            reference.Controls.Add(WebButton("保存或切换声音方案","把当前声音保存为可复用方案。",()=>ShowPage("voices"),282,78,210,38));
+            voiceHint=WebText("当前引擎直接生成最终语音。",8F,FontStyle.Regular,16,122,870,42,ContentAlignment.TopLeft);
+            reference.Controls.Add(voiceHint);
         }
         void BuildCosyReference(){var stack=Stack(NewPage("cosyReference"));var card=Card(stack,"参考声音");Add(card,Hint("选择一段代表性的参考音频，并填写与录音逐字一致的台词。训练数据可以有很多段，但这里一次使用一段推理参考。"));PathField(card,"reference","参考音频（建议干净、单人、情绪稳定）","音频|*.wav;*.flac;*.mp3;*.m4a",false);Field(card,"referenceText","逐字台词（必须与录音一致）",true);Add(card,Row(Btn("导入台词",()=>{using(var dialog=new OpenFileDialog{Filter="台词文件|*.txt",CheckFileExists=true})if(dialog.ShowDialog(this)==DialogResult.OK)fields["referenceText"].Text=File.ReadAllText(dialog.FileName,System.Text.Encoding.UTF8);}),AsyncBtn("使用参考声音",async()=>{await SaveDraft();Status("参考声音已应用；之后的新任务会使用这段音频和台词。");}),Btn("返回首页",()=>ShowPage("home"))));Add(card,Hint("台词不一致可能造成漏字、错字、节奏异常或音色不稳定。"));}
         void BindVoice(){var v=Config.voice;if(quickVoice!=null){quickVoice.DataSource=null;quickVoice.DataSource=Config.profiles.ToList();}if(homeVoiceSummary!=null)homeVoiceSummary.Text=EngineLabel(v)+"   ·   语速 "+v.speed.ToString("0.00")+"×   ·   "+(v.reference.Length>0?Path.GetFileNameWithoutExtension(v.reference):"待选择参考声音");baseModelPath.Text=v.baseModel;gptModelPath.Text=v.gptModel;if(fields.ContainsKey("reference")){fields["reference"].Text=v.reference;fields["referenceText"].Text=v.referenceText;fields["instruction"].Text=v.instruction;checks["advancedEnabled"].Checked=v.advancedEnabled;SelectEngineVoice(v);numbers["speed"].Value=(decimal)v.speed;numbers["leadingSilence"].Value=(decimal)v.leadingSilence;numbers["volume"].Value=(decimal)v.volume;}UpdateVoiceControls();UpdateTopStatus(harnessOnline);RefreshPhrases();RefreshProfiles();}

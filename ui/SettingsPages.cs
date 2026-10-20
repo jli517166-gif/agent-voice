@@ -1,4 +1,4 @@
-using Button = AgentVoice.AnimeButton;
+﻿using Button = AgentVoice.AnimeButton;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -82,28 +82,69 @@ namespace AgentVoice {
         }
         void BuildAdvanced(){var card=SettingsCard("advanced","声音细调");Add(card,Hint("仅调整 TTS 表达和播放。CosyVoice 表达指令与句首空白控制只作用于 CosyVoice；播放音量适用于所有引擎。"));var advanced=new CheckBox{Text="启用声音细调（默认关闭）",AutoSize=true};checks["advancedEnabled"]=advanced;advanced.CheckedChanged+=(s,e)=>UpdateVoiceControls();Add(card,Row(advanced));Add(card,Hint("关闭后使用参考录音的表达方式和默认播放音量；模型、参考录音、语速以及 GPT 版本仍生效。"));NumberField(card,"volume","播放音量",0,1.5M,.05M,2);NumberField(card,"leadingSilence","CosyVoice 句首空白保留上限（秒）",.2M,1,.05M,2);Field(card,"instruction","CosyVoice 表达指令（可选）",true);Add(card,Row(AsyncBtn("保存声音细调",SaveDraft)));}
         void BuildHarness(){
-            var stack=Stack(NewPage("harness"));var intro=Card(stack,"Harness");
-            Add(intro,Hint("正式支持范围只保留已经完成真机端到端测试的 Codex 与 DeepSeek Harness。选择安装目录或用户配置目录后，程序会自动识别、安装连接器并验证真实回复和播放。"));
-            Add(intro,Row(Primary(AsyncBtn("选择目录并自动接入",BeginAutoHarness)),EntryBtn("连接帮助","查看识别依据、重载方法和真实验证标准。",()=>ShowPage("connectionGuide")),Btn("返回",()=>ShowPage("connections"))));
-            foreach(var item in new[]{new[]{"codex","Codex"},new[]{"deepseek","DeepSeek Harness"}}){string source=item[0],name=item[1];var check=new CheckBox{Text="启用",AutoSize=true,Height=30,Margin=new Padding(0,5,10,5)};checks[source]=check;Add(intro,Row(Hint(name),check,HarnessIndicator(source,name)));}
-            Add(intro,Row(AsyncBtn("保存开关",async()=>{var next=Json.Copy(Config);foreach(var key in Config.harness.Keys)next.harness[key]=checks[key].Checked;await Persist(next,new {harness=next.harness});await Poll();})));
-            Add(intro,Hint("只有“指定 Harness 返回本次随机短句，并完成实际语音播放”才变绿和播放礼炮。监听就绪、文件已安装、心跳在线、近期收到普通回复都不算验证通过。"));
-            var mcp=Card(stack,"聊天栏快捷控制");Add(mcp,Hint("DeepSeek 安装后在聊天栏显示“语音”按钮，使用独有的 /agent-voice 命令。Codex 原生入口为技能选择器中的“语音控制”或 $agent-voice-control。Codex 使用 MCP 语言命令，不添加自定义面板或浮窗。MCP 可控制服务、朗读和声音方案。"));
-            Add(mcp,Row(Primary(AsyncBtn("安装到 Codex",async()=>await InstallHarnessMcp("codex"))),Primary(AsyncBtn("安装到 DeepSeek",async()=>await InstallHarnessMcp("deepseek")))));
-            var developer=Card(stack,"其他 Harness · 二次开发");Add(developer,Hint("未真机验证的 Harness 不进入正式支持列表。开发者可以按适配器契约接入最终回复，并复用相同的随机挑战、播放回执和 MCP 工具。"));
-            Add(developer,Row(EntryBtn("打开 Harness 二次开发指南","新增识别器、连接器、验证命令和测试。",()=>ServiceClient.Open(Store.Resolve("Harness二次开发指南.md"))),EntryBtn("打开 MCP 开发说明","复用或扩展本地 MCP 控制服务。",()=>ServiceClient.Open(Store.Resolve("MCP控制插件开发说明.md")))));
+            var page=WebPage("harness");
+            WebTitle(page,"Harness","只保留已真机验证的 Codex 与 DeepSeek Harness。");
+            page.Controls.Add(WebButton("连接帮助","查看识别依据、重载方法和真实验证标准。",()=>ShowPage("connectionGuide"),784,46,110,39));
+            var intro=WebCard(page,38,126,902,274);
+            WebCardTitle(intro,"自动接入");
+            intro.Controls.Add(WebText("正式支持范围只保留已完成真机端到端测试的 Codex 与 DeepSeek Harness。选择安装目录或用户配置目录后，程序会自动识别、安装连接器并验证真实回复和播放。",8F,FontStyle.Regular,16,38,870,46,ContentAlignment.TopLeft));
+            intro.Controls.Add(WebAsyncButton("选择目录并自动接入","选择 Codex 或 DeepSeek Harness 的安装目录或用户配置目录，自动识别、安装连接器并做真实回复与播放验证。",BeginAutoHarness,16,92,210,38,true));
+            intro.Controls.Add(WebAsyncButton("保存开关","保存 Codex 与 DeepSeek Harness 的启用状态。",async()=>{var next=Json.Copy(Config);foreach(var key in Config.harness.Keys)next.harness[key]=checks[key].Checked;await Persist(next,new {harness=next.harness});await Poll();},234,92,110,38));
+            intro.Controls.Add(WebButton("返回",null,()=>ShowPage("connections"),352,92,70,38));
+            WebDivider(intro,16,140,870);
+            int row=0;
+            foreach(var item in new[]{new[]{"codex","Codex"},new[]{"deepseek","DeepSeek Harness"}}){
+                string source=item[0],name=item[1];int y=150+row*36;
+                var check=WebCheck("启用",16,y,100,30,Config.harness.ContainsKey(source)&&Config.harness[source]);
+                checks[source]=check;intro.Controls.Add(check);
+                intro.Controls.Add(WebText(name,9.5F,FontStyle.Bold,120,y+3,200,25,ContentAlignment.MiddleLeft));
+                intro.Controls.Add(WebHarnessStatus(source,name,326,y+3,540));
+                row++;
+            }
+            intro.Controls.Add(WebText("只有“指定 Harness 返回本次随机短句，并完成实际语音播放”才变绿；监听就绪、文件已安装、心跳在线都不算验证通过。",8F,FontStyle.Regular,16,220,870,42,ContentAlignment.TopLeft));
+
+            var mcp=WebCard(page,38,408,902,234);
+            WebCardTitle(mcp,"聊天栏快捷控制与二次开发");
+            mcp.Controls.Add(WebText("DeepSeek 安装后在聊天栏显示“语音”按钮，使用独有的 /agent-voice 命令。Codex 原生入口为技能选择器中的“语音控制”或 $agent-voice-control，不添加自定义面板或浮窗。",8F,FontStyle.Regular,16,38,870,46,ContentAlignment.TopLeft));
+            mcp.Controls.Add(WebAsyncButton("安装到 Codex","把聊天栏快捷控制安装到 Codex。",async()=>await InstallHarnessMcp("codex"),16,92,170,38,true));
+            mcp.Controls.Add(WebAsyncButton("安装到 DeepSeek","把聊天栏快捷控制安装到 DeepSeek Harness。",async()=>await InstallHarnessMcp("deepseek"),194,92,210,38,true));
+            mcp.Controls.Add(WebText("未真机验证的 Harness 不进入正式支持列表。开发者可以按适配器契约接入最终回复，并复用相同的随机挑战、播放回执和 MCP 工具。",8F,FontStyle.Regular,16,136,870,42,ContentAlignment.TopLeft));
+            mcp.Controls.Add(WebButton("打开 Harness 二次开发指南","新增识别器、连接器、验证命令和测试。",()=>ServiceClient.Open(Store.Resolve("Harness二次开发指南.md")),16,184,300,38));
+            mcp.Controls.Add(WebButton("打开 MCP 开发说明","复用或扩展本地 MCP 控制服务。",()=>ServiceClient.Open(Store.Resolve("MCP控制插件开发说明.md")),324,184,210,38));
             BuildConnectionGuide();
         }
         void BuildAiri(){
-            var stack=Stack(NewPage("airi"));var playback=Card(stack,"AIRI 输出选择");
-            Add(playback,Hint("AIRI 联动完全可选。选择本机时，不启动 AIRI 也能正常播放；选择桌宠时，Harness 回复与 AIRI 自己的聊天语音都走桌宠原生播放与嘴型。"));
-            outputChoice=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=360};outputChoice.Items.AddRange(new object[]{"本机音频设备（local）","AIRI 桌宠播放与嘴型（airi）"});Add(playback,Row(Hint("音频最终从哪里播放"),outputChoice));Add(playback,Hint("本机音频设备（local）：由这台电脑当前选择的扬声器或耳机直接播放，不需要启动 AIRI。local 是程序内部保存的模式名称。"));var enabled=new CheckBox{Text="启用 AIRI 桌宠联动",AutoSize=true};checks["airiEnabled"]=enabled;Add(playback,Row(enabled));
-            Add(playback,Row(AsyncBtn("保存播放设置",async()=>{var next=Json.Copy(Config);next.airi.enabled=checks["airiEnabled"].Checked;next.airi.directory=fields["airiDirectory"].Text.Trim();next.airi.output=outputChoice.SelectedIndex==1?"airi":"local";await Persist(next,new {airi=next.airi});Status(next.airi.enabled?"AIRI 联动设置已保存。":"AIRI 联动已关闭，本机音频设备仍可正常播放。");})));
-            var connect=Card(stack,"连接验证");
-            Add(connect,Hint("AIRI 默认关闭。先勾选并保存“启用 AIRI 桌宠联动”，再选择你已经登录过、且目录中含 airi.exe 的安装目录。程序会在这一个 AIRI 中安装桥接、保留 app.asar 单文件备份并完成真实播放验证，不再生成完整联动副本。AIRI 更新可能覆盖桥接，失效后重新接入验证即可修复。"));PathField(connect,"airiDirectory","已选择的 AIRI 安装目录","",true);fields["airiDirectory"].Text="";airiIndicator=Hint("AIRI · 尚未通过播放验证");Add(connect,airiIndicator);
-            Add(connect,Row(Primary(AsyncBtn("选择目录并接入验证",async()=>await BeginVerification("airi"))),EntryBtn("打开当前 AIRI","打开已经登录的 AIRI。",OpenLoggedAiri),EntryBtn("连接帮助","查看 AIRI 的配置和验证步骤。",()=>ShowPage("connectionGuide")),Btn("返回",()=>ShowPage("connections"))));
-            Add(connect,Hint("验证测试音频必须经桌宠播放完成并返回回执后才变绿和播放礼炮。仅连接心跳、打开窗口或降级到本机播放都不会误报成功；启动较慢时，桥接连通后会自动继续验证。"));
-            var manual=Card(stack,"高级 · 手动连接信息");Add(manual,Hint("仅在自动联动不适用时使用。AIRI 的 TTS 提供方填入下面的本机地址；账号仍由 AIRI 自己管理。"));Add(manual,Row(Btn("复制 AIRI 连接信息",()=>{Clipboard.SetText("Base URL: http://127.0.0.1:"+Config.port+"/v1/\r\nAPI Key: "+Config.token+"\r\nModel: agent-voice-tts\r\nVoice: current");Status("AIRI 手动连接信息已复制。");})));
+            var page=WebPage("airi");
+            WebTitle(page,"AIRI 桌宠","可选；不开启也能在本机正常播放。");
+            page.Controls.Add(WebButton("连接帮助","查看 AIRI 的配置和验证步骤。",()=>ShowPage("connectionGuide"),784,46,110,39));
+            var playback=WebCard(page,38,126,902,204);
+            WebCardTitle(playback,"输出选择");
+            playback.Controls.Add(WebText("AIRI 联动完全可选。选择本机时，不启动 AIRI 也能正常播放；选择桌宠时，Harness 回复与 AIRI 自己的聊天语音都走桌宠原生播放与嘴型。",8F,FontStyle.Regular,16,38,870,46,ContentAlignment.TopLeft));
+            playback.Controls.Add(WebText("音频最终从哪里播放",9.5F,FontStyle.Regular,16,94,190,25,ContentAlignment.MiddleLeft));
+            outputChoice=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,AccessibleName="音频输出方式"};
+            outputChoice.SetBounds(216,90,330,30);
+            outputChoice.Items.AddRange(new object[]{"本机音频设备（local）","AIRI 桌宠播放与嘴型（airi）"});
+            playback.Controls.Add(outputChoice);
+            var enabled=WebCheck("启用 AIRI 桌宠联动",570,92,300,26,Config.airi.enabled);
+            checks["airiEnabled"]=enabled;playback.Controls.Add(enabled);
+            playback.Controls.Add(WebText("本机音频设备（local）：由这台电脑当前选择的扬声器或耳机直接播放，不需要启动 AIRI。",7.5F,FontStyle.Regular,16,128,870,20,ContentAlignment.MiddleLeft));
+            playback.Controls.Add(WebAsyncButton("保存播放设置","保存 AIRI 联动开关、播放方式和安装目录。",async()=>{var next=Json.Copy(Config);next.airi.enabled=checks["airiEnabled"].Checked;next.airi.output=outputChoice.SelectedIndex==1?"airi":"local";next.airi.directory=fields["airiDirectory"].Text.Trim();await Persist(next,new {airi=next.airi});Status(next.airi.enabled?"AIRI 联动设置已保存。":"AIRI 联动已关闭，本机音频设备仍可正常播放。");},16,154,160,38,true));
+
+            var connect=WebCard(page,38,338,902,278);
+            WebCardTitle(connect,"连接验证");
+            connect.Controls.Add(WebText("AIRI 默认关闭。先勾选并保存“启用 AIRI 桌宠联动”，再选择你已经登录过、且目录中含 airi.exe 的安装目录。程序会在这一个 AIRI 中安装桥接、保留 app.asar 单文件备份并完成真实播放验证。",8F,FontStyle.Regular,16,38,870,46,ContentAlignment.TopLeft));
+            connect.Controls.Add(WebText("AIRI 安装目录",9.5F,FontStyle.Regular,16,104,140,25,ContentAlignment.MiddleLeft));
+            var directory=Input();directory.SetBounds(166,100,480,30);fields["airiDirectory"]=directory;connect.Controls.Add(directory);
+            connect.Controls.Add(WebButton("选择目录","选择包含 airi.exe 的 AIRI 安装目录。",()=>SelectPath(directory,"",true),656,98,110,34));
+            airiIndicator=WebText("AIRI · 尚未通过播放验证",9F,FontStyle.Regular,16,133,870,24,ContentAlignment.MiddleLeft);
+            connect.Controls.Add(airiIndicator);
+            connect.Controls.Add(WebAsyncButton("选择目录并接入验证","安装 AIRI 桥接并验证真实播放与嘴型回执。",async()=>await BeginVerification("airi"),16,158,210,38,true));
+            connect.Controls.Add(WebButton("打开当前 AIRI","打开已经登录的 AIRI。",OpenLoggedAiri,234,158,155,38));
+            connect.Controls.Add(WebButton("复制 AIRI 连接信息","复制 Base URL、API Key 与模型名，填入 AIRI 的 TTS 提供方。",()=>{Clipboard.SetText("Base URL: http://127.0.0.1:"+Config.port+"/v1/\r\nAPI Key: "+Config.token+"\r\nModel: agent-voice-tts\r\nVoice: current");Status("AIRI 手动连接信息已复制。");},397,158,200,38));
+            connect.Controls.Add(WebButton("连接帮助","查看 AIRI 的配置和验证步骤。",()=>ShowPage("connectionGuide"),605,158,110,38));
+            connect.Controls.Add(WebButton("返回",null,()=>ShowPage("connections"),723,158,70,38));
+            connect.Controls.Add(WebText("仅在自动联动不适用时使用上面的手动连接信息；账号仍由 AIRI 自己管理。",7.5F,FontStyle.Regular,16,202,870,20,ContentAlignment.MiddleLeft));
+            connect.Controls.Add(WebText("验证测试音频必须经桌宠播放完成并返回回执后才变绿；仅连接心跳、打开窗口或降级到本机播放都不会误报成功。",7.5F,FontStyle.Regular,16,226,870,40,ContentAlignment.TopLeft));
         }
 
         void BuildCleanup(){var card=SettingsCard("cleanup","音频清理");Add(card,Hint("音频目录："+Store.Resolve("data/output")));Add(card,Row(Btn("打开音频目录",()=>{Directory.CreateDirectory(Store.Resolve("data/output"));ServiceClient.Open(Store.Resolve("data/output"));})));NumberField(card,"maxAgeMinutes","删除超过（分钟）",1,43200,1,0);NumberField(card,"keepLatest","保留最新文件数",0,10000,1,0);NumberField(card,"maxTotalMb","总占用上限（MB）",1,100000,10,0);Add(card,Row(Primary(AsyncBtn("保存并清理",async()=>{var next=Json.Copy(Config);next.cleanup.maxAgeMinutes=(int)numbers["maxAgeMinutes"].Value;next.cleanup.keepLatest=(int)numbers["keepLatest"].Value;next.cleanup.maxTotalMb=(int)numbers["maxTotalMb"].Value;await Persist(next,new {cleanup=next.cleanup});var result=await Service.Request("/api/cleanup",new {});Status("已清理 "+result["removed"]+" 个音频。");})),Danger(AsyncBtn("清空已完成音频",async()=>{var result=await Service.Request("/api/cleanup",new {all=true});Status("已清理 "+result["removed"]+" 个音频，生成或播放中的文件受到保护。");}))));
