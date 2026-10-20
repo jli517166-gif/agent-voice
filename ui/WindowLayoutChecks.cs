@@ -37,13 +37,20 @@ namespace AgentVoice {
         static void CheckWindowContent(Control parent, string tag, List<string> errors) {
             foreach (Control control in parent.Controls) {
                 if (!control.Visible) continue;
+                var viewport=parent as ScrollableControl;
+                Rectangle document=viewport!=null&&viewport.AutoScroll?viewport.DisplayRectangle:parent.ClientRectangle;
+                if(control.Right>document.Right+1||control.Bottom>document.Bottom+1)
+                    errors.Add(tag+": child exceeds its container: "+control.Text+" "+control.Bounds+" vs "+document);
+                if ((control is Label || control is AnimeButton || control is CheckBox || control is System.Windows.Forms.Button || control is TextBoxBase || control is ComboBox)
+                    && control.Font.Size < 10.4F)
+                    errors.Add(tag + ": text below readable size: " + control.Text + " " + control.Font.Size);
                 var label = control as Label;
                 if (label != null) {
                     if (label.Font.Size > 26.1F)
                         errors.Add(tag + ": viewport enlarged font beyond design size: " + label.Text);
                     foreach (Control other in parent.Controls) {
                         if (!other.Visible || other == control ||
-                            !(other is ComboBox || other is TextBoxBase || other is System.Windows.Forms.Button)) continue;
+                            !(other is ComboBox || other is TextBoxBase || other is AnimeButton || other is System.Windows.Forms.Button)) continue;
                         var overlap = Rectangle.Intersect(control.Bounds, other.Bounds);
                         if (overlap.Width > 2 && overlap.Height > 2)
                             errors.Add(tag + ": text covers input/action: " + label.Text + " " +
@@ -68,12 +75,17 @@ namespace AgentVoice {
 
             var outside = new List<object>();
             foreach (Control control in current.Controls) {
-                if (!control.Visible || (control.Right <= current.ClientSize.Width + 1 &&
-                    control.Bottom <= current.ClientSize.Height + 1)) continue;
+                if (!control.Visible) continue;
+                // A short viewport may scroll, but every control must remain in
+                // the scrollable document (never shrink its font to make it fit).
+                var document=current.AutoScroll?current.DisplayRectangle:current.ClientRectangle;
+                if (control.Right <= document.Right + 1 && control.Bottom <= document.Bottom + 1) continue;
                 outside.Add(new {text = control.Text, type = control.GetType().Name, bounds = control.Bounds});
                 errors.Add(tag + ": control outside page: " + control.Text + " " + control.Bounds + " vs " + current.ClientSize);
             }
             CheckWindowContent(current, tag, errors);
+            if (sidebar.Width < 180 * InterfaceScale)
+                errors.Add(tag + ": navigation too narrow for display scaling");
             var navigation = navigationButtons["home"];
             var center = sidebar.PointToClient(navigation.PointToScreen(new Point(navigation.Width / 2, navigation.Height / 2)));
             var front = sidebar.GetChildAtPoint(center);
@@ -108,8 +120,8 @@ namespace AgentVoice {
             var defaults = new Dictionary<string, string>();
             foreach (string mode in new[] {"initial", "default", "large-normal", "maximized", "restore", "minimum", "maximize-again"}) {
                 WindowState = FormWindowState.Normal;
-                if (mode == "default" || mode == "restore") ClientSize = new Size(1180, 800);
-                if (mode == "large-normal") ClientSize = new Size(1610, 1006);
+                if (mode == "default" || mode == "restore") ClientSize = new Size(UiPx(1180), UiPx(780));
+                if (mode == "large-normal") ClientSize = new Size(UiPx(1440), UiPx(860));
                 if (mode == "minimum") Size = MinimumSize;
                 if (mode == "maximized" || mode == "maximize-again") WindowState = FormWindowState.Maximized;
                 PerformLayout();
@@ -123,7 +135,7 @@ namespace AgentVoice {
                 homeVoiceSummary.Text = "CosyVoice · " + string.Concat(Enumerable.Repeat("很长的自定义音色名称", 20));
                 foreach (bool maximized in new[] {false, true}) {
                     WindowState = FormWindowState.Normal;
-                    ClientSize = new Size(1180, 800);
+                    ClientSize = new Size(UiPx(1180), UiPx(780));
                     if (maximized) WindowState = FormWindowState.Maximized;
                     RecordWindowLayout("home", maximized ? "long-name-maximized" : "long-name-normal",
                         layouts, errors, directory, defaults);
@@ -143,7 +155,7 @@ namespace AgentVoice {
                 ApplyTheme();
                 foreach (bool maximized in new[] {false, true}) {
                     WindowState = FormWindowState.Normal;
-                    ClientSize = new Size(1180, 800);
+                    ClientSize = new Size(UiPx(1180), UiPx(780));
                     if (maximized) WindowState = FormWindowState.Maximized;
                     foreach (string id in new[] {"home", "settings"})
                         RecordWindowLayout(id, maximized ? "background-maximized" : "background-normal",

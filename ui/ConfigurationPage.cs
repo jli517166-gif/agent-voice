@@ -60,7 +60,7 @@ namespace AgentVoice {
             WebDivider(list,16,182,870);
 
             PackageIcon(list,182);
-            list.Controls.Add(WebText("高级训练包 / 高级完整包",13F,FontStyle.Bold,70,200,430,26,ContentAlignment.MiddleLeft));
+            list.Controls.Add(WebText("高级训练包 / 高级完整包",13F,FontStyle.Bold,70,200,390,26,ContentAlignment.MiddleLeft));
             list.Controls.Add(WebText("训练后权重或完整训练模型；导入时匹配。",9F,FontStyle.Regular,70,230,408,20,ContentAlignment.MiddleLeft));
             exportTrainedButton=WebAsyncButton("导出高级训练包","只导出训练后变化的权重；目标电脑需要相同基础模型。",async()=>await ChooseAndExport("trained"),478,208,180,39,false);
             list.Controls.Add(exportTrainedButton);

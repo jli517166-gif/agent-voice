@@ -28,6 +28,8 @@ namespace AgentVoice {
         ScenePanel shell,content,statusBar,sidebar;
         BufferedTable workspace,outer;
         readonly InterfaceSounds interfaceSounds=new InterfaceSounds();readonly bool testingMode;
+        internal readonly float InterfaceScale;
+        int UiPx(int value){return (int)Math.Round(value*InterfaceScale);}
         Label footer,connection,voiceHint,harnessSummary,pageTitle,statusSystem,statusEngine,statusVoice,statusOutput;
         NotifyIcon tray;
         readonly ToolTip tips=new ToolTip{AutomaticDelay=350,AutoPopDelay=10000,ReshowDelay=100,ShowAlways=true};
@@ -50,14 +52,18 @@ namespace AgentVoice {
         SavedVoice deleted;
         public MainForm(SettingsStore store,bool testing=false){
             Store=store;Service=new ServiceClient(store);Config=store.Read();testingMode=testing;
-            Text="Agent Voice · 本地语音工作台";Font=new Font("Microsoft YaHei UI",10F);AutoScaleMode=AutoScaleMode.Dpi;
-            ClientSize=new Size(1180,800);MinimumSize=new Size(900,620);StartPosition=FormStartPosition.CenterScreen;
+            Text="Agent Voice · 本地语音工作台";Font=new Font("Microsoft YaHei UI",11F);AutoScaleMode=AutoScaleMode.Dpi;
+            using(var graphics=CreateGraphics())InterfaceScale=graphics.DpiX/96F;
+            AutoScaleDimensions=new SizeF(96F*InterfaceScale,96F*InterfaceScale);
+            var desktop=Screen.FromControl(this).WorkingArea;
+            ClientSize=new Size(Math.Min(UiPx(1180),desktop.Width-UiPx(48)),Math.Min(UiPx(780),desktop.Height-UiPx(48)));
+            MinimumSize=new Size(Math.Min(UiPx(1100),desktop.Width-UiPx(48)),Math.Min(UiPx(640),desktop.Height-UiPx(48)));StartPosition=FormStartPosition.CenterScreen;
             SetStyle(ControlStyles.OptimizedDoubleBuffer|ControlStyles.AllPaintingInWmPaint|ControlStyles.ResizeRedraw,true);
             shell=new ScenePanel{Host=this,Dock=DockStyle.Fill};Controls.Add(shell);
-            outer=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=2,RowCount=1,BackColor=Color.Transparent,Padding=new Padding(0)};outer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,150));outer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));shell.Controls.Add(outer);
-            sidebar=new ScenePanel{Host=this,Dock=DockStyle.Fill,Padding=new Padding(8),Margin=new Padding(0)};outer.Controls.Add(sidebar,0,0);
-            var sideLayout=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=1,RowCount=3,BackColor=Color.FromArgb(11,13,18)};sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,70));sideLayout.RowStyles.Add(new RowStyle(SizeType.Percent,100));sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,210));sidebar.Controls.Add(sideLayout);
-            var brand=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,BackColor=Color.Transparent,Padding=new Padding(5,8,0,0)};brand.Controls.Add(new Label{Text="AGENT VOICE",Font=new Font("Segoe UI",9F,FontStyle.Bold),AutoSize=true,Margin=new Padding(0,0,0,3)});brand.Controls.Add(new Label{Text="本地语音工作台",Font=new Font(Font.FontFamily,8.5F),AutoSize=true,Margin=new Padding(0)});sideLayout.Controls.Add(brand,0,0);
+            outer=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=2,RowCount=1,BackColor=Color.Transparent,Padding=new Padding(0)};outer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,UiPx(190)));outer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));shell.Controls.Add(outer);
+            sidebar=new ScenePanel{Host=this,Dock=DockStyle.Fill,Padding=new Padding(UiPx(10)),Margin=new Padding(0)};outer.Controls.Add(sidebar,0,0);
+            var sideLayout=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=1,RowCount=3,BackColor=Color.FromArgb(11,13,18)};sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,UiPx(88)));sideLayout.RowStyles.Add(new RowStyle(SizeType.Percent,100));sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,UiPx(138)));sidebar.Controls.Add(sideLayout);
+            var brand=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,BackColor=Color.Transparent,Padding=new Padding(5,8,0,0)};brand.Controls.Add(new Label{Text="AGENT VOICE",Font=new Font("Segoe UI",11F,FontStyle.Bold),AutoSize=true,Margin=new Padding(0,0,0,3)});brand.Controls.Add(new Label{Text="本地语音工作台",Font=new Font(Font.FontFamily,10.5F),AutoSize=true,Margin=new Padding(0)});sideLayout.Controls.Add(brand,0,0);
             var navigation=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoScroll=true,BackColor=Color.Transparent,Padding=new Padding(0,4,0,4)};sideLayout.Controls.Add(navigation,0,1);
             AddNav(navigation,"朗读","home","输入文字、常用句与播放控制。",true);
             
@@ -66,12 +72,12 @@ namespace AgentVoice {
             AddNav(navigation,"连接","connections","连接 Harness 或 AIRI。",true);
             AddNav(navigation,"训练","training","准备数据并校验训练模型。",false);
             AddNav(navigation,"设置","settings","调整输出、引擎、外观和维护选项。",false);
-            var stateBox=new BufferedTable{Name="sidebarTransport",Dock=DockStyle.Fill,ColumnCount=1,RowCount=4,BackColor=Color.Transparent,Padding=new Padding(2,8,2,0),Margin=new Padding(0)};stateBox.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));stateBox.RowStyles.Add(new RowStyle(SizeType.Absolute,30));stateBox.RowStyles.Add(new RowStyle(SizeType.Percent,100));stateBox.RowStyles.Add(new RowStyle(SizeType.Absolute,48));stateBox.RowStyles.Add(new RowStyle(SizeType.Absolute,48));stateBox.Controls.Add(new Label{Text="当前状态",Font=new Font(Font.FontFamily,9F,FontStyle.Bold),Dock=DockStyle.Fill,Margin=new Padding(0),TextAlign=ContentAlignment.MiddleLeft},0,0);connection=new Label{Text="服务：检查中\r\n声音："+(Config.voice.assetScope=="private"?"私有声音":"当前配置"),AutoSize=false,AutoEllipsis=true,Dock=DockStyle.Fill,Font=new Font(Font.FontFamily,9F),TextAlign=ContentAlignment.TopLeft,Margin=new Padding(0,4,0,0)};stateBox.Controls.Add(connection,0,1);sideLayout.Controls.Add(stateBox,0,2);
-            workspace=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=1,RowCount=4,BackColor=Color.Transparent};workspace.RowStyles.Add(new RowStyle(SizeType.Absolute,76));workspace.RowStyles.Add(new RowStyle(SizeType.Absolute,0));workspace.RowStyles.Add(new RowStyle(SizeType.Percent,100));workspace.RowStyles.Add(new RowStyle(SizeType.Absolute,48));outer.Controls.Add(workspace,1,0);
+            var stateBox=new BufferedTable{Name="sidebarTransport",Dock=DockStyle.Fill,ColumnCount=1,RowCount=2,BackColor=Color.Transparent,Padding=new Padding(2,8,2,0),Margin=new Padding(0)};stateBox.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));stateBox.RowStyles.Add(new RowStyle(SizeType.Absolute,UiPx(32)));stateBox.RowStyles.Add(new RowStyle(SizeType.Percent,100));stateBox.Controls.Add(new Label{Text="当前状态",Font=new Font(Font.FontFamily,11F,FontStyle.Bold),Dock=DockStyle.Fill,Margin=new Padding(0),TextAlign=ContentAlignment.MiddleLeft},0,0);connection=new Label{Text="服务：检查中\r\n声音："+(Config.voice.assetScope=="private"?"私有声音":"当前配置"),AutoSize=false,AutoEllipsis=true,Dock=DockStyle.Fill,Font=new Font(Font.FontFamily,10.5F),TextAlign=ContentAlignment.TopLeft,Margin=new Padding(0,4,0,0)};stateBox.Controls.Add(connection,0,1);sideLayout.Controls.Add(stateBox,0,2);
+            workspace=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=1,RowCount=4,BackColor=Color.Transparent};workspace.RowStyles.Add(new RowStyle(SizeType.Absolute,UiPx(56)));workspace.RowStyles.Add(new RowStyle(SizeType.Absolute,0));workspace.RowStyles.Add(new RowStyle(SizeType.Percent,100));workspace.RowStyles.Add(new RowStyle(SizeType.Absolute,UiPx(44)));outer.Controls.Add(workspace,1,0);
             var heading=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.LeftToRight,WrapContents=false,BackColor=Color.Transparent,Padding=new Padding(0,5,0,5)};backButton=EntryBtn("← 返回","返回上一页，并保留尚未保存的输入。",GoBack);backButton.Name="navigationBack";backButton.Visible=false;backButton.Margin=new Padding(0,8,12,8);heading.Controls.Add(backButton);pageTitle=new Label{Text="首页",Font=new Font(Font.FontFamily,26F,FontStyle.Bold),AutoSize=true,Margin=new Padding(0,10,0,10),Padding=new Padding(0,0,0,3)};heading.Controls.Add(pageTitle);workspace.Controls.Add(heading,0,0);
             statusBar=new ScenePanel{Host=this,Card=true,Dock=DockStyle.Fill,Margin=new Padding(0),Padding=new Padding(6,4,6,4),Visible=false};var statusGrid=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=4,RowCount=1,BackColor=Color.Transparent};for(int i=0;i<4;i++)statusGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,25));statusSystem=TopStatus("● 系统 · 检查中");statusEngine=TopStatus("● 引擎 · "+Config.voice.engine);statusVoice=TopStatus("● 声音 · "+(Config.voice.baseModel.Length>0?"已配置":"待配置"));statusOutput=TopStatus("● 输出 · TTS 直出");statusGrid.Controls.Add(statusSystem,0,0);statusGrid.Controls.Add(statusEngine,1,0);statusGrid.Controls.Add(statusVoice,2,0);statusGrid.Controls.Add(statusOutput,3,0);statusBar.Controls.Add(statusGrid);workspace.Controls.Add(statusBar,0,1);
             content=new ScenePanel{Host=this,Dock=DockStyle.Fill,ComposeChildren=true};workspace.Controls.Add(content,0,2);
-            footer=new Label{Dock=DockStyle.Fill,AutoEllipsis=false,Font=new Font(Font.FontFamily,9.5F,FontStyle.Bold),Text=Config.voice.assetScope=="private"?"状态：已载入认可版，私有声音资源单独保存。":"状态：请选择本地 TTS 模型包与参考条件。",TextAlign=ContentAlignment.MiddleLeft,Padding=new Padding(14,5,14,5),AccessibleName="操作状态提示"};workspace.Controls.Add(footer,0,3);
+            footer=new Label{Dock=DockStyle.Fill,AutoEllipsis=false,Font=new Font(Font.FontFamily,11F,FontStyle.Bold),Text=Config.voice.assetScope=="private"?"状态：已载入认可版，私有声音资源单独保存。":"状态：请选择本地 TTS 模型包与参考条件。",TextAlign=ContentAlignment.MiddleLeft,Padding=new Padding(14,5,14,5),AccessibleName="操作状态提示"};workspace.Controls.Add(footer,0,3);
             BuildSavedVoices();BuildHomeWeb();BuildSettings();EnsureProfileFolders();BindVoice();BindSettings();ApplyTheme();ShowPage("home");
             if(!testing){tray=new NotifyIcon{Text="agent语音",Icon=SystemIcons.Application,Visible=true};var menu=new ContextMenuStrip();menu.Items.Add("打开程序",null,(s,e)=>OpenMain());menu.Items.Add("停止朗读",null,async(s,e)=>await StopSpeech());
                 menu.Items.Add("退出",null,async(s,e)=>{exiting=true;try{if(await Service.Running())await Service.Stop();}catch(Exception x){Status(x.Message);}Close();});tray.ContextMenuStrip=menu;tray.DoubleClick+=(s,e)=>OpenMain();
@@ -80,7 +86,7 @@ namespace AgentVoice {
         void OpenMain(){Show();WindowState=FormWindowState.Normal;Activate();}
         Label SideLabel(string text){return new Label{Text=text,AutoSize=false,Width=150,Height=18,TextAlign=ContentAlignment.BottomLeft,Font=new Font(Font.FontFamily,8F),Margin=new Padding(10,6,0,4)};}
         Label TopStatus(string text){return new Label{Text=text,AutoSize=false,AutoEllipsis=true,Dock=DockStyle.Fill,TextAlign=ContentAlignment.MiddleCenter,Font=new Font(Font.FontFamily,8.5F),Margin=new Padding(2,0,2,0),Padding=new Padding(4,0,4,0)};}
-        void AddNav(FlowLayoutPanel navigation,string text,string id,string note,bool important){var button=EntryBtn(text,note,()=>ShowPage(id));button.Tag=important?"nav-primary":"nav";button.Name="nav_"+id;button.AutoSize=false;button.Width=126;button.Height=44;button.TextAlign=ContentAlignment.MiddleLeft;button.Padding=new Padding(12,0,0,0);button.Margin=new Padding(0,1,0,1);navigationButtons[id]=button;navigation.Controls.Add(button);}
+        void AddNav(FlowLayoutPanel navigation,string text,string id,string note,bool important){var button=EntryBtn(text,note,()=>ShowPage(id));button.Tag=important?"nav-primary":"nav";button.Name="nav_"+id;button.AutoSize=false;button.Width=UiPx(164);button.Height=UiPx(44);button.TextAlign=ContentAlignment.MiddleLeft;button.Padding=new Padding(UiPx(14),0,0,0);button.Margin=new Padding(0,UiPx(3),0,UiPx(3));navigationButtons[id]=button;navigation.Controls.Add(button);}
         Button Btn(string text,Action action){var b=new AnimeButton{Text=text,AutoSize=true,MinimumSize=new Size(108,40),Margin=new Padding(0,3,10,3),Padding=new Padding(10,0,10,0),Cursor=Cursors.Hand,Tag="secondary"};b.BorderSize=1;b.Click+=(s,e)=>{try{action();}catch(Exception exc){Status(exc.Message);}};return b;}
         Button Primary(Button button){button.Tag="primary";button.Font=new Font(Font.FontFamily,Font.Size,FontStyle.Bold);button.MinimumSize=new Size(Math.Max(128,button.MinimumSize.Width),42);return button;}
         Button Danger(Button button){button.Tag="danger";return button;}
@@ -113,7 +119,7 @@ namespace AgentVoice {
             if(id=="home")pageHistory.Clear();
             else if(remember){if(pageHistory.Count==64)pageHistory.RemoveAt(0);pageHistory.Add(page);}
             SendMessage(content.Handle,0x000B,IntPtr.Zero,IntPtr.Zero);content.SuspendLayout();
-            try{foreach(var pair in pages)pair.Value.Visible=pair.Key==id;pages[id].BringToFront();page=id;if(id=="home"||id=="harness"||id=="airi"||id=="connectionGuide"||id=="advancedTraining"||IsWebLayoutPage(id))WebFit.Attach(pages[id]);sidebar.Visible=true;outer.ColumnStyles[0].Width=150;workspace.RowStyles[0].Height=id=="home"?0:76;backButton.Visible=id!="home";pageTitle.Text=PageName(id);pageTitle.Visible=id!="home"&&!IsWebLayoutPage(id);statusBar.Visible=false;workspace.RowStyles[1].Height=0;foreach(var pair in navigationButtons)StyleButton(pair.Value,pair.Key==id);}
+            try{foreach(var pair in pages)pair.Value.Visible=pair.Key==id;pages[id].BringToFront();page=id;if(id=="home"||id=="harness"||id=="airi"||id=="connectionGuide"||id=="advancedTraining"||IsWebLayoutPage(id))WebFit.Attach(pages[id]);sidebar.Visible=true;outer.ColumnStyles[0].Width=UiPx(190);workspace.RowStyles[0].Height=id=="home"?0:UiPx(56);backButton.Visible=id!="home";pageTitle.Text=PageName(id);pageTitle.Visible=id!="home"&&!IsWebLayoutPage(id);statusBar.Visible=false;workspace.RowStyles[1].Height=0;foreach(var pair in navigationButtons)StyleButton(pair.Value,pair.Key==id);}
             finally{content.ResumeLayout(true);SendMessage(content.Handle,0x000B,new IntPtr(1),IntPtr.Zero);content.Invalidate(true);}
 
         }
@@ -172,26 +178,26 @@ namespace AgentVoice {
             var title=new Label{Text="文字，有了声音。",Font=new Font(Font.FontFamily,26F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent,ForeColor=ForeColor};title.SetBounds(38,12,620,64);home.Controls.Add(title);
             var lead=Hint("手动朗读与自动朗读，在这里统一控制。");lead.AutoSize=false;lead.BackColor=Color.Transparent;lead.SetBounds(40,80,720,30);home.Controls.Add(lead);title.BringToFront();lead.BringToFront();
             serviceToggle=Primary(AsyncBtn("开启服务",async()=>{if(await Service.Running()){await Service.Stop();Status("服务已关闭。");}else{await SaveDraft();await Service.Start();Status("服务已启动。");}await Poll();}));serviceToggle.AutoSize=false;serviceToggle.MinimumSize=Size.Empty;serviceToggle.SetBounds(808,46,132,38);home.Controls.Add(serviceToggle);serviceToggle.BringToFront();
-            var voice=new ScenePanel{Host=this,Card=true,Location=new Point(38,120),Size=new Size(658,104),Padding=new Padding(16,10,16,10)};home.Controls.Add(voice);
+            var voice=new ScenePanel{Host=this,Card=true,Location=new Point(38,120),Size=new Size(658,112),Padding=new Padding(16,10,16,10)};home.Controls.Add(voice);
             homeVoiceSummary=Hint("");homeVoiceSummary.AutoSize=false;homeVoiceSummary.AutoEllipsis=true;homeVoiceSummary.Font=new Font(Font.FontFamily,12F,FontStyle.Bold);homeVoiceSummary.SetBounds(0,0,620,28);voice.Controls.Add(homeVoiceSummary);
             quickVoice=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=330,AccessibleName="快速选择已保存的声音方案"};quickVoice.SetBounds(0,30,330,28);voice.Controls.Add(quickVoice);
-            var switchVoice=Btn("切换声音",async()=>{var item=quickVoice.SelectedItem as SavedVoice;if(item==null)throw new InvalidOperationException("请先在声音方案中保存或选择一个声音。");await ProfileOperation("apply",item.id,null);BindVoice();Status("声音已切换："+item.name);});switchVoice.SetBounds(342,30,132,30);voice.Controls.Add(switchVoice);
-            var adjust=EntryBtn("调整声音","选择引擎、模型和语速。",()=>ShowPage("voiceEditor"));adjust.SetBounds(482,30,132,30);voice.Controls.Add(adjust);
-            harnessSummary=Hint("Harness：服务关闭");harnessSummary.Font=new Font(Font.FontFamily,9F);harnessSummary.SetBounds(0,66,620,20);voice.Controls.Add(harnessSummary);
-            var speech=new ScenePanel{Host=this,Card=true,Location=new Point(38,240),Size=new Size(658,176),Padding=new Padding(16,10,16,10)};home.Controls.Add(speech);
+            var switchVoice=Btn("切换声音",async()=>{var item=quickVoice.SelectedItem as SavedVoice;if(item==null)throw new InvalidOperationException("请先在声音方案中保存或选择一个声音。");await ProfileOperation("apply",item.id,null);BindVoice();Status("声音已切换："+item.name);});switchVoice.AutoSize=false;switchVoice.MinimumSize=Size.Empty;switchVoice.SetBounds(342,30,132,38);voice.Controls.Add(switchVoice);
+            var adjust=EntryBtn("调整声音","选择引擎、模型和语速。",()=>ShowPage("voiceEditor"));adjust.AutoSize=false;adjust.MinimumSize=Size.Empty;adjust.SetBounds(482,30,132,38);voice.Controls.Add(adjust);
+            harnessSummary=Hint("Harness：服务关闭");harnessSummary.AutoSize=false;harnessSummary.Font=new Font(Font.FontFamily,11F);harnessSummary.SetBounds(0,76,620,20);voice.Controls.Add(harnessSummary);
+            var speech=new ScenePanel{Name="speechEditorCard",Host=this,Card=true,Location=new Point(38,240),Size=new Size(658,176),Padding=new Padding(16,10,16,10)};home.Controls.Add(speech);
             var speechTitle=new Label{Text="想说什么？",Font=new Font(Font.FontFamily,13F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent};speechTitle.SetBounds(0,0,300,32);speech.Controls.Add(speechTitle);
-            body=Input(true);body.SetBounds(0,44,626,104);body.Text="工作好久啦，起来动一动、喝口水吧～";body.AccessibleName="朗读文本";speech.Controls.Add(body);
-            var phraseCard=new ScenePanel{Host=this,Card=true,Location=new Point(38,430),Size=new Size(658,72),Padding=new Padding(16,8,16,8)};home.Controls.Add(phraseCard);
+            body=Input(true);body.Name="speechEditor";body.SetBounds(0,44,626,104);body.Text="工作好久啦，起来动一动、喝口水吧～";body.AccessibleName="朗读文本";speech.Controls.Add(body);
+            var phraseCard=new ScenePanel{Name="speechPhrases",Host=this,Card=true,Location=new Point(38,430),Size=new Size(658,72),Padding=new Padding(16,8,16,8)};home.Controls.Add(phraseCard);
             var phraseTitle=new Label{Text="常用句",Font=new Font(Font.FontFamily,10F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent};phraseTitle.SetBounds(0,0,160,24);phraseCard.Controls.Add(phraseTitle);
             phrases=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=420,AccessibleName="常用句选择"};phrases.SetBounds(0,30,420,26);phraseCard.Controls.Add(phrases);
             var manage=Btn("管理",()=>ShowPage("home"));manage.AutoSize=false;manage.MinimumSize=Size.Empty;manage.SetBounds(562,30,80,32);phraseCard.Controls.Add(manage);
-            var queue=new ScenePanel{Host=this,Card=true,Location=new Point(725,120),Size=new Size(215,355),Padding=new Padding(16,14,16,14)};home.Controls.Add(queue);
+            var queue=new ScenePanel{Name="speechQueue",Host=this,Card=true,Location=new Point(725,120),Size=new Size(215,355),Padding=new Padding(16,14,16,14)};home.Controls.Add(queue);
             var queueTitle=new Label{Text="朗读队列",Font=new Font(Font.FontFamily,10F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent};queueTitle.SetBounds(0,0,150,28);queue.Controls.Add(queueTitle);
-            var queueEmpty=Hint("暂时没有朗读任务。\r\n来自客户端的完整句子\r\n会按顺序出现在这里。");queueEmpty.SetBounds(0,46,185,120);queue.Controls.Add(queueEmpty);
-            var deck=new ScenePanel{Host=this,Card=true,Location=new Point(0,516),Size=new Size(978,88),Padding=new Padding(16,10,16,10)};home.Controls.Add(deck);
-            var stop=Btn("停止",async()=>await StopSpeech());stop.SetBounds(0,20,96,38);deck.Controls.Add(stop);
-            playButton=LiveSpeechButton("重播上一条",PlayLast);playButton.AutoSize=false;playButton.SetBounds(112,20,142,38);deck.Controls.Add(playButton);
-            generate=Primary(LiveSpeechButton("生成并播放",async()=>await Generate(body.Text,true)));generate.AutoSize=false;generate.SetBounds(788,20,150,38);deck.Controls.Add(generate);BuildVoiceEditor();BuildCosyReference();
+            var queueEmpty=Hint("暂时没有朗读任务。\r\n来自客户端的完整句子\r\n会按顺序出现在这里。");queueEmpty.AutoSize=false;queueEmpty.SetBounds(0,46,185,120);queue.Controls.Add(queueEmpty);
+            var deck=new ScenePanel{Name="speechActions",Host=this,Card=true,Location=new Point(0,516),Size=new Size(978,88),Padding=new Padding(16,10,16,10)};home.Controls.Add(deck);
+            var stop=Btn("停止",async()=>await StopSpeech());stop.AutoSize=false;stop.MinimumSize=Size.Empty;stop.SetBounds(16,20,108,40);deck.Controls.Add(stop);
+            playButton=LiveSpeechButton("重播上一条",PlayLast);playButton.AutoSize=false;playButton.MinimumSize=Size.Empty;playButton.SetBounds(132,20,160,40);deck.Controls.Add(playButton);
+            generate=Primary(LiveSpeechButton("生成并播放",async()=>await Generate(body.Text,true)));generate.AutoSize=false;generate.MinimumSize=Size.Empty;generate.SetBounds(788,20,150,40);deck.Controls.Add(generate);BuildVoiceEditor();BuildCosyReference();
         }
         void BuildHome(){
             var home=NewPage("home");var stack=Stack(home);

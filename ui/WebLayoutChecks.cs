@@ -83,8 +83,9 @@ namespace AgentVoice {
             var kids=new List<Control>();
             foreach(Control child in parent.Controls)if(child.Visible)kids.Add(child);
             foreach(Control child in kids){
-                if(child.Right>parent.ClientSize.Width+1)errors.Add(tag+" 超出右边界："+ControlPath(child)+" right="+child.Right+" > "+parent.ClientSize.Width);
-                if(child.Bottom>parent.ClientSize.Height+1)errors.Add(tag+" 超出下边界："+ControlPath(child)+" bottom="+child.Bottom+" > "+parent.ClientSize.Height);
+                Rectangle document=parent==page&&page.AutoScroll?page.DisplayRectangle:parent.ClientRectangle;
+                if(child.Right>document.Right+1)errors.Add(tag+" 超出右边界："+ControlPath(child)+" right="+child.Right+" > "+document.Right);
+                if(child.Bottom>document.Bottom+1)errors.Add(tag+" 超出下边界："+ControlPath(child)+" bottom="+child.Bottom+" > "+document.Bottom);
                 var button=child as Button;
                 if(button!=null){
                     int room=button.Width-button.Padding.Horizontal;

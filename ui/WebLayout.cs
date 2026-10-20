@@ -20,8 +20,10 @@ namespace AgentVoice {
             return page;
         }
         internal Label WebText(string text,float size,FontStyle style,int x,int y,int width,int height,ContentAlignment align){
+            size=Math.Max(11F,size);
             var font=new Font(Font.FontFamily,size,style);
-            int needed=TextRenderer.MeasureText(text,font,new Size(Math.Max(1,width),0),TextFormatFlags.WordBreak).Height;
+            // Coordinates are logical units; TextRenderer returns device pixels.
+            int needed=(int)Math.Ceiling(TextRenderer.MeasureText(text,font,new Size(Math.Max(1,UiPx(width)),0),TextFormatFlags.WordBreak).Height/InterfaceScale);
             var label=new Label{
                 Text=text,Font=font,AutoSize=false,
                 Bounds=new Rectangle(x,y,width,Math.Max(height,needed)),TextAlign=align,BackColor=Color.Transparent,UseMnemonic=false

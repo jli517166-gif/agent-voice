@@ -5,8 +5,8 @@ using System.Windows.Forms;
 using System.Runtime.CompilerServices;
 
 namespace AgentVoice {
-    // Map the design canvas to available space. Text uses its native point size
-    // on large windows; enlarging coordinates must not magnify fonts a second time.
+    // A bounded, DPI-aware content column. Keep type readable; scroll short
+    // viewports instead of squeezing the entire page or stretching every card.
     internal static class WebFit {
         internal static readonly Size DesignCanvas=new Size(978,604);
         sealed class Base {
@@ -16,12 +16,12 @@ namespace AgentVoice {
             internal FontStyle Style;
             internal Font RenderFont;
         }
-        sealed class Layout {internal Dictionary<Control,Base> Map;internal Size Canvas;}
+        sealed class Layout {internal Dictionary<Control,Base> Map;internal Size Canvas;internal bool Fitting;}
         static readonly ConditionalWeakTable<ScenePanel,Layout> layouts=new ConditionalWeakTable<ScenePanel,Layout>();
         internal static Size CanvasFor(ScenePanel page){Layout layout;return layouts.TryGetValue(page,out layout)?layout.Canvas:DesignCanvas;}
         internal static void Attach(ScenePanel page){
             Layout existing;if(layouts.TryGetValue(page,out existing))return;
-            page.Tag="webfit";page.AutoScroll=false;
+            page.Tag="webfit";page.AutoScroll=true;
             var map=new Dictionary<Control,Base>();Capture(page,map);
             int right=DesignCanvas.Width,bottom=DesignCanvas.Height;
             foreach(var pair in map)if(pair.Key.Parent==page){right=Math.Max(right,pair.Value.Bounds.Right);bottom=Math.Max(bottom,pair.Value.Bounds.Bottom);}
@@ -40,25 +40,44 @@ namespace AgentVoice {
         }
         static void Fit(ScenePanel page,Layout layout){
             var map=layout.Map;
-            if(page.IsDisposed||map.Count==0||page.ClientSize.Width<=0||page.ClientSize.Height<=0)return;
-            float sx=page.ClientSize.Width/(float)layout.Canvas.Width,sy=page.ClientSize.Height/(float)layout.Canvas.Height;
-            float textScale=Math.Min(1F,Math.Min(sx,sy));
+            if(layout.Fitting||page.IsDisposed||map.Count==0||page.ClientSize.Width<=0||page.ClientSize.Height<=0)return;
+            var host=page.FindForm() as MainForm;
+            float dpi=host==null?1F:host.InterfaceScale;
+            // Width includes the native scrollbar; ClientSize does not. Reserve
+            // it exactly once so showing a scrollbar cannot change the scale.
+            int available=Math.Max(1,page.Width-SystemInformation.VerticalScrollBarWidth);
+            float scale=Math.Max(.92F*dpi,Math.Min(1.12F*dpi,available/(float)layout.Canvas.Width));
+            int inset=Math.Max(0,(available-(int)Math.Ceiling(layout.Canvas.Width*scale))/2);
+            layout.Fitting=true;
             page.SuspendLayout();
             try {
+                page.AutoScrollPosition=Point.Empty;
                 foreach(var pair in map){
                     var control=pair.Key;var b=pair.Value;
                     control.MinimumSize=Size.Empty;control.MaximumSize=Size.Empty;
-                    if(control is Label||control is System.Windows.Forms.Button)control.AutoSize=false;
-                    control.SetBounds((int)Math.Round(b.Bounds.X*sx),(int)Math.Round(b.Bounds.Y*sy),Math.Max(1,(int)Math.Ceiling(b.Bounds.Width*sx)),Math.Max(1,(int)Math.Ceiling(b.Bounds.Height*sy)));
-                    float size=Math.Max(4.5f,b.FontSize*textScale*.95f);
+                    if(control is Label||control is AnimeButton||control is System.Windows.Forms.Button)control.AutoSize=false;
+                    control.SetBounds((int)Math.Round(b.Bounds.X*scale)+(control.Parent==page?inset:0),(int)Math.Round(b.Bounds.Y*scale),Math.Max(1,(int)Math.Ceiling(b.Bounds.Width*scale)),Math.Max(1,(int)Math.Ceiling(b.Bounds.Height*scale)));
+                    float size=Math.Max(11F,b.FontSize);
                     if(Math.Abs(control.Font.Size-size)>.1f){
                         var old=b.RenderFont;b.RenderFont=new Font(b.Family,size,b.Style);control.Font=b.RenderFont;if(old!=null)old.Dispose();
                     }
                 }
                 FitLabels(page);
-            } finally {page.ResumeLayout(false);}
+                int documentHeight=(int)Math.Ceiling(layout.Canvas.Height*scale);
+                // Give spare height to the writing area, not to buttons or type.
+                if(HasSpeechEditor(map)){
+                    int extra=Math.Max(0,Math.Min((int)(200*dpi),page.Height-documentHeight-(int)(32*dpi)));
+                    foreach(var control in map.Keys){
+                        if(control.Name=="speechEditor"||control.Name=="speechEditorCard"||control.Name=="speechQueue")control.Height+=extra;
+                        if(control.Name=="speechPhrases"||control.Name=="speechActions")control.Top+=extra;
+                    }
+                    documentHeight+=extra;
+                }
+                page.AutoScrollMinSize=new Size((int)Math.Ceiling(layout.Canvas.Width*scale),documentHeight);
+            } finally {page.ResumeLayout(true);layout.Fitting=false;}
             page.Invalidate(true);
         }
+        static bool HasSpeechEditor(Dictionary<Control,Base> map){foreach(var control in map.Keys)if(control.Name=="speechEditor")return true;return false;}
         static void FitLabels(Control parent){
             foreach(Control child in parent.Controls){
                 var label=child as Label;
