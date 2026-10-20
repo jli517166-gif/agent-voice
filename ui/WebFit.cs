@@ -52,7 +52,7 @@ namespace AgentVoice {
             float sx=page.ClientSize.Width/(float)baseWidth,sy=page.ClientSize.Height/(float)baseHeight;
             // One uniform zoom for both axes and the font: a per-axis stretch
             // would re-wrap copy and change which lines fit.
-            float zoom=Math.Min(sx,sy);
+            float zoom=Math.Min(1.4f,Math.Min(sx,sy));
             foreach(var pair in map){
                 var control=pair.Key;var b=pair.Value;
                 control.MinimumSize=Size.Empty;
