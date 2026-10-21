@@ -17,7 +17,7 @@ namespace AgentVoice {
                 foreach(var button in navigationButtons.Values){
                     using(var b=new Bitmap(button.Width,button.Height)){
                         button.DrawToBitmap(b,new Rectangle(Point.Empty,b.Size));
-                        if(b.GetPixel(0,0).ToArgb()!=Color.FromArgb(11,13,18).ToArgb())errors.Add("Navigation corner does not match sidebar: "+button.Name+" / "+backdrop);
+                        if(b.GetPixel(0,0).ToArgb()!=BackColor.ToArgb())errors.Add("Navigation corner does not match sidebar: "+button.Name+" / "+backdrop);
                     }
                 }
                 using(var g=profileList.CreateGraphics())using(var title=new Font(Font.FontFamily,11F,FontStyle.Bold))using(var detail=new Font(Font.FontFamily,10.5F)){

@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
   'use strict';
   const $=selector=>document.querySelector(selector), B=window.setupBridge;
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -17,13 +17,13 @@
     {title:'听到，再确认。',lead:'程序检查实际播放是否完成，你来判断音色、语气和节奏。',art:'headphone.webp',label:'LISTEN BEFORE CONFIRMING',body:()=>`<p>试听会启动服务，并生成、播放一段测试文本。</p>${actions([btn('preview','生成并播放',true),btn('stop-preview','停止试听')])}${actions([btn('confirm','确认声音合适')])}<p class="muted" data-heard>${state.heardVoice?'已确认当前声音。':'当前声音尚未获得你的听感确认。'}</p><p class="muted">更换引擎、模型或参考条件后，需要重新试听。</p>`},
     {title:'让对话自动说出来。',lead:'可选。当前实测支持 Codex 与 DeepSeek Harness。',art:'link.webp',label:'CONNECT YOUR HARNESS',body:()=>`${actions([btn('connect-harness','选择目录并接入验证',true),doc('接入说明.md','查看接入步骤')])}<p class="muted">自动识别所选目录、安装连接器，再核对回复和播放。收到实际播放完成回执后才庆祝成功。</p>${actions([btn('copy-challenge','复制手动验证短句')])}<p class="muted">若桌面账号需要手动发送短句，可查看执行过程并复制；重载与登录问题会明确报告。</p>`},
     {title:'把声音交给桌宠。',lead:'AIRI 完全可选。保持关闭，也能在本机正常播放。',art:'airi-11-icon.png',label:'AIRI · OPTIONAL COMPANION',body:()=>`<label><input type="checkbox" id="airiEnabled" ${state.airiEnabled?'checked':''}>启用 AIRI 桌宠联动</label>${actions([btn('connect-airi','选择原 AIRI 并验证',true)])}<p class="muted">选择已经登录、包含 airi.exe 的原目录，不复制另一套 AIRI。播放与嘴型回执通过后才算成功。</p><p class="muted">AIRI 更新可能覆盖桥接；失效时重新接入验证。</p>`},
-    {title:'准备告一段落。',lead:'完成或跳过，都如实记录。接下来进入你的语音工作台。',art:'music.webp',label:'READY WHEN YOU ARE',body:()=>`${resources()}${actions([btn('summary','刷新实际状态',true),doc('模块安装与配置指南.md','安装与故障说明')])}<p class="muted">进入软件不会把未完成的项目标记为通过；随时可从设置重新配置。</p>`}
+    {title:'准备告一段落。',lead:'完成或跳过，都如实记录。接下来进入你的语音工作台。',art:'music.webp',label:'按你的节奏继续',body:()=>`${resources()}${actions([btn('summary','刷新实际状态',true),doc('模块安装与配置指南.md','安装与故障说明')])}<p class="muted">进入软件不会把未完成的项目标记为通过；随时可从设置重新配置。</p>`}
   ];
   const pathLabels={pythonService:'主服务 Python',pythonTts:'CosyVoice Python',cosyRepo:'CosyVoice 源码',cosyModel:'CosyVoice 基础模型',pythonGpt:'GPT-SoVITS Python',gptRepo:'GPT-SoVITS 源码',gptModel:'GPT-SoVITS 基础模型',ffmpeg:'FFmpeg',baseModel:'CosyVoice 当前声音模型（可留空）',voiceGptModel:'GPT 当前声音模型（可留空）'};
   const wave=()=>'<span class="scene-wave">'+Array.from({length:13},()=>'<i></i>').join('')+'</span>';
   function scene(step,page){
-    const motifs=[wave(),'<span class="scan-line"></span><span class="scene-tags"><b>硬件</b><b>驱动</b><b>存储</b></span>','<span class="signal-route"><b>文字</b><i></i><b>声音</b></span>','<span class="transfer-docs"><i></i><i></i><i></i></span><span class="scene-tags"><b>源码</b><b>基础模型</b></span>','<span class="dependency-grid"><b>Python</b><b>GPU 库</b><b>音频依赖</b></span>',wave(),wave(),'<span class="message-trail"><i>Codex</i><i>DeepSeek</i><i>语音服务</i></span>',wave()+'<svg class="airi-ribbons" viewBox="0 0 650 400"><path d="M-60 340C150 420 260-100 710 160"/><path d="M-50 370C160 450 290-70 720 190"/></svg>','<span class="receipt-stack"><i></i><i></i><i></i></span>'];
-    const path=step===8?'art/airi-11-icon.png':'art/cutouts/'+page.art.replace('.webp','.png');
+    const motifs=[wave(),'<span class="scan-line"></span><span class="scene-tags"><b>硬件</b><b>驱动</b><b>存储</b></span>','<span class="signal-route"><b>文字</b><i></i><b>声音</b></span>','<span class="transfer-docs"><i></i><i></i><i></i></span><span class="scene-tags"><b>源码</b><b>基础模型</b></span>','<span class="dependency-grid"><b>Python</b><b>GPU 库</b><b>音频依赖</b></span>',wave(),wave(),'<span class="message-trail"><i>Codex</i><i>DeepSeek</i><i>语音服务</i></span>',wave()+'<svg class="airi-ribbons" viewBox="0 0 650 400"><path d="M-60 340C150 420 260-100 710 160"/><path d="M-50 370C160 450 290-70 720 190"/></svg>','<span class="sound-settle"><i></i><i></i><i></i><i></i><i></i></span>'];
+    const path=step===8?'art/airi-mark.svg':'art/cutouts/'+page.art.replace('.webp','.png');
     return `<figure class="art scene-${step}" aria-hidden="true"><img class="hero-object" src="${path}" alt="">${motifs[step]}<span class="art-label">${page.label}</span></figure>`;
   }
   function render(next){

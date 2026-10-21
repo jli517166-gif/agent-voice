@@ -56,7 +56,7 @@ namespace AgentVoice {
                     string audit=await form.Browser.ExecuteScriptAsync(@"(()=>{const all=[...document.querySelectorAll('header,footer,footer button')].filter(x=>!x.hidden);const outside=all.filter(x=>{const r=x.getBoundingClientRect();return r.left<-.5||r.top<-.5||r.right>innerWidth+.5||r.bottom>innerHeight+.5}).map(x=>x.id||x.tagName);return {outside,step:document.querySelector('#page').className,width:innerWidth,height:innerHeight,bodyScroll:document.body.scrollWidth>innerWidth,font:getComputedStyle(document.querySelector('.lead')).fontSize,art:document.querySelector('.art img').naturalWidth}})()");
                     var check=Json.Object(audit);if(((System.Collections.ICollection)check["outside"]).Count>0||Convert.ToBoolean(check["bodyScroll"])||Convert.ToInt32(check["art"])==0)errors.Add("Page clipped or artwork missing: "+step+" / "+size);
                     layouts.Add(new{size=size.ToString(),step=step,audit=check});
-                    if(size==preferred&&(step==0||step==4||step==8)){await Task.Delay(1300);using(var stream=File.Create(Path.Combine(directory,"web-step-"+step+".png")))await form.Browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);}
+                    if(size==preferred&&(step==0||step==4||step==8||step==9)){await Task.Delay(1300);using(var stream=File.Create(Path.Combine(directory,"web-step-"+step+".png")))await form.Browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);}
                 }
             }
             await Wait(()=>Task.FromResult(!form.Controller.Busy));

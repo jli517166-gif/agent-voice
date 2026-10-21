@@ -62,7 +62,7 @@ namespace AgentVoice {
             shell=new ScenePanel{Host=this,Dock=DockStyle.Fill};Controls.Add(shell);
             outer=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=2,RowCount=1,BackColor=Color.Transparent,Padding=new Padding(0)};outer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,UiPx(190)));outer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));shell.Controls.Add(outer);
             sidebar=new ScenePanel{Host=this,Dock=DockStyle.Fill,Padding=new Padding(UiPx(10)),Margin=new Padding(0)};outer.Controls.Add(sidebar,0,0);
-            var sideLayout=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=1,RowCount=3,BackColor=Color.FromArgb(11,13,18)};sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,UiPx(88)));sideLayout.RowStyles.Add(new RowStyle(SizeType.Percent,100));sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,UiPx(138)));sidebar.Controls.Add(sideLayout);
+            var sideLayout=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=1,RowCount=3,Name="sidebarSurface",BackColor=BackColor};sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,UiPx(88)));sideLayout.RowStyles.Add(new RowStyle(SizeType.Percent,100));sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,UiPx(138)));sidebar.Controls.Add(sideLayout);
             var brand=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,BackColor=Color.Transparent,Padding=new Padding(5,8,0,0)};brand.Controls.Add(new Label{Text="AGENT VOICE",Font=new Font("Segoe UI",11F,FontStyle.Bold),AutoSize=true,Margin=new Padding(0,0,0,3)});brand.Controls.Add(new Label{Text="本地语音工作台",Font=new Font(Font.FontFamily,10.5F),AutoSize=true,Margin=new Padding(0)});sideLayout.Controls.Add(brand,0,0);
             var navigation=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoScroll=true,BackColor=Color.Transparent,Padding=new Padding(0,4,0,4)};sideLayout.Controls.Add(navigation,0,1);
             AddNav(navigation,"朗读","home","输入文字、常用句与播放控制。",true);
@@ -179,21 +179,21 @@ namespace AgentVoice {
             var lead=Hint("手动朗读与自动朗读，在这里统一控制。");lead.AutoSize=false;lead.BackColor=Color.Transparent;lead.SetBounds(40,80,720,30);home.Controls.Add(lead);title.BringToFront();lead.BringToFront();
             serviceToggle=Primary(AsyncBtn("开启服务",async()=>{if(await Service.Running()){await Service.Stop();Status("服务已关闭。");}else{await SaveDraft();await Service.Start();Status("服务已启动。");}await Poll();}));serviceToggle.AutoSize=false;serviceToggle.MinimumSize=Size.Empty;serviceToggle.SetBounds(808,46,132,38);home.Controls.Add(serviceToggle);serviceToggle.BringToFront();
             var voice=new ScenePanel{Host=this,Card=true,Location=new Point(38,120),Size=new Size(658,112),Padding=new Padding(16,10,16,10)};home.Controls.Add(voice);
-            homeVoiceSummary=Hint("");homeVoiceSummary.AutoSize=false;homeVoiceSummary.AutoEllipsis=true;homeVoiceSummary.Font=new Font(Font.FontFamily,12F,FontStyle.Bold);homeVoiceSummary.SetBounds(0,0,620,28);voice.Controls.Add(homeVoiceSummary);
-            quickVoice=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=330,AccessibleName="快速选择已保存的声音方案"};quickVoice.SetBounds(0,30,330,28);voice.Controls.Add(quickVoice);
-            var switchVoice=Btn("切换声音",async()=>{var item=quickVoice.SelectedItem as SavedVoice;if(item==null)throw new InvalidOperationException("请先在声音方案中保存或选择一个声音。");await ProfileOperation("apply",item.id,null);BindVoice();Status("声音已切换："+item.name);});switchVoice.AutoSize=false;switchVoice.MinimumSize=Size.Empty;switchVoice.SetBounds(342,30,132,38);voice.Controls.Add(switchVoice);
-            var adjust=EntryBtn("调整声音","选择引擎、模型和语速。",()=>ShowPage("voiceEditor"));adjust.AutoSize=false;adjust.MinimumSize=Size.Empty;adjust.SetBounds(482,30,132,38);voice.Controls.Add(adjust);
-            harnessSummary=Hint("Harness：服务关闭");harnessSummary.AutoSize=false;harnessSummary.Font=new Font(Font.FontFamily,11F);harnessSummary.SetBounds(0,76,620,20);voice.Controls.Add(harnessSummary);
+            homeVoiceSummary=Hint("");homeVoiceSummary.AutoSize=false;homeVoiceSummary.AutoEllipsis=true;homeVoiceSummary.Font=new Font(Font.FontFamily,12F,FontStyle.Bold);homeVoiceSummary.SetBounds(16,10,620,28);voice.Controls.Add(homeVoiceSummary);
+            quickVoice=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=330,AccessibleName="快速选择已保存的声音方案"};quickVoice.SetBounds(16,40,314,28);voice.Controls.Add(quickVoice);
+            var switchVoice=Btn("切换声音",async()=>{var item=quickVoice.SelectedItem as SavedVoice;if(item==null)throw new InvalidOperationException("请先在声音方案中保存或选择一个声音。");await ProfileOperation("apply",item.id,null);BindVoice();Status("声音已切换："+item.name);});switchVoice.AutoSize=false;switchVoice.MinimumSize=Size.Empty;switchVoice.SetBounds(342,40,132,38);voice.Controls.Add(switchVoice);
+            var adjust=EntryBtn("调整声音","选择引擎、模型和语速。",()=>ShowPage("voiceEditor"));adjust.AutoSize=false;adjust.MinimumSize=Size.Empty;adjust.SetBounds(482,40,132,38);voice.Controls.Add(adjust);
+            harnessSummary=Hint("Harness：服务关闭");harnessSummary.AutoSize=false;harnessSummary.Font=new Font(Font.FontFamily,11F);harnessSummary.SetBounds(16,84,620,20);voice.Controls.Add(harnessSummary);
             var speech=new ScenePanel{Name="speechEditorCard",Host=this,Card=true,Location=new Point(38,240),Size=new Size(658,176),Padding=new Padding(16,10,16,10)};home.Controls.Add(speech);
-            var speechTitle=new Label{Text="想说什么？",Font=new Font(Font.FontFamily,13F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent};speechTitle.SetBounds(0,0,300,32);speech.Controls.Add(speechTitle);
-            body=Input(true);body.Name="speechEditor";body.SetBounds(0,44,626,104);body.Text="工作好久啦，起来动一动、喝口水吧～";body.AccessibleName="朗读文本";speech.Controls.Add(body);
+            var speechTitle=new Label{Text="想说什么？",Font=new Font(Font.FontFamily,13F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent};speechTitle.SetBounds(16,10,300,32);speech.Controls.Add(speechTitle);
+            body=Input(true);body.BorderStyle=BorderStyle.None;body.Name="speechEditor";body.SetBounds(16,48,626,104);body.Text="工作好久啦，起来动一动、喝口水吧～";body.AccessibleName="朗读文本";speech.Controls.Add(body);
             var phraseCard=new ScenePanel{Name="speechPhrases",Host=this,Card=true,Location=new Point(38,430),Size=new Size(658,72),Padding=new Padding(16,8,16,8)};home.Controls.Add(phraseCard);
-            var phraseTitle=new Label{Text="常用句",Font=new Font(Font.FontFamily,10F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent};phraseTitle.SetBounds(0,0,160,24);phraseCard.Controls.Add(phraseTitle);
-            phrases=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=420,AccessibleName="常用句选择"};phrases.SetBounds(0,30,420,26);phraseCard.Controls.Add(phrases);
+            var phraseTitle=new Label{Text="常用句",Font=new Font(Font.FontFamily,10F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent};phraseTitle.SetBounds(16,8,160,24);phraseCard.Controls.Add(phraseTitle);
+            phrases=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=420,AccessibleName="常用句选择"};phrases.SetBounds(16,36,404,26);phraseCard.Controls.Add(phrases);
             var manage=Btn("管理",()=>ShowPage("home"));manage.AutoSize=false;manage.MinimumSize=Size.Empty;manage.SetBounds(562,30,80,32);phraseCard.Controls.Add(manage);
             var queue=new ScenePanel{Name="speechQueue",Host=this,Card=true,Location=new Point(725,120),Size=new Size(215,355),Padding=new Padding(16,14,16,14)};home.Controls.Add(queue);
-            var queueTitle=new Label{Text="朗读队列",Font=new Font(Font.FontFamily,10F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent};queueTitle.SetBounds(0,0,150,28);queue.Controls.Add(queueTitle);
-            var queueEmpty=Hint("暂时没有朗读任务。\r\n来自客户端的完整句子\r\n会按顺序出现在这里。");queueEmpty.AutoSize=false;queueEmpty.SetBounds(0,46,185,120);queue.Controls.Add(queueEmpty);
+            var queueTitle=new Label{Text="朗读队列",Font=new Font(Font.FontFamily,10F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent};queueTitle.SetBounds(16,14,150,28);queue.Controls.Add(queueTitle);
+            var queueEmpty=Hint("暂时没有朗读任务。\r\n来自客户端的完整句子\r\n会按顺序出现在这里。");queueEmpty.AutoSize=false;queueEmpty.SetBounds(16,55,183,120);queue.Controls.Add(queueEmpty);
             var deck=new ScenePanel{Name="speechActions",Host=this,Card=true,Location=new Point(0,516),Size=new Size(978,88),Padding=new Padding(16,10,16,10)};home.Controls.Add(deck);
             var stop=Btn("停止",async()=>await StopSpeech());stop.AutoSize=false;stop.MinimumSize=Size.Empty;stop.SetBounds(16,20,108,40);deck.Controls.Add(stop);
             playButton=LiveSpeechButton("重播上一条",PlayLast);playButton.AutoSize=false;playButton.MinimumSize=Size.Empty;playButton.SetBounds(132,20,160,40);deck.Controls.Add(playButton);
@@ -385,7 +385,7 @@ namespace AgentVoice {
                         var destination=Rectangle.FromLTRB(left,top,(int)Math.Ceiling((ClientSize.Width+w)/2),(int)Math.Ceiling((ClientSize.Height+h)/2));
                         graphics.DrawImage(active,destination,0,0,active.Width,active.Height,GraphicsUnit.Pixel,attributes);
                     }
-                    if(background!=null)using(var tint=new SolidBrush(Color.FromArgb(156,BackColor)))graphics.FillRectangle(tint,0,0,scaled.Width,scaled.Height);
+                    if(background!=null)using(var tint=new SolidBrush(Color.FromArgb(220,BackColor)))graphics.FillRectangle(tint,0,0,scaled.Width,scaled.Height);
                 }
                 if(background!=null)scaledBackground=scaled;else scaledPageBackdrop=scaled;
             }
@@ -406,7 +406,7 @@ namespace AgentVoice {
             button.BorderColor=Accent;
         }
         void ApplyTheme(){var a=Config.appearance;Accent=ColorTranslator.FromHtml(a.accent=="#19C7F2"?"#B49AFF":a.accent);BackColor=ColorTranslator.FromHtml(a.backgroundColor=="#05101D"?"#101116":a.backgroundColor);ForeColor=ColorTranslator.FromHtml(a.textColor);CardColor=BackColor.GetBrightness()<.4F?Mix(BackColor,Color.White,4):Mix(BackColor,Color.White,55);string image=Store.Resolve(a.background);if(background!=null){background.Dispose();background=null;}if(scaledBackground!=null){scaledBackground.Dispose();scaledBackground=null;}if(defaultBackdrop!=null){defaultBackdrop.Dispose();defaultBackdrop=null;}if(File.Exists(image))using(var source=Image.FromFile(image))background=new Bitmap(source);WalkTheme(shell);StyleStatus(false);UpdateHarnessIndicators(harnessStates,harnessOnline);UpdateTopStatus(harnessOnline);Invalidate(true);}
-        void WalkTheme(Control parent){foreach(Control c in parent.Controls){c.ForeColor=ForeColor;if(c is Button)StyleButton((Button)c,(navigationButtons.ContainsKey(page)&&navigationButtons[page]==c));else if(c is TextBox||c is ComboBox||c is ListBox||c is NumericUpDown){c.BackColor=CardColor;c.ForeColor=ForeColor;}if(c is ComboBox)ChoiceStyle.Apply((ComboBox)c);WalkTheme(c);}}
+        void WalkTheme(Control parent){foreach(Control c in parent.Controls){c.ForeColor=ForeColor;if(c.Name=="sidebarSurface")c.BackColor=BackColor;if(c is Button)StyleButton((Button)c,(navigationButtons.ContainsKey(page)&&navigationButtons[page]==c));else if(c is TextBox||c is ComboBox||c is ListBox||c is NumericUpDown){c.BackColor=CardColor;c.ForeColor=ForeColor;}if(c is ComboBox)ChoiceStyle.Apply((ComboBox)c);WalkTheme(c);}}
         void ApplyIcon(){string path=Store.Resolve(Config.appearance.icon);try{if(!File.Exists(path)){string mascot=DefaultMascotPath();if(File.Exists(mascot))path=Icons.Make(mascot,Path.Combine(Store.Root,"data","appearance"));}if(!File.Exists(path))return;using(var icon=new Icon(path)){Icon=(Icon)icon.Clone();if(tray!=null)tray.Icon=Icon;}}catch(Exception exc){Status(exc.Message);}}
         protected override void Dispose(bool disposing){if(disposing){interfaceSounds.Dispose();}base.Dispose(disposing);}
     }
