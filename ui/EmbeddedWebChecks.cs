@@ -67,6 +67,18 @@ namespace AgentVoice {
             await Wait(()=>Task.FromResult(!form.Controller.Busy));
             if(!await Script(form,"document.querySelector('#feedback').hidden"))errors.Add("Navigation left a misleading pending-operation panel");
             if(form.Controller.Flow.Config.voice.engine!="gpt-sovits")errors.Add("Real frontend Next did not save the engine");
+            await form.Controller.Execute("preferences",new Dictionary<string,object>{{"offline",true},{"reduceMotion",true},{"sound",false}});
+            form.Browser.CoreWebView2.Reload();
+            await Wait(()=>Script(form,"document.querySelector('#localEngine')?.open===true"));
+            await form.Browser.ExecuteScriptAsync("document.querySelector('[data-action=\"download-engine\"]').click()");
+            await Wait(()=>Script(form,"document.querySelector('#feedback').classList.contains('error')"));
+            if(!await Script(form,"document.querySelector('#localEngine').open"))errors.Add("Download failure did not expose local alternative");
+            await Wait(()=>Task.FromResult(!form.Controller.Busy));
+            await form.Controller.Execute("go",new Dictionary<string,object>{{"step",5}});form.Browser.CoreWebView2.Reload();
+            await Wait(()=>Script(form,"document.querySelector('[data-action=\"reference\"]')!==null"));
+            await form.Browser.ExecuteScriptAsync("document.querySelector('[data-action=\"reference\"]').click();document.querySelector('#referencePath').value='missing.wav';document.querySelector('#referenceText').value='';document.querySelector('[data-action=\"save-reference\"]').click()");
+            await Wait(()=>Script(form,"document.querySelector('#drawerError')?.textContent.length>0"));
+            await form.Browser.ExecuteScriptAsync("document.querySelector('#drawer').close()");
             // Sample a foreground window region while resizing; exclude other topmost apps.
             form.TopMost=true;form.Activate();form.WindowState=FormWindowState.Normal;form.ClientSize=new Size(1180,780);form.Location=new Point(30,30);await Task.Delay(200);
             var fractions=new List<double>();int excluded=0,stop=0;Rectangle region=Rectangle.Empty;object gate=new object();IntPtr root=form.Handle;

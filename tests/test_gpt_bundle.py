@@ -1,4 +1,4 @@
-import copy,json,shutil,socket,sys,tempfile,unittest,wave,zipfile
+﻿import copy,json,shutil,socket,sys,tempfile,unittest,wave,zipfile
 from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'service'))
@@ -14,7 +14,7 @@ class GptBundleTests(unittest.TestCase):
         self.model=self.root/'tts-engines/gpt-sovits/models/GPT-SoVITS'
         for name in ['s1v3.ckpt','v2Pro/s2Gv2ProPlus.pth','sv/pretrained_eres2netv2w24s4ep4.ckpt',
                      'gsv-v5-pretrained/s2Gv5turbo.pth','gsv-v5-pretrained/vocoder.pth',
-                     'chinese-hubert-base/config.json','chinese-hubert-base/pytorch_model.bin',
+                     'chinese-hubert-base/config.json','chinese-hubert-base/pytorch_model.bin','chinese-hubert-base/preprocessor_config.json',
                      'chinese-roberta-wwm-ext-large/config.json','chinese-roberta-wwm-ext-large/tokenizer.json',
                      'chinese-roberta-wwm-ext-large/pytorch_model.bin']:
             p=self.model/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(name.encode())

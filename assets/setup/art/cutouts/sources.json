@@ -1,0 +1,72 @@
+{
+  "computer": {
+    "source": "https://3dicons.sgp1.cdn.digitaloceanspaces.com/v1/dynamic/clay/computer-dynamic-clay.png",
+    "metadata": "https://github.com/realvjy/3dicons/blob/develop/content/3dicons-meta/computer.md",
+    "license": "CC0-1.0",
+    "sha256": "1b480ca35e97d8d97ecf47a11975d2e20700b3f3a659f3b53d9e8dc7011291f5",
+    "size": [
+      400,
+      400
+    ]
+  },
+  "folder": {
+    "source": "https://3dicons.sgp1.cdn.digitaloceanspaces.com/v1/dynamic/clay/folder-dynamic-clay.png",
+    "metadata": "https://github.com/realvjy/3dicons/blob/develop/content/3dicons-meta/folder.md",
+    "license": "CC0-1.0",
+    "sha256": "5a45e422ee9430026d659df0471e934905ffc9b001de3e3619d6acbe4608d296",
+    "size": [
+      400,
+      400
+    ]
+  },
+  "headphone": {
+    "source": "https://3dicons.sgp1.cdn.digitaloceanspaces.com/v1/dynamic/clay/headphone-dynamic-clay.png",
+    "metadata": "https://github.com/realvjy/3dicons/blob/develop/content/3dicons-meta/headphone.md",
+    "license": "CC0-1.0",
+    "sha256": "029965cb2b9e8ea5ea5dfdc3a498bc8543d17117ef1b7a468924580df31ba3ca",
+    "size": [
+      400,
+      400
+    ]
+  },
+  "link": {
+    "source": "https://3dicons.sgp1.cdn.digitaloceanspaces.com/v1/dynamic/clay/link-dynamic-clay.png",
+    "metadata": "https://github.com/realvjy/3dicons/blob/develop/content/3dicons-meta/link.md",
+    "license": "CC0-1.0",
+    "sha256": "1cf14d6e43f7d5262eaad7a15682057b0cae5860a737b82fdb53d606c4354ed9",
+    "size": [
+      400,
+      400
+    ]
+  },
+  "mic": {
+    "source": "https://3dicons.sgp1.cdn.digitaloceanspaces.com/v1/dynamic/clay/mic-dynamic-clay.png",
+    "metadata": "https://github.com/realvjy/3dicons/blob/develop/content/3dicons-meta/mic.md",
+    "license": "CC0-1.0",
+    "sha256": "d4a0db2bddda40524ecb37b2390cb57e57e3a20c6caba2a747a5125f0dd7d442",
+    "size": [
+      400,
+      400
+    ]
+  },
+  "music": {
+    "source": "https://3dicons.sgp1.cdn.digitaloceanspaces.com/v1/dynamic/clay/music-dynamic-clay.png",
+    "metadata": "https://github.com/realvjy/3dicons/blob/develop/content/3dicons-meta/music.md",
+    "license": "CC0-1.0",
+    "sha256": "86ba81de37e1e01e1546ff08142ba0befc6bb753f04e26f3b77c640363ea88f3",
+    "size": [
+      400,
+      400
+    ]
+  },
+  "puzzle": {
+    "source": "https://3dicons.sgp1.cdn.digitaloceanspaces.com/v1/dynamic/clay/puzzle-dynamic-clay.png",
+    "metadata": "https://github.com/realvjy/3dicons/blob/develop/content/3dicons-meta/puzzle.md",
+    "license": "CC0-1.0",
+    "sha256": "42a9e507819e10bec6c5700da24f490099e182a3474fbc511e20f3e1f7b04987",
+    "size": [
+      400,
+      400
+    ]
+  }
+}

@@ -1,25 +1,31 @@
-(() => {
+﻿(() => {
   'use strict';
   const $=selector=>document.querySelector(selector), B=window.setupBridge;
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let state=null,shownStep=-1,selection=0,busy=false,logs=[],drafts={},toastTimer,resizeTimer;
-  const btn=(action,text,primary=false,extra='')=>`<button data-action="${action}" class="${primary?'primary':'secondary'}" ${extra}>${text}</button>`;
+  const btn=(action,text,primary=false,extra='')=>`<button data-action="${action}" class="${primary?'primary':'secondary'}" title="${text}" ${extra}>${text}</button>`;
   const actions=items=>`<div class="actions">${items.join('')}</div>`;
   const doc=(name,text)=>btn('doc',text,false,`data-doc="${name}"`);
   const resources=()=>`<div class="status-note" data-resources>${esc(state.resources)}</div>`;
   const pages=[
     {title:'先把声音，准备好。',lead:'一段独立的首次配置。按你的节奏完成，然后进入日常工作台。',art:'headphone.webp',label:'YOUR VOICE, YOUR WAY',body:()=>`<p class="muted">软件、TTS 引擎、音色与环境可以分开准备。你可以跳过任何步骤，稍后再回来。</p><div class="chips"><span>本地运行</span><span>模块安装</span><span>自由选择</span></div>${actions([doc('模块安装与配置指南.md','了解模块安装')])}`},
     {title:'先认识这台电脑。',lead:'检查显卡、驱动、可用空间与软件目录。先知道条件，再选择资源。',art:'computer.webp',label:'CHECK YOUR DEVICE',body:()=>`<p class="muted">检查不会安装驱动或修改系统。文件存在也不代表声音已经可用。</p>${actions([btn('computer','检查这台电脑',true),btn('recover','恢复未完成安装')])}`},
-    {title:'选择声音引擎。',lead:'每种引擎都有独立环境。先选引擎，下一步再准备文件。',art:'puzzle.webp',label:'CHOOSE AN ENGINE',body:()=>`<div class="tile-list">${[['CosyVoice','本地音色克隆，支持参考声音与训练权重。'],['GPT-SoVITS · v5 Turbo','使用对应版本模型和环境。'],['GPT-SoVITS · ProPlus','与 Turbo 独立选择，模型不混用。']].map((item,i)=>`<button class="tile ${selection===i?'selected':''}" data-engine="${i}" aria-pressed="${selection===i}"><strong>${item[0]}</strong><small>${item[1]}</small></button>`).join('')}</div><p class="muted">点击“下一步”才应用；跳过不会改变当前引擎。</p>`},
-    {title:'准备引擎文件。',lead:'导入独立引擎包，或指定你已经安装好的源码、运行环境和模型。',art:'folder.webp',label:'BRING YOUR ENGINE',body:()=>`${resources()}${actions([btn('install-engine','导入引擎包',true),btn('paths','指定已有引擎路径'),btn('resources','检查现有资源')])}${actions([doc('TTS使用手册.md','下载与安装说明')])}`},
-    {title:'让运行环境就绪。',lead:'联网补齐，或导入离线环境包。每一步都显示真实检查结果。',art:'tools.webp',label:'PREPARE THE RUNTIME',body:()=>`<label><input type="checkbox" id="offline" ${state.offline?'checked':''}>严格离线：只使用本地文件</label>${resources()}${actions([btn('repair-environment','联网补齐',true),btn('install-environment','导入环境包'),btn('inspect-environment','检查已有环境')])}${actions([btn('stop-service','停止服务以安装'),doc('环境补齐说明.md','环境安装说明')])}`},
+    {title:'先选一种声音引擎。',lead:'这里只选择生成声音的方式，不需要找文件。下一步会下载对应源码和模型。',art:'puzzle.webp',label:'CHOOSE AN ENGINE',body:()=>`<div class="tile-list">${[['CosyVoice','本地音色克隆，支持参考声音与训练权重。'],['GPT-SoVITS · v5 Turbo','使用对应版本模型和环境。'],['GPT-SoVITS · ProPlus','与 Turbo 独立选择，模型不混用。']].map((item,i)=>`<button class="tile ${selection===i?'selected':''}" data-engine="${i}" aria-pressed="${selection===i}"><strong>${item[0]}</strong><small>${item[1]}</small></button>`).join('')}</div><p class="muted">点击“下一步”才应用；跳过不会改变当前引擎。</p>`},
+    {title:'下载所选引擎。',lead:'优先在线准备源码和基础模型。网络不可用，或你已有资源时，再选择本地安装。',art:'folder.webp',label:'引擎文件',body:()=>`${resources()}${actions([btn('download-engine','下载所选引擎',true),btn('resources','检查已有文件'),btn('stop-service','停止服务以安装')])}<p class="muted">这一步不安装 GPU 依赖。已有文件会复用，模型下载可能需要数 GB。</p><details id="localEngine" ${state.offline?'open':''}><summary>无法下载，或已经准备好本地资源？</summary><p class="muted">本地安装是替代途径，无需重复下载。</p>${actions([btn('install-engine','导入本地引擎包'),btn('paths','定位已安装引擎')])}</details>${actions([doc('TTS使用手册.md','下载与安装说明')])}`},
+    {title:'检查运行依赖。',lead:'引擎文件已经单独准备。这一步只检查并补齐 Python、GPU 库与音频依赖。',art:'puzzle.webp',label:'运行环境',body:()=>`<label><input type="checkbox" id="offline" ${state.offline?'checked':''}>严格离线：只使用本地文件</label>${resources()}${actions([btn('inspect-environment','检查已有环境',true),btn('repair-environment','补齐缺失环境'),btn('stop-service','停止服务以安装')])}<details><summary>网络不可用？使用离线环境包</summary>${actions([btn('install-environment','导入离线环境包')])}</details>${actions([doc('环境补齐说明.md','环境安装说明')])}`},
     {title:'选择你的声音。',lead:'导入已有音色包，或准备自己的参考录音与逐字台词。',art:'mic.webp',label:'MAKE IT YOURS',body:()=>`${resources()}${actions([btn('import-voice','导入音色包',true),btn('profiles','选择已保存的声音'),btn('reference','配置参考声音')])}<p class="muted">音色包会匹配引擎和版本；导入后仍需真实试听。</p>`},
     {title:'听到，再确认。',lead:'程序检查实际播放是否完成，你来判断音色、语气和节奏。',art:'headphone.webp',label:'LISTEN BEFORE CONFIRMING',body:()=>`<p>试听会启动服务，并生成、播放一段测试文本。</p>${actions([btn('preview','生成并播放',true),btn('stop-preview','停止试听')])}${actions([btn('confirm','确认声音合适')])}<p class="muted" data-heard>${state.heardVoice?'已确认当前声音。':'当前声音尚未获得你的听感确认。'}</p><p class="muted">更换引擎、模型或参考条件后，需要重新试听。</p>`},
     {title:'让对话自动说出来。',lead:'可选。当前实测支持 Codex 与 DeepSeek Harness。',art:'link.webp',label:'CONNECT YOUR HARNESS',body:()=>`${actions([btn('connect-harness','选择目录并接入验证',true),doc('接入说明.md','查看接入步骤')])}<p class="muted">自动识别所选目录、安装连接器，再核对回复和播放。收到实际播放完成回执后才庆祝成功。</p>${actions([btn('copy-challenge','复制手动验证短句')])}<p class="muted">若桌面账号需要手动发送短句，可查看执行过程并复制；重载与登录问题会明确报告。</p>`},
-    {title:'把声音交给桌宠。',lead:'AIRI 完全可选。保持关闭，也能在本机正常播放。',art:'airi-scene.png',label:'AIRI · OPTIONAL COMPANION',body:()=>`<label><input type="checkbox" id="airiEnabled" ${state.airiEnabled?'checked':''}>启用 AIRI 桌宠联动</label>${actions([btn('connect-airi','选择原 AIRI 并验证',true)])}<p class="muted">选择已经登录、包含 airi.exe 的原目录，不复制另一套 AIRI。播放与嘴型回执通过后才算成功。</p><p class="muted">AIRI 更新可能覆盖桥接；失效时重新接入验证。</p>`},
+    {title:'把声音交给桌宠。',lead:'AIRI 完全可选。保持关闭，也能在本机正常播放。',art:'airi-11-icon.png',label:'AIRI · OPTIONAL COMPANION',body:()=>`<label><input type="checkbox" id="airiEnabled" ${state.airiEnabled?'checked':''}>启用 AIRI 桌宠联动</label>${actions([btn('connect-airi','选择原 AIRI 并验证',true)])}<p class="muted">选择已经登录、包含 airi.exe 的原目录，不复制另一套 AIRI。播放与嘴型回执通过后才算成功。</p><p class="muted">AIRI 更新可能覆盖桥接；失效时重新接入验证。</p>`},
     {title:'准备告一段落。',lead:'完成或跳过，都如实记录。接下来进入你的语音工作台。',art:'music.webp',label:'READY WHEN YOU ARE',body:()=>`${resources()}${actions([btn('summary','刷新实际状态',true),doc('模块安装与配置指南.md','安装与故障说明')])}<p class="muted">进入软件不会把未完成的项目标记为通过；随时可从设置重新配置。</p>`}
   ];
   const pathLabels={pythonService:'主服务 Python',pythonTts:'CosyVoice Python',cosyRepo:'CosyVoice 源码',cosyModel:'CosyVoice 基础模型',pythonGpt:'GPT-SoVITS Python',gptRepo:'GPT-SoVITS 源码',gptModel:'GPT-SoVITS 基础模型',ffmpeg:'FFmpeg',baseModel:'CosyVoice 当前声音模型（可留空）',voiceGptModel:'GPT 当前声音模型（可留空）'};
+  const wave=()=>'<span class="scene-wave">'+Array.from({length:13},()=>'<i></i>').join('')+'</span>';
+  function scene(step,page){
+    const motifs=[wave(),'<span class="scan-line"></span><span class="scene-tags"><b>硬件</b><b>驱动</b><b>存储</b></span>','<span class="signal-route"><b>文字</b><i></i><b>声音</b></span>','<span class="transfer-docs"><i></i><i></i><i></i></span><span class="scene-tags"><b>源码</b><b>基础模型</b></span>','<span class="dependency-grid"><b>Python</b><b>GPU 库</b><b>音频依赖</b></span>',wave(),wave(),'<span class="message-trail"><i>Codex</i><i>DeepSeek</i><i>语音服务</i></span>',wave()+'<svg class="airi-ribbons" viewBox="0 0 650 400"><path d="M-60 340C150 420 260-100 710 160"/><path d="M-50 370C160 450 290-70 720 190"/></svg>','<span class="receipt-stack"><i></i><i></i><i></i></span>'];
+    const path=step===8?'art/airi-11-icon.png':'art/cutouts/'+page.art.replace('.webp','.png');
+    return `<figure class="art scene-${step}" aria-hidden="true"><img class="hero-object" src="${path}" alt="">${motifs[step]}<span class="art-label">${page.label}</span></figure>`;
+  }
   function render(next){
     const changed=shownStep!==next.step;state=next;
     $('#motion').checked=state.reduceMotion;$('#sound').checked=state.sound;
@@ -30,7 +36,7 @@
     if(changed){
       selection=state.engine;shownStep=state.step;const page=pages[state.step];
       $('#page').className='step-'+state.step;
-      $('#page').innerHTML=`<div class="copy"><h1 tabindex="-1">${page.title}</h1><p class="lead">${page.lead}</p><div class="body">${page.body()}</div></div><figure class="art" aria-hidden="true"><img src="art/${page.art}" alt=""><span class="art-label">${page.label}</span></figure>`;
+      $('#page').innerHTML=`<div class="copy"><h1 tabindex="-1">${page.title}</h1><p class="lead">${page.lead}</p><div class="body">${page.body()}</div></div>${scene(state.step,page)}`;
       $('#viewport').scrollTop=0;$('#page h1').focus({preventScroll:true});
       if(!busy){$('#feedback').hidden=true;$('#result').textContent='';}
     }else{
@@ -51,7 +57,7 @@
   async function run(action,args={},label='正在处理'){
     const parallel=action==='stop-preview'||action==='copy-challenge';if(busy&&!parallel)return null;
     const quiet=['next','back','skip','defer','go','preferences'].includes(action);
-    if(!parallel){busy=true;logs=[];if(quiet)$('#feedback').hidden=true;else feedback(label,'正在执行，请等待真实结果。');$('#feedback .progress').hidden=quiet;updateDisabled();}
+    if(!parallel){busy=true;document.body.classList.add('working');document.body.dataset.task=action;logs=[];if(quiet)$('#feedback').hidden=true;else feedback(label,'正在执行，请等待真实结果。');$('#feedback .progress').hidden=quiet;updateDisabled();}
     try{
       const result=await B.request(action,args);if(result?.state)render(result.state);
       if(result?.message)feedback('操作完成',result.message);
@@ -59,8 +65,8 @@
       if(['save-reference','save-paths','apply-profile','import-voice'].includes(action))drafts={};
       if(['save-reference','save-paths','preferences','copy-challenge','save-airi'].includes(action))toast(result?.message||'已保存');
       return result;
-    }catch(error){if(error.state)render(error.state);feedback('未完成 · 请修复后重试',error.message,true);return null;}
-    finally{if(!parallel){busy=false;$('#feedback .progress').hidden=true;updateDisabled();}}
+    }catch(error){if(action==='download-engine'&&$('#localEngine'))$('#localEngine').open=true;if($('#drawer').open){let note=$('#drawerError');if(!note){note=document.createElement('p');note.id='drawerError';note.className='error-copy';note.setAttribute('role','alert');$('#drawerBody').prepend(note);}note.textContent=error.message;}if(error.state)render(error.state);feedback('未完成 · 请修复后重试',error.message,true);return null;}
+    finally{if(!parallel){busy=false;document.body.classList.remove('working');delete document.body.dataset.task;$('#feedback .progress').hidden=true;updateDisabled();}}
   }
   async function browse(kind){const value=await B.request('browse',{kind});return value.path||'';}
   const field=(id,label,value,multiline=false)=>`<label class="field">${label}${multiline?`<textarea id="${id}">${esc(drafts[id]??value)}</textarea>`:`<input id="${id}" value="${esc(drafts[id]??value)}">`}</label>`;

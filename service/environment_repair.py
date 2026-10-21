@@ -1,4 +1,4 @@
-"""App-local environment repair with a real end-to-end synthesis check."""
+﻿"""App-local environment repair with a real end-to-end synthesis check."""
 import argparse,copy,hashlib,json,os,platform,shutil,subprocess,sys,time,urllib.request,uuid,zipfile
 from pathlib import Path
 import runtime_paths
@@ -301,10 +301,67 @@ class Repair:
             matcha_ok=name!='cosyvoice' or (source/'third_party/Matcha-TTS/matcha/utils/audio.py').is_file()
             rows.append({'id':name,'ok':not probe['missing'] and source_file.is_file() and not missing_model and resource_ok and matcha_ok,'python':str(python),'source':str(source),'model':str(model),'missingPackages':probe['missing'],'sourceMissing':not source_file.is_file(),'matchaMissing':not matcha_ok,'missingModelFiles':sorted(set(missing_model)),'resourcesMissing':not resource_ok,'probe':probe})
         return {'ok':all(r['ok'] for r in rows),'items':rows,'selected':selected,'systemNotice':'显卡驱动、系统 VC++／.NET 组件不能在软件文件夹里替代安装；最后深度自检会说明系统问题。','progress':str(self.work/'progress.json'),'log':str(self.log)}
-    def repair(self,engine,verify=True):
+    @staticmethod
+    def model_patterns(name,patterns):
+        patterns=[p.replace('\\','/') for p in patterns]
+        return sorted(set(x.split('/')[0]+'/*' if x.startswith(('chinese-hubert-base/','chinese-roberta-wwm-ext-large/')) else x for x in patterns)) if name=='gpt-sovits' else patterns
+
+    def download_model(self,name,python,model,patterns):
+        inside(self.root,model);stage=inside(self.root,self.work/('model-download-'+uuid.uuid4().hex))
+        patterns=self.model_patterns(name,patterns)
+        self.progress('正在下载 '+name+' 基础模型；只补缺失文件，可能需要数 GB')
+        code='from huggingface_hub import snapshot_download;snapshot_download(repo_id='+repr(CATALOG[name]['modelRepo'])+',revision='+repr(CATALOG[name]['modelRevision'])+',local_dir='+repr(str(stage))+',allow_patterns='+repr(patterns)+')'
+        self.run([python,'-I','-X','utf8','-c',code],timeout=14400)
+        for file in stage.rglob('*'):
+            if file.is_file() and '.cache' not in file.relative_to(stage).parts:
+                target=inside(self.root,model/file.relative_to(stage));target.parent.mkdir(parents=True,exist_ok=True)
+                if not target.exists():shutil.move(str(file),str(target))
+        shutil.rmtree(stage)
+
+    def prepare_resources(self,engine):
+        """First-run acquisition only: source + model, never a Torch install."""
+        if self.offline:raise ValueError('严格离线已开启，请导入本地引擎包或定位已有引擎')
+        with OperationLock(self.root):
+            before=self.inspect(engine);updates={};rows=[]
+            for row in before['items']:
+                name=row['id']
+                if name=='core':continue
+                data=spec(name);home=self.root/'tts-engines'/name;source=Path(row['source']);model=Path(row['model']);source_replaced=False
+                if row['sourceMissing'] or (row['matchaMissing'] and self.root not in source.resolve().parents):
+                    source=inside(self.root,source) if self.root in source.resolve().parents else home/'source'
+                    self.progress('正在下载 '+name+' 引擎源码');self.source(name,source);source_replaced=True
+                if name=='cosyvoice' and (row['matchaMissing'] or (source_replaced and not (source/'third_party/Matcha-TTS/matcha/utils/audio.py').is_file())):
+                    inside(self.root,source);entry=CATALOG[name]
+                    archive=self.download('https://codeload.github.com/'+entry['matchaRepo']+'/zip/'+entry['matchaCommit'],'matcha-'+entry['matchaCommit']+'.zip')
+                    destination=source/'third_party/Matcha-TTS'
+                    if destination.exists():
+                        backup=self.work/'backups'/('matcha-'+uuid.uuid4().hex);backup.parent.mkdir(exist_ok=True);os.replace(destination,backup)
+                    extract(archive,destination,True)
+                if row['missingModelFiles']:
+                    patterns=row['missingModelFiles']
+                    if self.root not in model.resolve().parents:
+                        model=home/'models'/('Fun-CosyVoice3-0.5B' if name=='cosyvoice' else 'GPT-SoVITS')
+                        if name=='cosyvoice':
+                            from tts_bundle import REQUIRED
+                            patterns=[*REQUIRED,'CosyVoice-BlankEN/*']
+                        else:patterns=[str(p.relative_to(model)) for v in ('proplus','v5turbo') for p in gpt_required({'source':str(source),'model':str(model),'variant':v})[1:]]
+                    python=self.store.resolve(self.store.get()['engines']['pythonService'])
+                    if not python.is_file() or self.root not in python.resolve().parents:python=self.python(self.root/'runtime/core')
+                    if self.probe(python,['huggingface_hub'])['missing']:self.pip(python,[CATALOG['gpt-sovits']['packages']['huggingface_hub']])
+                    self.download_model(name,python,model,patterns)
+                updates.update({data['sourceKey']:self.store.portable(source),data['modelKey']:self.store.portable(model)})
+                rows.append({'engine':name,'source':str(source),'model':str(model)})
+            if updates:self.store.update({'engines':updates})
+            after=self.inspect(engine)
+            for row in after['items']:
+                if row['id']!='core' and (row['sourceMissing'] or row['matchaMissing'] or row['missingModelFiles']):raise RuntimeError('引擎文件仍有缺项，请重试下载或导入本地引擎包：'+row['id'])
+            return {'ok':True,'verifiedUsable':False,'resources':rows,'message':'引擎文件已准备，下一步检查运行环境；仍需实际试听'}
+
+    def repair(self,engine,verify=True,dependencies_only=False):
         with OperationLock(self.root):
             if self.log.is_file() and self.log.stat().st_size>10*1024**2:os.replace(self.log,self.log.with_suffix('.previous.log'))
             before=self.inspect(engine);cfg=self.store.get();updates={}
+            if dependencies_only and any(r['id']!='core' and (r['sourceMissing'] or r['matchaMissing'] or r['missingModelFiles']) for r in before['items']):raise ValueError('引擎源码或模型尚未完整，请先返回上一步下载引擎或导入本地引擎包')
             atomic_json(self.work/('settings-before-'+time.strftime('%Y%m%d-%H%M%S')+'.json'),cfg)
             for row in before['items']:
                 if row['ok']:continue
@@ -320,10 +377,11 @@ class Repair:
                 data=spec(name);home=self.root/'tts-engines'/name;home.mkdir(parents=True,exist_ok=True)
                 python=Path(row['python'])
                 if not python.is_file() or self.root not in python.resolve().parents:python=self.python(home/'runtime-managed')
+                source_replaced=False
                 if row['sourceMissing'] or (row['matchaMissing'] and self.root not in Path(row['source']).resolve().parents):
-                    source=inside(self.root,Path(row['source'])) if self.root in Path(row['source']).resolve().parents else home/'source';self.source(name,source)
+                    source=inside(self.root,Path(row['source'])) if self.root in Path(row['source']).resolve().parents else home/'source';self.source(name,source);source_replaced=True
                 else:source=Path(row['source'])
-                if name=='cosyvoice' and row['matchaMissing']:
+                if name=='cosyvoice' and (row['matchaMissing'] or (source_replaced and not (source/'third_party/Matcha-TTS/matcha/utils/audio.py').is_file())):
                     inside(self.root,source);entry=CATALOG[name];archive=self.download('https://codeload.github.com/'+entry['matchaRepo']+'/zip/'+entry['matchaCommit'],'matcha-'+entry['matchaCommit']+'.zip')
                     destination=source/'third_party/Matcha-TTS'
                     if destination.exists():
@@ -344,7 +402,7 @@ class Repair:
                             from tts_bundle import REQUIRED
                             patterns=[*REQUIRED,'CosyVoice-BlankEN/*']
                         else:patterns=[str(p.relative_to(model)) for variant in ('proplus','v5turbo') for p in gpt_required({'source':str(source),'model':str(model),'variant':variant})[1:]]
-                    if name=='gpt-sovits':patterns=sorted(set(x.split('/')[0]+'/*' if x.startswith(('chinese-hubert-base/','chinese-roberta-wwm-ext-large/')) else x for x in patterns))
+                    patterns=self.model_patterns(name,patterns)
                     code='from huggingface_hub import snapshot_download;snapshot_download(repo_id='+repr(CATALOG[name]['modelRepo'])+',revision='+repr(CATALOG[name]['modelRevision'])+',local_dir='+repr(str(stage))+',allow_patterns='+repr(patterns)+')'
                     self.run([python,'-I','-X','utf8','-c',code],timeout=14400)
                     for file in stage.rglob('*'):
@@ -378,8 +436,8 @@ class Repair:
             return result
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('action',choices=['inspect','repair']);p.add_argument('--root',required=True);p.add_argument('--engine',choices=['core','current','all','cosyvoice','gpt-sovits'],default='current');p.add_argument('--offline',action='store_true');p.add_argument('--prepare-only',action='store_true');a=p.parse_args();helper=Repair(a.root,offline=a.offline)
-    try:result=helper.repair(a.engine,verify=not a.prepare_only) if a.action=='repair' else helper.inspect(a.engine)
+    p=argparse.ArgumentParser();p.add_argument('action',choices=['inspect','repair','resources']);p.add_argument('--root',required=True);p.add_argument('--engine',choices=['core','current','all','cosyvoice','gpt-sovits'],default='current');p.add_argument('--offline',action='store_true');p.add_argument('--prepare-only',action='store_true');p.add_argument('--dependencies-only',action='store_true');a=p.parse_args();helper=Repair(a.root,offline=a.offline)
+    try:result=helper.prepare_resources(a.engine) if a.action=='resources' else helper.repair(a.engine,verify=not a.prepare_only,dependencies_only=a.dependencies_only) if a.action=='repair' else helper.inspect(a.engine)
     except Exception as exc:helper.progress(str(exc),'failed');result={'ok':False,'error':str(exc),'log':str(helper.log)}
     print(json.dumps(result,ensure_ascii=False))
 

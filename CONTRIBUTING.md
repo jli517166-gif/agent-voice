@@ -69,3 +69,11 @@ node --test tests/test_setup_frontend.mjs
 ```
 
 控制器测试隔离配置和 HTTP 服务，覆盖 Next/Skip、输入校验、停止冷启动试听和轮询失败清理。WebView 测试覆盖十页、多个窗口大小、真实前端保存引擎、错误服务端口、缺运行时备用入口和缩放帧采样；请保持测试窗口不被其他窗口覆盖。它不运行真实 GPU 合成、系统安装器或登录第三方账号，这些仍需目标电脑验收。Python 测试服务也使用独立空 Codex 会话目录，避免测试时读入开发者的实时聊天。
+
+## 背景、方案列表与配置素材回归
+
+`agent语音.exe --visual-repair-test <独立输出目录>` 使用公开合成背景与虚拟方案，检查默认/明亮背景下导航圆角与侧栏容器颜色一致、方案两行字体高度不超过 DPI 行高。不能只检查按钮 Bounds 就宣称圆角没有绘制异常，也不能只检查 ListBox 外框就宣称 owner-draw 行没有文字重叠。
+
+首次配置图片使用原作者带 alpha 的 PNG，来源和哈希在 `assets/setup/art/cutouts/sources.json`；不要再次用反色混合近似抠图。场景在 `scenes.css` 中表现扫描、文件投递、依赖装配与声浪，只有对应任务进行时才循环，减少动画和缩放暂停仍必须生效。AIRI 原图标与 CSS 曲面、SVG 声浪作为页面元素组合，不可拿配置截图替代 UI。
+
+资源准备与运行依赖分别使用 `resources` 和 `repair --prepare-only --dependencies-only`，文件完整不代表真实推理。保持 Windows 路径归一化、下载器不改外部 Python、源码替换后重查 Matcha，以及 GPT 特征提取配置完整性的回归。

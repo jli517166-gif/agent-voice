@@ -26,7 +26,13 @@ namespace AgentVoice {
         // edge pixels when the parent scrolls or the window is scaled by Windows.
         protected override void OnPaintBackground(PaintEventArgs e){
             MainForm host=FindForm() as MainForm;
-            for(Control ancestor=Parent;ancestor!=null;ancestor=ancestor.Parent){var card=ancestor as ScenePanel;if(card!=null&&card.Card&&card.Host!=null){e.Graphics.Clear(card.Host.CardColor);return;}}
+            for(Control ancestor=Parent;ancestor!=null;ancestor=ancestor.Parent){
+                var card=ancestor as ScenePanel;
+                if(card!=null&&card.Card&&card.Host!=null){e.Graphics.Clear(card.Host.CardColor);return;}
+                // Rounded corners belong to their actual opaque parent surface,
+                // including the fixed sidebar, not the window's photo beneath it.
+                if(!(ancestor is ScenePanel)&&!(ancestor is Form)&&ancestor.BackColor.A==255){e.Graphics.Clear(ancestor.BackColor);return;}
+            }
             if(host!=null)host.PaintScene(e.Graphics,this);else e.Graphics.Clear(Parent==null?SystemColors.Control:Parent.BackColor);
         }
         protected override void OnMouseEnter(EventArgs e){hovering=true;Invalidate();base.OnMouseEnter(e);}

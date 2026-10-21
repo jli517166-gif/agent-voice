@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -164,7 +164,7 @@ namespace AgentVoice {
                         using (var graphics = Graphics.FromImage(bitmap)) PaintScene(graphics, shell);
                         foreach (Point point in new[] {Point.Empty, new Point(bitmap.Width - 1, 0),
                             new Point(0, bitmap.Height - 1), new Point(bitmap.Width - 1, bitmap.Height - 1)})
-                            if (bitmap.GetPixel(point.X, point.Y).ToArgb() != expected.ToArgb())
+                            if (Math.Abs(bitmap.GetPixel(point.X,point.Y).R-(expected.R*99+BackColor.R*156)/255)>1 || Math.Abs(bitmap.GetPixel(point.X,point.Y).G-(expected.G*99+BackColor.G*156)/255)>1 || Math.Abs(bitmap.GetPixel(point.X,point.Y).B-(expected.B*99+BackColor.B*156)/255)>1)
                                 errors.Add("custom background left an unpainted client corner: " + point+" actual="+bitmap.GetPixel(point.X,point.Y)+" expected="+expected);
                     }
                 }

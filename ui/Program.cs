@@ -19,6 +19,7 @@ namespace AgentVoice {
             SetProcessDPIAware();Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);
             string root=AppPaths.CanonicalDirectory(AppDomain.CurrentDomain.BaseDirectory);
             var store=new SettingsStore(root);
+            if(args.Contains("--visual-repair-test"))return VisualRepairChecks.Run(args);
             if(args.Contains("--websetup-unit"))return EmbeddedSetupChecks.Run(store,args);
             if(args.Contains("--websetup-test"))return EmbeddedWebChecks.Run(store,args);
             if(args.Contains("--environmenttest"))return UiChecks.Environment(store,args);

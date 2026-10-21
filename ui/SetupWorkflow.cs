@@ -34,12 +34,28 @@ namespace AgentVoice {
             if(repair&&await Service.Running())throw new InvalidOperationException("请先停止语音服务，再补齐环境。");
             var c=Config;bool offline=State.Read().offline;
             if(!File.Exists(Store.Resolve(c.engines.pythonService))){if(!repair||offline)throw new InvalidOperationException("缺少主服务运行环境。请导入环境包；或关闭严格离线，再选择联网补齐。");await EnvironmentBootstrap.EnsureCore(Store,Report);}
-            var result=Json.Object(await Service.RunTool("environment_repair.py",(repair?"repair":"inspect")+" --root "+ServiceClient.Quote(Store.Root)+" --engine current --prepare-only"+(offline?" --offline":"")));
+            var result=Json.Object(await RunPreparationTool((repair?"repair":"inspect")+" --root "+ServiceClient.Quote(Store.Root)+" --engine current --prepare-only"+(repair?" --dependencies-only":"")+(offline?" --offline":"")));
             Mark("environment",Convert.ToBoolean(result["ok"])?"prepared":"failed");
             // Keep the detailed diagnostic, including failed paths, available in this step.
             string text=Json.Encode(result);Directory.CreateDirectory(Store.Resolve("data/setup"));File.WriteAllText(Store.Resolve("data/setup/environment-report.json"),text,Encoding.UTF8);
             if(!Convert.ToBoolean(result["ok"]))throw new InvalidOperationException("环境检查未通过："+Json.Text(result,"error")+"\r\n详细报告："+Store.Resolve("data/setup/environment-report.json"));
             return "运行文件检查通过。接下来导入音色，再进行真实试听。\r\n详细报告："+Store.Resolve("data/setup/environment-report.json");
+        }
+        internal async Task<string> PrepareEngine(){
+            if(State.Read().offline)throw new InvalidOperationException("严格离线已开启，请展开本地安装，导入引擎包或定位已有引擎。");
+            if(await Service.Running())throw new InvalidOperationException("请先停止语音服务，再准备引擎文件。");
+            await EnvironmentBootstrap.EnsureCore(Store,Report);
+            var result=Json.Object(await RunPreparationTool("resources --root "+ServiceClient.Quote(Store.Root)+" --engine current"));
+            if(!Convert.ToBoolean(result["ok"]))throw new InvalidOperationException(Json.Text(result,"error"));
+            Mark("engineFiles","prepared");InvalidateVoice();return Json.Text(result,"message");
+        }
+        async Task<string> RunPreparationTool(string args){
+            var task=Service.RunTool("environment_repair.py",args);string previous="";
+            while(!task.IsCompleted){
+                try{string file=Store.Resolve("data/environment-repair/progress.json");if(File.Exists(file)){string text=Json.Text(Json.Object(File.ReadAllText(file)),"message");if(text!=previous){previous=text;Report(text);}}}catch(IOException){}catch(ArgumentException){}
+                await Task.WhenAny(task,Task.Delay(350));
+            }
+            return await task;
         }
         internal async Task<string> ImportVoice(string file){
             bool running=await Service.Running();if(running){var health=await Service.Request("/health");if(Convert.ToBoolean(health["busy"])||Convert.ToInt32(health["queued"])>0)throw new InvalidOperationException("请先停止当前朗读，再导入音色。");await Service.Stop();}

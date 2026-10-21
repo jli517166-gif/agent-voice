@@ -1,4 +1,4 @@
-"""Single capability catalog and lifecycle contract for installed engine adapters."""
+﻿"""Single capability catalog and lifecycle contract for installed engine adapters."""
 import importlib
 import json
 from pathlib import Path
@@ -29,7 +29,7 @@ def gpt_required(cfg):
     acoustic='gsv-v5-pretrained/s2Gv5turbo.pth' if v=='v5turbo' else 'v2Pro/s2Gv2ProPlus.pth'
     tokenizer=home/'chinese-roberta-wwm-ext-large/tokenizer.json'
     if not tokenizer.is_file():tokenizer=tokenizer.with_name('vocab.txt')
-    return [Path(cfg['source'])/'GPT_SoVITS/TTS_infer_pack/TTS.py',home/'s1v3.ckpt',home/acoustic,home/'chinese-hubert-base/pytorch_model.bin',home/'chinese-hubert-base/config.json',home/'chinese-roberta-wwm-ext-large/pytorch_model.bin',home/'chinese-roberta-wwm-ext-large/config.json',tokenizer,home/('gsv-v5-pretrained/vocoder.pth' if v=='v5turbo' else 'sv/pretrained_eres2netv2w24s4ep4.ckpt')]
+    return [Path(cfg['source'])/'GPT_SoVITS/TTS_infer_pack/TTS.py',home/'s1v3.ckpt',home/acoustic,home/'chinese-hubert-base/pytorch_model.bin',home/'chinese-hubert-base/config.json',home/'chinese-hubert-base/preprocessor_config.json',home/'chinese-roberta-wwm-ext-large/pytorch_model.bin',home/'chinese-roberta-wwm-ext-large/config.json',tokenizer,home/('gsv-v5-pretrained/vocoder.pth' if v=='v5turbo' else 'sv/pretrained_eres2netv2w24s4ep4.ckpt')]
 
 def worker_config(store,voice):
     s=spec(voice['engine']);paths=store.get()['engines']

@@ -56,6 +56,7 @@ namespace AgentVoice {
                         var p=Flow.State.Read();p.offline=Flag(args,"offline");p.reduceMotion=Flag(args,"reduceMotion");p.interfaceSounds=Flag(args,"sound");Flow.State.Write(p);break;
                     case "computer":message=await Flow.InspectComputer();break;
                     case "resources":message=Flow.Resources();break;
+                    case "download-engine":message=await Flow.PrepareEngine();break;
                     case "recover":await Task.Run(()=>ModulePackages.Recover(Flow.Store));message="未完成安装已恢复。";break;
                     case "inspect-environment":message=await Flow.PrepareEnvironment(false);break;
                     case "repair-environment":if(Flow.State.Read().offline)throw new InvalidOperationException("严格离线已开启，请导入离线环境包或关闭离线开关。");message=await Flow.PrepareEnvironment(true);break;

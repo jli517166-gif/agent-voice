@@ -1,4 +1,4 @@
-using Button = AgentVoice.AnimeButton;
+﻿using Button = AgentVoice.AnimeButton;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -308,32 +308,35 @@ namespace AgentVoice {
             WebTitle(page,"声音方案","保存当前声音和参数，随时切回熟悉的听感。");
             page.Controls.Add(WebAsyncButton("保存当前设置","把当前声音、参考条件和语速保存为可复用方案。",SaveProfile,632,46,140,39,true));
             page.Controls.Add(WebButton("打开方案文件夹","查看每个声音方案保存的参数副本。",()=>{string directory=ProfileDirectory();ServiceClient.Open(directory);Status("每个声音方案有独立同名文件夹："+directory);},780,46,160,39));
-            var listCard=WebCard(page,38,126,902,111);
-            profileList=new ListBox{IntegralHeight=false,BorderStyle=BorderStyle.FixedSingle,ItemHeight=40,DrawMode=DrawMode.OwnerDrawFixed};
-            profileList.SetBounds(16,14,720,82);
+            var listCard=WebCard(page,38,126,902,222);
+            profileList=new ListBox{IntegralHeight=false,BorderStyle=BorderStyle.None,ItemHeight=UiPx(58),DrawMode=DrawMode.OwnerDrawFixed};
+            profileList.SetBounds(16,14,720,194);
             profileList.DrawItem+=(s,e)=>{
                 if(e.Index<0||e.Index>=profileList.Items.Count)return;
                 var item=profileList.Items[e.Index] as SavedVoice;if(item==null)return;
                 bool selected=(e.State&DrawItemState.Selected)!=0;
                 using(var brush=new SolidBrush(selected?Mix(CardColor,Accent,18):CardColor))e.Graphics.FillRectangle(brush,e.Bounds);
                 Color color=selected?Accent:ForeColor;
-                using(var nameFont=new Font(Font.FontFamily,10F,FontStyle.Bold))using(var detailFont=new Font(Font.FontFamily,8F)){
-                    TextRenderer.DrawText(e.Graphics,item.name,nameFont,new Rectangle(e.Bounds.X+10,e.Bounds.Y+3,e.Bounds.Width-20,19),color,TextFormatFlags.Left|TextFormatFlags.EndEllipsis);
+                using(var nameFont=new Font(Font.FontFamily,11F,FontStyle.Bold))using(var detailFont=new Font(Font.FontFamily,10.5F)){
+                    int x=e.Bounds.X+UiPx(10),top=e.Bounds.Y+UiPx(6),width=e.Bounds.Width-UiPx(20);
+                    int nameHeight=(int)Math.Ceiling(nameFont.GetHeight(e.Graphics)),detailHeight=(int)Math.Ceiling(detailFont.GetHeight(e.Graphics));
+                    var flags=TextFormatFlags.Left|TextFormatFlags.EndEllipsis|TextFormatFlags.SingleLine|TextFormatFlags.NoPadding;
+                    TextRenderer.DrawText(e.Graphics,item.name,nameFont,new Rectangle(x,top,width,nameHeight),color,flags);
                     string detail=EngineLabel(item.voice)+" · 语速 "+item.voice.speed.ToString("0.00")+"× · 音量 "+(item.voice.volume*100).ToString("0")+"%";
-                    TextRenderer.DrawText(e.Graphics,detail,detailFont,new Rectangle(e.Bounds.X+10,e.Bounds.Y+21,e.Bounds.Width-20,16),color,TextFormatFlags.Left|TextFormatFlags.EndEllipsis);
+                    TextRenderer.DrawText(e.Graphics,detail,detailFont,new Rectangle(x,top+nameHeight+UiPx(3),width,detailHeight),color,flags);
                 }
                 if(selected)e.DrawFocusRectangle();
             };
             listCard.Controls.Add(profileList);
-            profileEmpty=WebText("还没有保存的声音方案。填写方案名称后，点右上角“保存当前设置”。",9F,FontStyle.Regular,16,14,720,82,ContentAlignment.MiddleCenter);
+            profileEmpty=WebText("还没有保存的声音方案。填写方案名称后，点右上角“保存当前设置”。",9F,FontStyle.Regular,16,14,720,194,ContentAlignment.MiddleCenter);
             profileEmpty.Visible=false;
             listCard.Controls.Add(profileEmpty);
             var apply=WebAsyncButton("应用",null,async()=>{var item=profileList.SelectedItem as SavedVoice;if(item==null)return;await ProfileOperation("apply",item.id,null);BindVoice();Status("已应用声音方案："+item.name);},772,38,60,34,false);
             listCard.Controls.Add(apply);
             var remove=WebAsyncButton("删除",null,async()=>{var item=profileList.SelectedItem as SavedVoice;if(item==null)return;var next=Json.Copy(Config);next.profiles.RemoveAll(p=>p.id==item.id);await Persist(next,new {profiles=next.profiles});ArchiveProfileFolder(item);deleted=Json.Copy(item);RefreshProfiles();Status("声音方案已删除，模型文件保留；可撤销。");},840,38,60,34,false);
             Danger(remove);listCard.Controls.Add(remove);
-            page.Controls.Add(WebText("方案记录设置；音色包保存声音文件。两者分开管理，避免重复导出模型。",8.8F,FontStyle.Regular,38,240,902,18,ContentAlignment.MiddleLeft));
-            var maintain=WebCard(page,38,260,902,168);
+            page.Controls.Add(WebText("方案记录设置；音色包保存声音文件。两者分开管理，避免重复导出模型。",8.8F,FontStyle.Regular,38,358,902,28,ContentAlignment.MiddleLeft));
+            var maintain=WebCard(page,38,402,902,168);
             maintain.Controls.Add(WebText("方案名称",9.5F,FontStyle.Bold,16,18,90,24,ContentAlignment.MiddleLeft));
             profileName=Input();profileName.Text="我的声音";profileName.SetBounds(110,15,250,28);maintain.Controls.Add(profileName);
             maintain.Controls.Add(WebAsyncButton("固定旧方案参考","把旧方案用到的参考录音固定到方案文件夹，并记录模型校验信息。",async()=>{var item=profileList.SelectedItem as SavedVoice;if(item==null)return;var result=await ProfileOperation("seal",item.id,null);WriteProfileFolder(Json.Decode<SavedVoice>(Json.Encode(result["profile"])));RefreshProfiles();Status("已固定旧方案的参考录音并记录模型校验信息。");},368,13,160,36,false));
@@ -341,8 +344,8 @@ namespace AgentVoice {
             maintain.Controls.Add(WebButton("打开方案目录","查看每个声音方案保存的参数副本。",()=>{string directory=ProfileDirectory();ServiceClient.Open(directory);Status("每个声音方案有独立同名文件夹："+directory);},654,13,150,36));
             maintain.Controls.Add(WebText("保存时会把参考录音复制到 data/voice-configurations/方案名称-ID。",9F,FontStyle.Regular,16,60,860,20,ContentAlignment.MiddleLeft));
             maintain.Controls.Add(WebText("模型只记录校验信息，不重复复制大权重；跨电脑请导出音色包。",9F,FontStyle.Regular,16,84,860,20,ContentAlignment.MiddleLeft));
-            page.Controls.Add(WebText("每次保存都会在 data/voice-configurations 下建立“方案名称 + ID”文件夹。",9F,FontStyle.Regular,38,440,902,20,ContentAlignment.MiddleLeft));
-            page.Controls.Add(WebText("删除方案只归档配置文件夹并保留模型文件；可撤销最近一次删除。",8.8F,FontStyle.Regular,38,466,902,20,ContentAlignment.MiddleLeft));
+            page.Controls.Add(WebText("每次保存都会在 data/voice-configurations 下建立“方案名称 + ID”文件夹。",9F,FontStyle.Regular,38,590,902,28,ContentAlignment.MiddleLeft));
+            page.Controls.Add(WebText("删除方案只归档配置文件夹并保留模型文件；可撤销最近一次删除。",8.8F,FontStyle.Regular,38,626,902,28,ContentAlignment.MiddleLeft));
         }
 
         async Task<Dictionary<string,object>> ProfileOperation(string mode,string id,object payload){
@@ -382,6 +385,7 @@ namespace AgentVoice {
                         var destination=Rectangle.FromLTRB(left,top,(int)Math.Ceiling((ClientSize.Width+w)/2),(int)Math.Ceiling((ClientSize.Height+h)/2));
                         graphics.DrawImage(active,destination,0,0,active.Width,active.Height,GraphicsUnit.Pixel,attributes);
                     }
+                    if(background!=null)using(var tint=new SolidBrush(Color.FromArgb(156,BackColor)))graphics.FillRectangle(tint,0,0,scaled.Width,scaled.Height);
                 }
                 if(background!=null)scaledBackground=scaled;else scaledPageBackdrop=scaled;
             }
