@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Threading;
 
 namespace AgentVoice {
     // UI-only preferences never enter the voice configuration or exported voice packages.
@@ -27,7 +28,13 @@ namespace AgentVoice {
         }
         public void Write(WelcomePreferences value){
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath));string temporary=FilePath+"."+Guid.NewGuid().ToString("N")+".tmp";
-            try{File.WriteAllText(temporary,Json.Encode(value),new UTF8Encoding(false));if(File.Exists(FilePath))File.Replace(temporary,FilePath,null);else File.Move(temporary,FilePath);}
+            try{
+                File.WriteAllText(temporary,Json.Encode(value),new UTF8Encoding(false));
+                for(int attempt=0;;attempt++){
+                    try{if(File.Exists(FilePath))File.Replace(temporary,FilePath,null);else File.Move(temporary,FilePath);break;}
+                    catch(IOException){if(attempt>=9||!File.Exists(temporary))throw;Thread.Sleep(50);}
+                }
+            }
             finally{if(File.Exists(temporary))File.Delete(temporary);}
         }
         public void Choose(string choice,bool reduced){

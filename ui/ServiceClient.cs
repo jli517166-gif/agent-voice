@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Net.NetworkInformation;
 using System.Linq;
+using System.Threading;
 
 namespace AgentVoice {
     public sealed class ServiceClient {
@@ -29,9 +30,10 @@ namespace AgentVoice {
             try {var status=await Request("/health",null,1500);string expected;using(var sha=SHA256.Create())expected=BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(Store.Root.ToLowerInvariant()))).Replace("-","").ToLowerInvariant().Substring(0,24);if(Json.Text(status,"service")!="agent-voice-public"||(status.ContainsKey("instanceId")&&Json.Text(status,"instanceId")!=expected))throw new InvalidOperationException("端口被另一安装目录的程序占用，请先关闭另一套语音服务。");if(!status.ContainsKey("instanceId"))await Request("/api/state",null,1500);return true;}
             catch(WebException error){if(error.Status==WebExceptionStatus.ConnectFailure)return false;if(error.Status==WebExceptionStatus.Timeout){try{int port=Store.Read().port;if(!IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners().Any(p=>p.Port==port))return false;}catch(NetworkInformationException){}}throw new InvalidOperationException("语音服务暂时未响应，未按离线方式改写配置。请稍后重试或恢复服务。",error);}
         }
-        public async Task Start() {
+        public async Task Start(CancellationToken cancellation=default(CancellationToken)) {
+            cancellation.ThrowIfCancellationRequested();
             if(File.Exists(ModulePackages.Pending(Store)))throw new InvalidOperationException("上次模块安装尚未恢复，请先打开配置中心恢复安装。");
-            if(await Running())return;
+            bool running=await Running();cancellation.ThrowIfCancellationRequested();if(running)return;
             Settings cfg=Store.Read();string python=Store.Resolve(cfg.engines.pythonService);
             if(!File.Exists(python))throw new InvalidOperationException("请在本地引擎设置中选择主服务 Python 运行时。");
             Directory.CreateDirectory(Path.Combine(Store.Root,"data","logs"));
@@ -39,8 +41,8 @@ namespace AgentVoice {
             info.WorkingDirectory=Store.Root;info.UseShellExecute=false;info.CreateNoWindow=true;info.WindowStyle=ProcessWindowStyle.Hidden;
             info.EnvironmentVariables.Remove("PYTHONHOME");info.EnvironmentVariables.Remove("PYTHONPATH");
             info.EnvironmentVariables["PYTHONDONTWRITEBYTECODE"]="1";info.EnvironmentVariables["PYTHONUTF8"]="1";info.EnvironmentVariables["PYTHONNOUSERSITE"]="1";
-            Owned=Process.Start(info);
-            for(int i=0;i<80;i++){await Task.Delay(150);if(Owned.HasExited)throw new InvalidOperationException("服务启动失败，请查看 data\\logs\\service.log。");if(await Running())return;}
+            cancellation.ThrowIfCancellationRequested();Owned=Process.Start(info);
+            for(int i=0;i<80;i++){await Task.Delay(150,cancellation);if(Owned.HasExited)throw new InvalidOperationException("服务启动失败，请查看 data\\logs\\service.log。");if(await Running()){cancellation.ThrowIfCancellationRequested();return;}}
             throw new InvalidOperationException("服务启动超时，请查看日志。");
         }
         public async Task Stop() {
@@ -56,6 +58,13 @@ namespace AgentVoice {
                 await Task.Delay(100);
             }
             throw new InvalidOperationException("服务正在清理后台任务，请稍后再保存或导入配置。");
+        }
+        public async Task StopOwnedStartup(){
+            var owned=Owned;if(owned==null||owned.HasExited)return;
+            await Task.Run(()=>{using(var kill=Process.Start(new ProcessStartInfo("taskkill.exe","/PID "+owned.Id+" /T /F"){UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden,RedirectStandardOutput=true,RedirectStandardError=true})){
+                var output=kill.StandardOutput.ReadToEndAsync();var error=kill.StandardError.ReadToEndAsync();kill.WaitForExit(10000);Task.WaitAll(output,error);
+            }});
+            if(!owned.HasExited)throw new InvalidOperationException("本窗口启动的服务尚未退出，请稍后重试关闭。");
         }
         public static string Quote(string text) {
             var quoted=new StringBuilder("\"");int slashes=0;

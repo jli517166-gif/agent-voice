@@ -46,6 +46,9 @@ class CoreTests(unittest.TestCase):
         self.store.data['port']=port
         model=self.root/'fixture.wav';model.write_bytes(b'test-only')
         self.store.update({'voice':{'engine':'cosyvoice','reference':'fixture.wav','referenceText':'测试参考','advancedEnabled':True},'engines':{'pythonService':str(sys.executable),'pythonTts':str(sys.executable),'cosyRepo':str(self.root),'cosyModel':str(self.root)}})
+        # Test servers must never consume the developer's live Codex conversation.
+        home=self.root/'isolated-codex';(home/'sessions').mkdir(parents=True)
+        (self.root/'data/harness-installations.json').write_text(json.dumps({'codex':{'codexHome':str(home)}}),encoding='utf8')
         self.actor=FakePipeline();self.server=Server(self.store,self.actor)
         self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
         self.base='http://127.0.0.1:'+str(port);self.token=self.store.get()['token']

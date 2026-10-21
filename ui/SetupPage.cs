@@ -9,7 +9,7 @@ namespace AgentVoice {
         void SetInterfaceSounds(bool enabled){var p=SetupPreference();if(p.interfaceSounds==enabled)return;p.interfaceSounds=enabled;new WelcomeState(Store).Write(p);foreach(var item in setupSoundChoices)item.Checked=enabled;if(!enabled)interfaceSounds.Stop();}
         void RunConfiguration(){
             if(operation)return;poll.Stop();Hide();
-            try{using(var wizard=new SetupWizard(Store))wizard.ShowDialog();Config=Store.Read();BindVoice();BindSettings();ApplyTheme();Status("已返回工作台；实际接入状态由服务重新核对。");}
+            try{using(var wizard=SetupEntry.Create(Store))wizard.ShowDialog();Config=Store.Read();BindVoice();BindSettings();ApplyTheme();Status("已返回工作台；实际接入状态由服务重新核对。");}
             finally{Show();WindowState=FormWindowState.Normal;Activate();if(!testingMode)poll.Start();}
         }
         internal void ApplyWelcomeChoice(string choice){ShowPage(choice=="import"?"configuration":"home");}
