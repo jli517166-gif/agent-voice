@@ -1,4 +1,4 @@
-# 维护与回归
+﻿# 维护与回归
 
 ## GitHub 同步与回退
 
@@ -9,9 +9,9 @@
 ## 模块边界
 
 - `ui/`：WinForms 页面、交互与等待动画；环境修复页只调工具，不包含 pip 安装业务。
-- `ui/WelcomeForm.cs`、`WelcomeState.cs`：静音开场和首次入口；欢迎偏好独立存储，不自动启动服务或下载。`SetupPage.cs`：八步可继续配置，只有明确点击操作才启动安装、试听与真实连接验证。
+- `SetupEntry.cs`、`EmbeddedSetupForm.cs`：独立首次配置入口、WebView2 宿主与原生备用。`assets/setup/` 是本地十页前端；`EmbeddedSetupController.cs` 只提供固定消息操作，`SetupWorkflow.cs` / `ConnectionSetup.cs` 执行真实后端。页面不能收到服务密钥或执行任意命令。`WelcomeState.cs` 独立保存进度与偏好。原生 `SetupWizard` 保留为组件缺失时的备用。
 - `ui/ModulePackages.cs`：无 Python 的原生模块校验、事务安装、路径重定位和中断恢复。`tools/module_packages.py`：分别制作软件本体、引擎、环境包，声音继续使用独立包。模块清单只允许修改自身路径，不能携带账号设置；导入通过不能替代目标硬件推理验收。
-- `ui/SetupAnimation.cs`：八个独立配置路由的原生说明动画，静音、有限时长；当前路由以外必须停止计时器，减少动画立即停止。不得将说明动画作为真实下载、设备检查或连接成功证据。配置页“下一步”应提交该步选择后再前进；跳过不应用未保存的选择。
+- `ui/SetupAnimation.cs`：旧原生备用配置的说明动画，静音、有限时长；当前路由以外必须停止计时器，减少动画立即停止。不得将说明动画作为真实下载、设备检查或连接成功证据。配置页“下一步”应提交该步选择后再前进；跳过不应用未保存的选择。
 - `service/engine-catalog.json`、`engine_registry.py`：正式引擎能力与选择；新增引擎必须写适配器和契约测试。
 - `engine_cosy.py`、`engine_gpt.py`：推理适配器；工作进程独立，切换必须取消旧任务并核对实际模型身份。
 - `jobs.py`：串行队列、分段生成、渐进播放、取消和 AIRI 投递；`pipeline.py`：实际推理、校验、重试与流式合并。
@@ -56,3 +56,16 @@ Git 仓库不上传 Python、TTS 源码副本、模型、用户录音、配置�
 完整便携发行的可复现命令、默认声音、移动目录测试与清理边界见《[便携发布流程](docs/便携发布流程.md)》。源码仓库与发行 ZIP 的资源范围不同，不得因源码仓库没有模型而误删本机模型。
 
 自动回归也应在英文 Windows 上运行。业务日志不能因控制台编码或日志管道断开使生成失败；临时目录需先规范化，兼容 Windows 8.3 短路径与实际长路径。新增此类问题的针对性回归，避免只在开发电脑上通过。
+
+## 内嵌配置回归
+
+构建会校验并缓存微软 WebView2 SDK，不把二进制提交 Git。运行时使用系统 Evergreen 或软件内 `tools/system-prerequisites/webview2-fixed/`；不要向网页加载 CDN 或把演示计时器接成安装成功状态。
+
+```powershell
+node --test tests/test_setup_frontend.mjs
+# GUI 程序请使用 Start-Process -PassThru -Wait 并检查 ExitCode
+.\dist\agent语音.exe --websetup-unit .\acceptance\embedded-controller
+.\dist\agent语音.exe --websetup-test .\acceptance\embedded-web
+```
+
+控制器测试隔离配置和 HTTP 服务，覆盖 Next/Skip、输入校验、停止冷启动试听和轮询失败清理。WebView 测试覆盖十页、多个窗口大小、真实前端保存引擎、错误服务端口、缺运行时备用入口和缩放帧采样；请保持测试窗口不被其他窗口覆盖。它不运行真实 GPU 合成、系统安装器或登录第三方账号，这些仍需目标电脑验收。Python 测试服务也使用独立空 Codex 会话目录，避免测试时读入开发者的实时聊天。

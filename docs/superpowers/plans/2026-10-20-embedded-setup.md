@@ -1,4 +1,4 @@
-# Embedded Setup Implementation Plan
+﻿# Embedded Setup Implementation Plan
 
 > **For agentic workers:** Use executing-plans to implement this plan task-by-task. User has authorized implementation; continue without another approval gate.
 
@@ -31,29 +31,32 @@
 **Files:** tools/restore_webview2.ps1, build.ps1, tools/module_packages.py, tests/test_embedded_setup_package.py, .gitignore.
 **Interfaces:** pinned SDK restore produces managed Core/WinForms assemblies and x64 WebView2Loader; software package explicitly includes these and assets/setup.
 
-- [ ] Write packaging tests for required UI files and absent private data; run RED.
-- [ ] Restore verified NuGet package into ignored .build-deps; update build and software/environment package inclusion.
-- [ ] Run packaging tests GREEN, build offline from cache, commit.
+- [x] Write packaging tests for required UI files and absent private data; run RED.
+- [x] Restore verified NuGet package into ignored .build-deps; update build and software/environment package inclusion.
+- [x] Run packaging tests GREEN, build offline from cache, commit.
 
 ### Task 2: Real controller and native WebView host
 
 **Files:** ui/EmbeddedSetupController.cs, ui/EmbeddedSetupForm.cs, ui/SetupEntry.cs, ui/WebRuntime.cs, ui/Program.cs, ui/SetupPage.cs, ui/EmbeddedSetupChecks.cs.
 **Interfaces:** controller returns sanitized setup state and dispatches a fixed action set; WebView messages use {id,action,args}. Progress and result messages carry the same request id. Native file dialogs own all browsing. Completion/defer return DialogResult.OK.
 
-- [ ] Add native controller regressions for engine Next/skip, reference validation, unknown commands, preferences and completion; run RED.
-- [ ] Implement fixed command dispatch, real operations, missing-runtime panel and entry routing.
-- [ ] Run controller and real WebView loading regressions, commit.
+- [x] Add native controller regressions for engine Next/skip, reference validation, unknown commands, preferences and completion; run RED.
+- [x] Implement fixed command dispatch, real operations, missing-runtime panel and entry routing.
+- [x] Run controller and real WebView loading regressions, commit.
 
 ### Task 3: Local frontend and integrated acceptance
 
 **Files:** assets/setup/index.html, setup.css, setup.js, bridge.js; tests/test_setup_frontend.mjs; docs and manuals.
 **Interfaces:** frontend consumes sanitized state, request result and progress events; only current-page motion lives. Native runtime diagnostics are available without loading the frontend.
 
-- [ ] Write frontend contract tests for lifecycle, safe rendering and operation state; run RED.
-- [ ] Implement ten pages, independent artwork, title-first motion, real operation feedback, paths/voice drawers and inline failures.
-- [ ] Validate real loading, resize/maximize/restore, all ten pages, native fallback, full UI/welcome and packaging tests. Keep original wizard checks as fallback coverage.
-- [ ] Update WIP with binary, SDK files and frontend; back up prior files. Document limits, commit and push.
+- [x] Write frontend contract tests for lifecycle, safe rendering and operation state; run RED.
+- [x] Implement ten pages, independent artwork, title-first motion, real operation feedback, paths/voice drawers and inline failures.
+- [x] Validate real loading, resize/maximize/restore, all ten pages, native fallback, full UI/welcome and packaging tests. Keep original wizard checks as fallback coverage.
+- [x] Update WIP with binary, SDK files and frontend; back up prior files. Document limits, commit and push.
 
 ## Execution record
 
 Windows environment: skill Bash ledger helpers are replaced by this checklist and evidence under acceptance/. Existing integration worktree is reused. Native implementation proceeds in this chat; independent review follows integration.
+
+
+2026-10-21：三项实现已完成。Task 1 提交 0621ff2。控制器与浏览器已接回真实安装、设置、试听和连接验证，不再使用原型演示计时。独立审查发现的 SDK 回退、异常服务健康检查、重复初始化、冷启动取消、失败试听清理、关闭、安装器持续写入及固定版半成品问题均修复；复核未发现新的重要遗漏。具体证据与尚未覆盖的换机/安装器/GPU 边界见 docs/内嵌网页配置实现与验收-20261021.md。正式安装未替换，只更新 WIP，未制作发布 ZIP。Git 推送在本轮最终提交后核验。
