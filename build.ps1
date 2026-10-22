@@ -18,6 +18,7 @@ foreach ($dependency in @('lib\net462\Microsoft.Web.WebView2.Core.dll','lib\net4
 }
 New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'docs\licenses') -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $webSdk 'LICENSE.txt') -Destination (Join-Path $OutputDirectory 'docs\licenses\WebView2.txt') -Force
+Get-ChildItem -LiteralPath (Join-Path $sourceRoot 'docs\licenses') -File -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $OutputDirectory 'docs\licenses') -Force }
 foreach ($folder in @('service','integrations','tools')) {
     $target = Join-Path $OutputDirectory $folder
     New-Item -ItemType Directory -Path $target -Force | Out-Null

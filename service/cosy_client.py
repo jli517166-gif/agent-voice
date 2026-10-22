@@ -3,6 +3,7 @@ import hashlib
 import io
 import json
 import os
+import socket
 from pathlib import Path
 import subprocess
 import threading
@@ -11,6 +12,16 @@ import urllib.error
 import urllib.request
 import uuid
 import wave
+
+
+def available_worker_port(preferred):
+    """Probe bind permissions as well as occupancy; Windows may reserve a port."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        try:
+            probe.bind(('127.0.0.1', preferred))
+        except OSError:
+            probe.bind(('127.0.0.1', 0))
+        return probe.getsockname()[1]
 
 
 class NaturalTTSClient:
@@ -58,6 +69,8 @@ class NaturalTTSClient:
             for key in ("python", "server", "config"):
                 if not os.path.isfile(self.settings[key]):
                     raise RuntimeError("自然语音文件缺失：" + self.settings[key])
+            self.port = available_worker_port(self.port)
+            self.url = "http://127.0.0.1:%d" % self.port
             log_path = str(Path(self.settings["config"]).with_name("natural-tts.log"))
             environment = dict(os.environ)
             environment.pop("PYTHONHOME", None)
@@ -90,7 +103,7 @@ class NaturalTTSClient:
                 if state.get("error"):
                     raise RuntimeError("自然语音加载失败：" + state["error"])
             if self.process is not None and self.process.poll() is not None:
-                raise RuntimeError("自然语音进程已退出，请看 natural-tts.log")
+                raise RuntimeError("自然语音进程已退出，请查看 " + str(Path(self.settings['config']).with_name('natural-tts.log')))
             time.sleep(.3)
         raise RuntimeError("自然语音加载超时，请看 natural-tts.log")
 

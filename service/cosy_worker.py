@@ -257,7 +257,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(409, {"ok": False, "error": "Natural TTS is busy"})
         try:
             wav, metadata = self.server.actor.synthesize(text, style, speed, seed)
-            print(json.dumps({"text": text, "style": style, **metadata}, ensure_ascii=False), flush=True)
+            print(json.dumps({"text_chars": len(text), "style": style, **metadata}, ensure_ascii=False), flush=True)
             self.reply(200, wav, "audio/wav")
         except Exception as exc:
             self.reply(500, {"ok": False, "error": str(exc)})

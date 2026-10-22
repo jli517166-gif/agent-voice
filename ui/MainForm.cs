@@ -1,4 +1,4 @@
-using Button = AgentVoice.AnimeButton;
+﻿using Button = AgentVoice.AnimeButton;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -39,6 +39,7 @@ namespace AgentVoice {
         string page="home",lastJob="";
         Button serviceToggle,generate,saveVoiceButton,playButton,backButton;
         ComboBox phrases;
+        Label queueSummary;
         TextBox body,profileName;
         readonly Dictionary<string,TextBox> fields=new Dictionary<string,TextBox>();
         readonly Dictionary<string,NumericUpDown> numbers=new Dictionary<string,NumericUpDown>();
@@ -193,10 +194,11 @@ namespace AgentVoice {
             var phraseCard=new ScenePanel{Name="speechPhrases",Host=this,Card=true,Location=new Point(38,474),Size=new Size(658,72),Padding=new Padding(16,8,16,8)};home.Controls.Add(phraseCard);
             var phraseTitle=new Label{Text="常用句",Font=new Font(Font.FontFamily,10F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent};phraseTitle.SetBounds(16,8,160,24);phraseCard.Controls.Add(phraseTitle);
             phrases=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=420,AccessibleName="常用句选择"};phrases.SetBounds(16,36,404,26);phraseCard.Controls.Add(phrases);
-            var manage=Btn("管理",()=>ShowPage("home"));manage.AutoSize=false;manage.MinimumSize=Size.Empty;manage.SetBounds(562,30,80,32);phraseCard.Controls.Add(manage);
+            phrases.SelectionChangeCommitted+=(s,e)=>ApplySelectedPhrase();
+            var manage=AsyncBtn("管理",ManagePhrases);manage.Name="managePhrases";manage.AutoSize=false;manage.MinimumSize=Size.Empty;manage.SetBounds(562,30,80,32);phraseCard.Controls.Add(manage);
             var queue=new ScenePanel{Name="speechQueue",Host=this,Card=true,Location=new Point(725,120),Size=new Size(215,399),Padding=new Padding(16,14,16,14)};home.Controls.Add(queue);
             var queueTitle=new Label{Text="朗读队列",Font=new Font(Font.FontFamily,10F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent};queueTitle.SetBounds(16,14,150,28);queue.Controls.Add(queueTitle);
-            var queueEmpty=Hint("暂时没有朗读任务。\r\n来自客户端的完整句子\r\n会按顺序出现在这里。");queueEmpty.AutoSize=false;queueEmpty.SetBounds(16,55,183,120);queue.Controls.Add(queueEmpty);
+            queueSummary=Hint("暂时没有朗读任务。\r\n来自客户端的完整句子\r\n会按顺序朗读。");queueSummary.AutoSize=false;queueSummary.AutoEllipsis=true;queueSummary.SetBounds(16,55,183,240);queue.Controls.Add(queueSummary);
             var deck=new ScenePanel{Name="speechActions",Host=this,Card=true,Location=new Point(0,560),Size=new Size(978,88),Padding=new Padding(16,10,16,10)};home.Controls.Add(deck);
             var stop=Btn("停止",async()=>await StopSpeech());stop.AutoSize=false;stop.MinimumSize=Size.Empty;stop.SetBounds(16,20,108,40);deck.Controls.Add(stop);
             playButton=LiveSpeechButton("重播上一条",PlayLast);playButton.AutoSize=false;playButton.MinimumSize=Size.Empty;playButton.SetBounds(132,20,160,40);deck.Controls.Add(playButton);
@@ -301,10 +303,20 @@ namespace AgentVoice {
             var state=await Service.Request("/api/state");Config=Json.Decode<Settings>(Json.Encode(state["config"]));observedVoiceRevision=current;
             if(!draftChanged)BindVoice();else UpdateVoiceControls();
         }
-        async Task Poll(){if(polling||IsDisposed)return;polling=true;try{var health=await Service.Request("/health",null,1000);if(Json.Text(health,"service")!="agent-voice-public")throw new InvalidOperationException("端口被其他服务占用");await SyncRemoteVoice(health);serviceToggle.Text="关闭服务";var missing=health["missing"] as object[];connection.Text="服务：已开启\r\n输出："+(missing!=null&&missing.Length>0?"声音待配置":(Convert.ToBoolean(health["airiConnected"])?"AIRI 桌宠":"本地播放"));object states;var connections=health.TryGetValue("harnessConnections",out states)?states as Dictionary<string,object>:null;object rawChecks;var verified=health.TryGetValue("verification",out rawChecks)?rawChecks as Dictionary<string,object>:null;
-                if(verified!=null){foreach(var entry in verified){var item=entry.Value as Dictionary<string,object>;if(item!=null&&Json.Text(item,"state")=="verified"&&connections!=null&&connections.ContainsKey(entry.Key))((Dictionary<string,object>)connections[entry.Key])["state"]="verified";}UpdateVerification(verified);}modelStatus=Json.Text(health,"serviceState");tips.SetToolTip(statusSystem,Json.Text(health,"error"));UpdateHarnessIndicators(connections,true);UpdateTopStatus(true);await ResumeAiriVerification(Convert.ToBoolean(health["airiConnected"]));}catch{pendingAiriVerification=false;modelStatus="offline";serviceToggle.Text="启动服务";connection.Text="服务：关闭或未响应\r\n输出：待命";UpdateHarnessIndicators(null,false);UpdateTopStatus(false);UpdateAiriStatus("AIRI · 服务关闭",ForeColor);}finally{if(Config.voice.assetScope=="private")connection.Text+="\r\n声音：私有";polling=false;}}
+        async Task Poll(){if(polling||IsDisposed)return;polling=true;try{var health=await Service.Request("/health",null,1000);if(Json.Text(health,"service")!="agent-voice-public")throw new InvalidOperationException("端口被其他服务占用");await SyncRemoteVoice(health);UpdateQueue(health);serviceToggle.Text="关闭服务";var missing=health["missing"] as object[];connection.Text="服务：已开启\r\n输出："+(missing!=null&&missing.Length>0?"声音待配置":(Convert.ToBoolean(health["airiConnected"])?"AIRI 桌宠":"本地播放"));object states;var connections=health.TryGetValue("harnessConnections",out states)?states as Dictionary<string,object>:null;object rawChecks;var verified=health.TryGetValue("verification",out rawChecks)?rawChecks as Dictionary<string,object>:null;
+                if(verified!=null){foreach(var entry in verified){var item=entry.Value as Dictionary<string,object>;if(item!=null&&Json.Text(item,"state")=="verified"&&connections!=null&&connections.ContainsKey(entry.Key))((Dictionary<string,object>)connections[entry.Key])["state"]="verified";}UpdateVerification(verified);}modelStatus=Json.Text(health,"serviceState");tips.SetToolTip(statusSystem,Json.Text(health,"error"));UpdateHarnessIndicators(connections,true);UpdateTopStatus(true);await ResumeAiriVerification(Convert.ToBoolean(health["airiConnected"]));}catch{UpdateQueue(null);pendingAiriVerification=false;modelStatus="offline";serviceToggle.Text="启动服务";connection.Text="服务：关闭或未响应\r\n输出：待命";UpdateHarnessIndicators(null,false);UpdateTopStatus(false);UpdateAiriStatus("AIRI · 服务关闭",ForeColor);}finally{if(Config.voice.assetScope=="private")connection.Text+="\r\n声音：私有";polling=false;}}
         void UpdateTopStatus(bool online){if(statusSystem==null)return;string label="未就绪";switch(modelStatus){case "ready":label="声音已就绪";break;case "loading":label="模型加载中";break;case "unconfigured":label="声音待配置";break;case "error":label="声音故障 · 请自检";break;case "generating":label="语音生成中";break;case "playing":label="正在播放";break;case "queued":label="等待播放";break;case "not_loaded":label="模型尚未加载";break;}statusSystem.Text="● 系统 · "+(online?label:"服务关闭或未响应");statusSystem.ForeColor=online?(modelStatus=="error"?Color.Salmon:modelStatus=="ready"?Color.FromArgb(80,235,190):Color.Gold):ForeColor;statusEngine.Text="● 引擎 · "+(Config.voice.engine=="gpt-sovits"?"GPT-SoVITS":"CosyVoice");statusVoice.Text=Config.voice.engine=="gpt-sovits"?"● 版本 · "+(Config.voice.gptVariant=="v5turbo"?"v5 Turbo":"ProPlus"):"● 声音 · CosyVoice";statusOutput.Text="● 输出 · TTS 直出";}
         void RefreshPhrases(){string selected=Convert.ToString(phrases.SelectedItem);phrases.Items.Clear();foreach(var text in Config.phrases)phrases.Items.Add(text);if(phrases.Items.Contains(selected))phrases.SelectedItem=selected;else if(phrases.Items.Count>0)phrases.SelectedIndex=0;}
+        void ApplySelectedPhrase(){if(phrases.SelectedItem!=null)body.Text=Convert.ToString(phrases.SelectedItem);}
+        void UpdateQueue(Dictionary<string,object> health){
+            if(queueSummary==null)return;
+            if(health==null){queueSummary.Text="服务尚未连接。\r\n开启服务后显示朗读任务。";return;}
+            object raw;var current=health.TryGetValue("current",out raw)?raw as Dictionary<string,object>:null;int queued=health.ContainsKey("queued")?Convert.ToInt32(health["queued"]):0;
+            if(current==null){queueSummary.Text=queued>0?"等待朗读 · "+queued+" 条":"暂时没有朗读任务。\r\n来自客户端的完整句子\r\n会按顺序朗读。";return;}
+            string state=Json.Text(current,"state"),text=Json.Text(current,"text");if(text.Length>100)text=text.Substring(0,100)+"…";
+            queueSummary.Text=(state=="playing"?"正在播放":state=="queued"?"等待朗读":"正在生成")+" · "+Json.Text(current,"source")+"\r\n\r\n"+text+"\r\n\r\n等待中的任务："+queued;
+        }
+        async Task ManagePhrases(){using(var editor=new PhraseEditorForm(Config.phrases,body.Text)){if(editor.ShowDialog(this)!=DialogResult.OK)return;var next=Json.Copy(Config);next.phrases=editor.Phrases;await Persist(next,new{phrases=next.phrases});RefreshPhrases();}}
         void RefreshProfiles(){if(profileList==null)return;string selected=(profileList.SelectedItem as SavedVoice)==null?"":((SavedVoice)profileList.SelectedItem).id;profileList.Items.Clear();foreach(var profile in Config.profiles)profileList.Items.Add(profile);for(int i=0;i<profileList.Items.Count;i++)if(((SavedVoice)profileList.Items[i]).id==selected)profileList.SelectedIndex=i;if(profileEmpty!=null)profileEmpty.Visible=profileList.Items.Count==0;}
         void BuildSavedVoices(){
             var page=WebPage("voices");

@@ -78,7 +78,7 @@ class Jobs:
                     self.check(job); self.current=job; job["state"]="generating"
                     if not job["existing"]:self.protect(target)
                 from bounded_logs import message
-                message("朗读正文："+job["text"])
+                message("朗读任务：%s · 来源 %s · %d 字" % (job['id'], job['source'], len(job['text'])))
                 chunks=(generation_chunks(job['text']) if not job['play'] else [piece for sentence in playback_chunks(job['text']) for piece in generation_chunks(sentence)]) if not job['existing'] else [job['text']]
                 progressive=len(chunks)>1
                 result=self.progressive(job,target,chunks) if progressive else (copy.deepcopy(job["existing"]) if job["existing"] else self.pipeline.synthesize(job["text"],job["voice"],target,lambda:self.check(job)))

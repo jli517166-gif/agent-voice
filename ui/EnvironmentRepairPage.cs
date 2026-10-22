@@ -59,6 +59,7 @@ namespace AgentVoice {
         }
         public async Task RunTargetAcceptance(){
             string directory=Store.Resolve("data/target-acceptance"),reportPath=Path.Combine(directory,"latest.json");Directory.CreateDirectory(directory);
+            File.WriteAllText(reportPath,Json.Encode(new{createdAt=DateTimeOffset.Now.ToString("o"),status="running",ttsOk=(bool?)null,checks=new object[0]}),Encoding.UTF8);
             bool wasRunning=await Service.Running();var original=Json.Copy(Config);var checksResult=new List<object>();Exception failure=null;
             try{
                 if(!wasRunning)await Service.Start();
@@ -84,7 +85,7 @@ namespace AgentVoice {
                 if(!wasRunning)try{await Service.Stop();}catch(Exception error){restoreFailure=restoreFailure??error;}
             }else try{Store.Write(original);}catch(Exception error){restoreFailure=error;}
             if(restoreFailure!=null){if(failure==null)failure=restoreFailure;checksResult.Add(new{check="restore",ok=false,error=restoreFailure.Message});}
-            Config=Store.Read();BindVoice();File.WriteAllText(reportPath,Json.Encode(new{createdAt=DateTimeOffset.Now.ToString("o"),computer=Environment.MachineName,scope="tts-longtext-stop-recovery-and-optional-airi",ttsOk=failure==null,externalConnectionsRequireSeparateVerification=true,checks=checksResult}),Encoding.UTF8);
+            Config=Store.Read();BindVoice();File.WriteAllText(reportPath,Json.Encode(new{createdAt=DateTimeOffset.Now.ToString("o"),status=failure==null?"completed":"failed",computer=Environment.MachineName,scope="tts-longtext-stop-recovery-and-optional-airi",ttsOk=failure==null,externalConnectionsRequireSeparateVerification=true,checks=checksResult}),Encoding.UTF8);
             repairDetails.Text="换机验收报告："+reportPath+"\r\n\r\n"+string.Join("\r\n",checksResult.Select(Json.Encode).ToArray());
             if(failure!=null)throw new InvalidOperationException("换机验收未通过，已把失败步骤写入报告："+failure.Message,failure);
             Status("三种 TTS、长文与停止恢复已经通过；Harness 必须在连接页面完成真实回复验证，AIRI 未启用时保持可选。");
