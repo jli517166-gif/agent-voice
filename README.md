@@ -11,7 +11,7 @@
 
 ## 引擎选择
 
-CosyVoice 保留原有认可声音；新增 GPT 版本中推荐 v5 Turbo，ProPlus 用于按角色保存备选。F5、Chatterbox、VoxCPM、Qwen、MOSS 不再进入正式选择。当前本机集成版已经配置引擎；GitHub 源码仍不携带运行环境和权重。操作与兼容范围见《[TTS 使用手册](TTS使用手册.md)》。
+默认引擎为 CosyVoice；GPT 版本中推荐 v5 Turbo，ProPlus 用于按角色保存备选。F5、Chatterbox、VoxCPM、Qwen、MOSS 不再进入正式选择。软件不预置音色，引擎与环境可以分别安装；GitHub 源码不携带运行环境和权重。操作与兼容范围见《[TTS 使用手册](TTS使用手册.md)》，本次分包安装见《[模块化发行与模拟安装](docs/模块化发行与模拟安装-20261022.md)》。
 
 ## 主要功能
 
@@ -62,7 +62,7 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1
 .\dist\agent语音.exe
 ```
 
-首次启动不会自带声音资产。请先按照安装手册把 CosyVoice 放进 `tts-engines`，再导入轻量或完整音色包；也可以在“CosyVoice 训练相关参考”中选择参考音频并填写逐字一致的台词。
+首次启动不会自带声音资产。请先安装 TTS 引擎与运行环境，再手动选择自己有权使用的参考录音并填写对应台词。需要迁移音色归档时，须另外安装“音色包导入导出”功能模块；本体没有该操作，首次配置也不要求安装此模块。
 
 ## 默认目录
 
@@ -71,7 +71,7 @@ dist/
 ├─ agent语音.exe
 ├─ service/                         # 本地语音服务
 ├─ integrations/                    # Harness 连接器及注入 AIRI 的桥接源码
-├─ tools/                           # 配置、音色包与接入工具
+├─ tools/                           # 配置、环境与接入工具
 ├─ runtime/core/python.exe           # 主服务和播放；不含 Torch
 ├─ tts-engines/                     # 所有本地 TTS 引擎的专用根目录
 │  ├─ gpt-sovits/                   # 两个 GPT 版本共用源码、运行环境和模型库
@@ -81,7 +81,7 @@ dist/
 │     ├─ runtime/tools/python.exe   # 用户自行创建的 CosyVoice Python 环境
 │     └─ models/
 │        └─ Fun-CosyVoice3-0.5B/    # 用户自行下载的预训练模型
-├─ voice-model-packages/             # 用户自己的 .cosyvoice.ttsmodel
+├─ voice-model-packages/             # 可选音色包模块自己的文件库
 ├─ voices/                           # 用户自己的参考资源
 └─ data/                             # 首次运行后生成的设置、缓存与输出
 ```
