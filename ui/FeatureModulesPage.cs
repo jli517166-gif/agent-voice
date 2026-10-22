@@ -11,7 +11,7 @@ namespace AgentVoice {
         FlowLayoutPanel installedModules;
         void BuildModules(){
             var stack=Stack(NewPage("modules"));var card=Card(stack,"模块");
-            Add(card,Hint("本体只提供核心语音功能。功能扩展、TTS 引擎和运行环境按需安装；不会自动附带任何音色。"));
+            Add(card,Hint("功能扩展、TTS 引擎和运行环境可按需安装。"));
             Add(card,Row(AsyncBtn("导入模块",ImportOptionalModule),Btn("刷新列表",RefreshOptionalModules)));
             Add(card,Hint("功能模块为 .avmodule，引擎包为 .ttsengine，环境包为 .ttsenvironment。模块会运行本地代码，请确认来源可信。安装功能模块不要求先安装 TTS。"));
             var list=Card(stack,"已安装的功能模块");installedModules=new BufferedFlow{AutoSize=true,Dock=DockStyle.Top,FlowDirection=FlowDirection.TopDown,WrapContents=false};Add(list,installedModules);RefreshOptionalModules();

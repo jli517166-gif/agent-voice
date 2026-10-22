@@ -72,6 +72,7 @@ namespace AgentVoice {
         }
     }
     public sealed class ScenePanel:Panel {
+        internal void RefreshScrollExtent(){if(AutoScroll)AdjustFormScrollbars(true);}
         public MainForm Host;
         public bool Card;
         public bool ComposeChildren;

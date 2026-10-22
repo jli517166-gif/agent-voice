@@ -20,7 +20,7 @@ namespace AgentVoice {
         static readonly ConditionalWeakTable<ScenePanel,Layout> layouts=new ConditionalWeakTable<ScenePanel,Layout>();
         internal static Size CanvasFor(ScenePanel page){Layout layout;return layouts.TryGetValue(page,out layout)?layout.Canvas:DesignCanvas;}
         internal static void Attach(ScenePanel page){
-            Layout existing;if(layouts.TryGetValue(page,out existing))return;
+            Layout existing;if(layouts.TryGetValue(page,out existing)){Fit(page,existing);return;}
             page.Tag="webfit";page.AutoScroll=true;
             var map=new Dictionary<Control,Base>();Capture(page,map);
             int right=DesignCanvas.Width,bottom=DesignCanvas.Height;
@@ -73,8 +73,10 @@ namespace AgentVoice {
                     }
                     documentHeight+=extra;
                 }
-                page.AutoScrollMinSize=new Size((int)Math.Ceiling(layout.Canvas.Width*scale),documentHeight);
-            } finally {page.ResumeLayout(true);layout.Fitting=false;}
+                // Leave room beneath the final action when scrolled to the end.
+                // The persistent status row is outside this viewport.
+                page.AutoScrollMinSize=new Size((int)Math.Ceiling(layout.Canvas.Width*scale),documentHeight+(int)Math.Ceiling(28*dpi));
+            } finally {page.ResumeLayout(true);page.RefreshScrollExtent();layout.Fitting=false;}
             page.Invalidate(true);
         }
         static bool HasSpeechEditor(Dictionary<Control,Base> map){foreach(var control in map.Keys)if(control.Name=="speechEditor")return true;return false;}

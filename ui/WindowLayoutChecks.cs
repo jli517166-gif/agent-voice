@@ -19,7 +19,8 @@ namespace AgentVoice {
                 client = control.ClientSize, display = control.DisplayRectangle,
                 dock = control.Dock.ToString(), font = control.Font.Size,
                 autoSize = control.AutoSize, minimum = control.MinimumSize,
-                maximum = control.MaximumSize
+                maximum = control.MaximumSize,
+                scrollMinimum = control is ScrollableControl?((ScrollableControl)control).AutoScrollMinSize:Size.Empty
             };
         }
 
@@ -84,6 +85,19 @@ namespace AgentVoice {
                 errors.Add(tag + ": control outside page: " + control.Text + " " + control.Bounds + " vs " + current.ClientSize);
             }
             CheckWindowContent(current, tag, errors);
+            var viewportScreen=content.RectangleToScreen(content.ClientRectangle);
+            var statusScreen=footer.RectangleToScreen(footer.ClientRectangle);
+            if(Rectangle.Intersect(viewportScreen,statusScreen).Height>0||statusScreen.Top-viewportScreen.Bottom<UiPx(8))
+                errors.Add(tag+": status row overlaps the page or has no separation");
+            if(id=="connections"){
+                var last=current.Controls.Cast<Control>().SelectMany(c=>c.Controls.Cast<Control>()).OfType<AnimeButton>().First(b=>b.Text=="开发其他客户端连接器");
+                current.AutoScrollPosition=new Point(0,current.DisplayRectangle.Height);Application.DoEvents();
+                var actionScreen=last.RectangleToScreen(last.ClientRectangle);
+                if(!viewportScreen.Contains(actionScreen)||Rectangle.Intersect(actionScreen,statusScreen).Height>0)
+                    errors.Add(tag+": final connection action cannot be fully reached above status row");
+                if(mode=="default"||mode=="minimum"||mode=="maximized")WebSubpageShot(id,directory,mode+"-connection-bottom");
+                current.AutoScrollPosition=Point.Empty;Application.DoEvents();
+            }
             if (sidebar.Width < 180 * InterfaceScale)
                 errors.Add(tag + ": navigation too narrow for display scaling");
             var navigation = navigationButtons["home"];

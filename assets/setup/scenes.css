@@ -54,3 +54,6 @@ body.resizing *,body.resizing *:before,body.resizing *:after{animation-play-stat
 .step-8 .art-label{bottom:0!important}
 @media(max-width:1000px){.step-8 .art img{max-height:300px}}
 @media(max-width:650px){.step-8 .art{min-height:300px}.step-8 .art img{max-height:240px}}
+
+/* Keep the required reading instruction next to its action, never over controls. */
+.legal-reminder{padding:12px 16px;border-left:3px solid var(--accent);background:#b49aff12;color:#e2d6ff;font-size:14px;line-height:1.7;margin:20px 0 0}

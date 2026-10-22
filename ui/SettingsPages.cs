@@ -43,7 +43,7 @@ namespace AgentVoice {
             SettingsLine(engineCard,3,"连接设备","连接 Harness 或 AIRI，并做真实播放验证。","连接设备",()=>ShowPage("connections"));
             var soundCard=WebCard(panels[1],0,0,902,240);
             SettingsLine(soundCard,0,"声音细调","调整表达指令、句首空白和播放音量。","调整",()=>ShowPage("advanced"));
-            SettingsLine(soundCard,1,"可选模块","按需安装功能模块；本体不包含音色包导入导出。","管理模块",()=>ShowPage("modules"));
+            SettingsLine(soundCard,1,"可选模块","按需安装和管理功能扩展。","管理模块",()=>ShowPage("modules"));
             SettingsLine(soundCard,2,"声音方案","保存和切换整套声音设置。","管理",()=>ShowPage("voices"));
             var lookCard=WebCard(panels[2],0,0,902,160);
             SettingsLine(lookCard,0,"外观与图标","设置背景、配色、程序图标和等待动画。","打开外观",()=>ShowPage("appearance"));

@@ -47,6 +47,7 @@ namespace AgentVoice {
             await form.Controller.Execute("go",new Dictionary<string,object>{{"step",5}});form.Browser.CoreWebView2.Reload();
             await Wait(()=>Script(form,"document.querySelector('[data-action=\"legal-read\"]')!==null"));
             if(!await Script(form,"document.querySelector('#next').disabled && document.querySelector('#skip').hidden && document.querySelector('#position').textContent==='第 1 步 / 共 9 步 · 使用须知'"))errors.Add("Legal gate or displayed first step is wrong");
+            if(!await Script(form,"(()=>{const hint=document.querySelector('#legalReminder'),button=document.querySelector('[data-action=\"legal-read\"]');return hint?.textContent.includes('请先点击') && hint.getBoundingClientRect().bottom<=button.getBoundingClientRect().top})()"))errors.Add("Required reading instruction missing or overlaps its action");
             bool legalBlocked=false;try{await form.Controller.Execute("next",new Dictionary<string,object>());}catch(InvalidOperationException){legalBlocked=true;}
             if(!legalBlocked)errors.Add("Backend next bypassed legal acknowledgement");
             await form.Browser.ExecuteScriptAsync("document.querySelector('[data-action=\"legal-read\"]').click()");
