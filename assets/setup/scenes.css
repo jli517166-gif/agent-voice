@@ -36,3 +36,21 @@ body.resizing *,body.resizing *:before,body.resizing *:after{animation-play-stat
 @media(max-width:1000px){.art{min-height:290px}.step-8 .art{min-height:350px}.art img{max-width:285px}.step-8 .art img{max-width:350px}.step-8 .copy{padding-right:12px}}
 @media(max-width:650px){.art{min-height:210px;max-height:240px}.art img{max-width:220px;max-height:210px}#page.step-8{grid-template-columns:1fr}#page.step-8:before{inset:50% 0 0 15%}.step-8 .art{min-height:230px}.step-8 .art img{max-height:240px;width:290px}.step-8 .copy{padding-right:12px}.scene-tags{bottom:0}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+
+/* Captions have reserved rows; artwork cannot occupy text space. */
+.art:not(.scene-8){padding-bottom:100px;min-height:390px;max-height:none}
+.art:not(.scene-8) .art-label{bottom:2px!important;inset-inline:0;text-align:center;line-height:1.6}
+.scene-1 .scene-tags,.scene-3 .scene-tags{bottom:48px;line-height:1.7}
+.scene-2 .signal-route{bottom:48px}
+.scene-4 .dependency-grid{bottom:44px}
+.scene-6 .scene-wave{bottom:40px}
+.scene-9 .sound-settle{bottom:44px}
+.scene-9 img{margin-bottom:0}
+@media(max-width:1000px){.art:not(.scene-8){min-height:350px}}
+@media(max-width:650px){.art:not(.scene-8){min-height:300px;max-height:none}.art:not(.scene-8) img{max-height:190px}.scene-tags{bottom:48px}}
+
+/* AIRI keeps its own composition, with a separate caption baseline at compact sizes. */
+.step-8 .art{padding-bottom:48px;min-height:410px;max-height:none}
+.step-8 .art-label{bottom:0!important}
+@media(max-width:1000px){.step-8 .art img{max-height:300px}}
+@media(max-width:650px){.step-8 .art{min-height:300px}.step-8 .art img{max-height:240px}}

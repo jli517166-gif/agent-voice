@@ -21,31 +21,49 @@ namespace AgentVoice {
         internal SetupWorkflow(SettingsStore store){Store=store;Service=new ServiceClient(store);State=new WelcomeState(store);}
         internal void Mark(string key,string status){var p=State.Read();p.setupStates[key]=status;State.Write(p);}
         internal async Task Save(Settings next,object patch){if(await Service.Running())await Service.Request("/api/config",patch,90000);else Store.Write(next);}
-        internal async Task SelectEngine(int index){var c=Config;c.voice.engine=index==0?"cosyvoice":"gpt-sovits";if(index>0)c.voice.gptVariant=index==1?"v5turbo":"proplus";await Save(c,new{voice=c.voice});Mark("engine","selected");}
+        internal async Task SelectEngine(int index){var c=Config;var old=c.voice.Clone();c.voice=EngineSwitching.Target(Store,c,index);EngineSwitching.Remember(Store,old);await Save(c,new{voice=c.voice});InvalidateVoice();Mark("engine","selected");}
+        internal int[] InstallEngines(){return State.Read().installEngines??new[]{EngineSwitching.Index(Config.voice)};}
+        internal void SelectInstallEngines(int[] indices){if(indices.Length>3||indices.Any(i=>i<0||i>2))throw new InvalidOperationException("安装引擎选择无效。");var p=State.Read();p.installEngines=indices.Distinct().OrderBy(i=>i).ToArray();State.Write(p);}
+        internal async Task<string> PrepareSelected(bool environment,bool repair){
+            string[] families=EngineSwitching.Families(InstallEngines());if(families.Length==0)throw new InvalidOperationException("尚未选择安装引擎。请返回选择，或使用本地导入。");
+            var results=new List<string>();bool failed=false;
+            foreach(string family in families){
+                string key=(environment?"environment:":"engineFiles:")+family;Report("正在处理 "+family+"（"+(results.Count+1)+"/"+families.Length+"）");
+                try{string result=environment?await PrepareEnvironment(repair,family):await PrepareEngine(family);Mark(key,"prepared");results.Add(family+"："+result);}
+                catch(Exception error){failed=true;Mark(key,"failed");results.Add(family+"：未完成 — "+error.Message);}
+            }
+            string summary=string.Join("\r\n",results);if(failed)throw new InvalidOperationException(summary+"\r\n已完成的引擎会保留，可修复失败项后重试。");return summary;
+        }
         internal string Resources(){var c=Config;string model=c.voice.engine=="cosyvoice"?(c.voice.baseModel.Length>0?c.voice.baseModel:c.engines.cosyModel):(c.voice.gptModel.Length>0?c.voice.gptModel:c.engines.gptModel);return "主服务："+(File.Exists(Store.Resolve(c.engines.pythonService))?"已找到":"待安装")+"   ·   TTS 环境："+(File.Exists(Store.Resolve(c.voice.engine=="cosyvoice"?c.engines.pythonTts:c.engines.pythonGpt))?"已找到":"待安装")+"\r\n基础模型："+(Directory.Exists(Store.Resolve(model))?"已找到":"待安装")+"   ·   参考声音："+(File.Exists(Store.Resolve(c.voice.reference))&&!string.IsNullOrWhiteSpace(c.voice.referenceText)?"已配置":"待选择");}
         internal async Task<string> InspectComputer(){
             string result=await Task.Run(()=>{var b=new StringBuilder();b.AppendLine(Environment.OSVersion+" · "+(Environment.Is64BitOperatingSystem?"64 位":"32 位"));b.AppendLine("可用空间："+(new DriveInfo(Path.GetPathRoot(Store.Root)).AvailableFreeSpace/1073741824d).ToString("0.0")+" GB");string probe=Store.Resolve("data/setup-write-"+Guid.NewGuid().ToString("N")+".tmp");Directory.CreateDirectory(Path.GetDirectoryName(probe));try{File.WriteAllText(probe,"check");b.AppendLine("安装目录可写。");}finally{if(File.Exists(probe))File.Delete(probe);}try{using(var p=Process.Start(new ProcessStartInfo("nvidia-smi","--query-gpu=name,driver_version,memory.total --format=csv,noheader"){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true})){var output=p.StandardOutput.ReadToEndAsync();var error=p.StandardError.ReadToEndAsync();if(!p.WaitForExit(15000)){p.Kill();throw new InvalidOperationException("显卡检测超时");}Task.WaitAll(output,error);b.AppendLine(p.ExitCode==0?output.Result:"未检测到 NVIDIA 驱动。请安装驱动后重试。");}}catch(Exception e){b.AppendLine("显卡检查："+e.Message);}b.AppendLine("文件存在不代表声音可用；稍后还会测试真实生成和播放。");return b.ToString();});Mark("computer","checked");return result;
         }
         internal async Task InstallModule(string file,string kind,Action<string> progress){
             if(await Service.Running())throw new InvalidOperationException("请先停止语音服务，再安装模块。当前配置保留。");
-            var dispatcher=new Progress<string>(progress);await Task.Run(()=>ModulePackages.Install(Store,file,s=>((IProgress<string>)dispatcher).Report(s),CancellationToken.None));Mark(kind,"installed");InvalidateVoice();
+            var manifest=ModulePackages.Inspect(file);
+            var dispatcher=new Progress<string>(progress);await Task.Run(()=>ModulePackages.Install(Store,file,s=>((IProgress<string>)dispatcher).Report(s),CancellationToken.None));
+            if(kind=="engine"){
+                int index=manifest.engine=="cosyvoice"?0:(manifest.profile??"").Contains("proplus")?2:1;
+                SelectInstallEngines(InstallEngines().Concat(new[]{index}).Distinct().ToArray());Mark("engineFiles:"+manifest.engine,"installed");
+            }
+            Mark(kind,"installed");InvalidateVoice();
         }
-        internal async Task<string> PrepareEnvironment(bool repair){
+        internal async Task<string> PrepareEnvironment(bool repair,string engine="current"){
             if(repair&&await Service.Running())throw new InvalidOperationException("请先停止语音服务，再补齐环境。");
             var c=Config;bool offline=State.Read().offline;
             if(!File.Exists(Store.Resolve(c.engines.pythonService))){if(!repair||offline)throw new InvalidOperationException("缺少主服务运行环境。请导入环境包；或关闭严格离线，再选择联网补齐。");await EnvironmentBootstrap.EnsureCore(Store,Report);}
-            var result=Json.Object(await RunPreparationTool((repair?"repair":"inspect")+" --root "+ServiceClient.Quote(Store.Root)+" --engine current --prepare-only"+(repair?" --dependencies-only":"")+(offline?" --offline":"")));
+            var result=Json.Object(await RunPreparationTool((repair?"repair":"inspect")+" --root "+ServiceClient.Quote(Store.Root)+" --engine "+engine+" --prepare-only"+(repair?" --dependencies-only":"")+(offline?" --offline":"")));
             Mark("environment",Convert.ToBoolean(result["ok"])?"prepared":"failed");
             // Keep the detailed diagnostic, including failed paths, available in this step.
             string text=Json.Encode(result);Directory.CreateDirectory(Store.Resolve("data/setup"));File.WriteAllText(Store.Resolve("data/setup/environment-report.json"),text,Encoding.UTF8);
             if(!Convert.ToBoolean(result["ok"]))throw new InvalidOperationException("环境检查未通过："+Json.Text(result,"error")+"\r\n详细报告："+Store.Resolve("data/setup/environment-report.json"));
             return "运行文件检查通过。接下来导入音色，再进行真实试听。\r\n详细报告："+Store.Resolve("data/setup/environment-report.json");
         }
-        internal async Task<string> PrepareEngine(){
+        internal async Task<string> PrepareEngine(string engine="current"){
             if(State.Read().offline)throw new InvalidOperationException("严格离线已开启，请展开本地安装，导入引擎包或定位已有引擎。");
             if(await Service.Running())throw new InvalidOperationException("请先停止语音服务，再准备引擎文件。");
             await EnvironmentBootstrap.EnsureCore(Store,Report);
-            var result=Json.Object(await RunPreparationTool("resources --root "+ServiceClient.Quote(Store.Root)+" --engine current"));
+            var result=Json.Object(await RunPreparationTool("resources --root "+ServiceClient.Quote(Store.Root)+" --engine "+engine));
             if(!Convert.ToBoolean(result["ok"]))throw new InvalidOperationException(Json.Text(result,"error"));
             Mark("engineFiles","prepared");InvalidateVoice();return Json.Text(result,"message");
         }

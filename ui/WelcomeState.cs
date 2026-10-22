@@ -15,6 +15,7 @@ namespace AgentVoice {
         public bool heardVoice=false,offline=false;
         public bool interfaceSounds=true;
         public int onboardingVersion=0,onboardingStep=0;
+        public int[] installEngines=null;
         public bool onboardingComplete=false,onboardingDeferred=false;
     }
     public sealed class WelcomeState {

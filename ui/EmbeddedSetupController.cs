@@ -22,7 +22,7 @@ namespace AgentVoice {
             var c=Flow.Config;var p=Flow.State.Read();
             var paths=EngineFields.ToDictionary(key=>key,key=>Convert.ToString(typeof(Engines).GetField(key).GetValue(c.engines)));
             return new{step=Math.Max(0,Math.Min(9,p.onboardingStep)),engine=c.voice.engine=="cosyvoice"?0:c.voice.gptVariant=="proplus"?2:1,
-                offline=p.offline,reduceMotion=p.reduceMotion,sound=p.interfaceSounds,resources=Flow.Resources(),paths=paths,
+                installEngines=Flow.InstallEngines(),offline=p.offline,reduceMotion=p.reduceMotion,sound=p.interfaceSounds,resources=Flow.Resources(),paths=paths,
                 reference=c.voice.reference,transcript=c.voice.referenceText,baseModel=c.voice.baseModel,gptModel=c.voice.gptModel,
                 profiles=c.profiles.Select(v=>new{id=v.id,name=v.name}).ToArray(),airiEnabled=c.airi.enabled,airiDirectory=c.airi.directory,
                 heardVoice=p.heardVoice&&p.voiceEvidence==Flow.Evidence(),states=p.setupStates,manualPrompt=ManualPrompt,finished=Finished,deferred=Deferred};
@@ -48,7 +48,13 @@ namespace AgentVoice {
                     case "go":Go(Number(args,"step",9));break;
                     case "back":Go(Math.Max(0,step-1));break;
                     case "next":
-                        if(step==2)await Flow.SelectEngine(Number(args,"engine",2));
+                        if(step==2){
+                            if(args.ContainsKey("engines")){
+                                var values=args["engines"] as System.Collections.IEnumerable;
+                                if(values==null||args["engines"] is string)throw new InvalidOperationException("安装引擎列表无效。");
+                                var indices=new List<int>();foreach(object value in values){if(!(value is int)||indices.Count>=3)throw new InvalidOperationException("安装引擎列表无效。");indices.Add((int)value);}Flow.SelectInstallEngines(indices.ToArray());
+                            }else await Flow.SelectEngine(Number(args,"engine",2));
+                        }
                         if(step>=9){Finish(false);break;}Go(step+1);break;
                     case "skip":if(step<1||step>8)throw new InvalidOperationException("当前页面不能跳过。");Flow.Mark("step"+step,"skipped");Go(step+1);break;
                     case "defer":Finish(true);break;
@@ -56,10 +62,11 @@ namespace AgentVoice {
                         var p=Flow.State.Read();p.offline=Flag(args,"offline");p.reduceMotion=Flag(args,"reduceMotion");p.interfaceSounds=Flag(args,"sound");Flow.State.Write(p);break;
                     case "computer":message=await Flow.InspectComputer();break;
                     case "resources":message=Flow.Resources();break;
-                    case "download-engine":message=await Flow.PrepareEngine();break;
+                    case "download-engine":message=await Flow.PrepareSelected(false,false);break;
+                    case "switch-engine":await Flow.SelectEngine(Number(args,"engine",2));message="当前引擎已保存："+EngineSwitching.Label(EngineSwitching.Index(Flow.Config.voice))+"。请重新试听确认。";break;
                     case "recover":await Task.Run(()=>ModulePackages.Recover(Flow.Store));message="未完成安装已恢复。";break;
-                    case "inspect-environment":message=await Flow.PrepareEnvironment(false);break;
-                    case "repair-environment":if(Flow.State.Read().offline)throw new InvalidOperationException("严格离线已开启，请导入离线环境包或关闭离线开关。");message=await Flow.PrepareEnvironment(true);break;
+                    case "inspect-environment":message=await Flow.PrepareSelected(true,false);break;
+                    case "repair-environment":if(Flow.State.Read().offline)throw new InvalidOperationException("严格离线已开启，请导入离线环境包或关闭离线开关。");message=await Flow.PrepareSelected(true,true);break;
                     case "stop-service":if(await Flow.Service.Running())await Flow.Service.Stop();message="服务已停止，可以准备环境。";break;
                     case "install-engine":case "install-environment":
                         string kind=action=="install-engine"?"engine":"environment",file=Text(args,"file");

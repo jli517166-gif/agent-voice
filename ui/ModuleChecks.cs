@@ -10,7 +10,7 @@ using System.Threading;
 namespace AgentVoice {
     static class ModuleChecks {
         static string Sha(byte[] bytes){using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-","").ToLowerInvariant();}
-        static string Package(string directory,string name,Dictionary<string,string> input,string[] components,Dictionary<string,string> defaults,Action<ModuleManifest> mutate=null,string kind="environment",string engine="all"){
+        internal static string Package(string directory,string name,Dictionary<string,string> input,string[] components,Dictionary<string,string> defaults,Action<ModuleManifest> mutate=null,string kind="environment",string engine="all"){
             string file=Path.Combine(directory,name+(kind=="engine"?".ttsengine":".ttsenvironment"));var files=input.Select(pair=>new ModuleFile{path=pair.Key,size=Encoding.UTF8.GetByteCount(pair.Value),sha256=Sha(Encoding.UTF8.GetBytes(pair.Value))}).ToArray();
             var manifest=new ModuleManifest{format="agent-voice-module",version=1,kind=kind,engine=engine,name="test",platform="windows-x64",profile="fixture",components=components,defaults=defaults,files=files};if(mutate!=null)mutate(manifest);
             using(var zip=ZipFile.Open(file,ZipArchiveMode.Create)){using(var writer=new StreamWriter(zip.CreateEntry("manifest.json").Open(),new UTF8Encoding(false)))writer.Write(Json.Encode(manifest));foreach(var item in input)using(var writer=new StreamWriter(zip.CreateEntry("payload/"+item.Key).Open(),new UTF8Encoding(false)))writer.Write(item.Value);}

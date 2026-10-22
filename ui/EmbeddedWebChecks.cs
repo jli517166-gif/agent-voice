@@ -55,18 +55,19 @@ namespace AgentVoice {
                     await Task.Delay(80);
                     string audit=await form.Browser.ExecuteScriptAsync(@"(()=>{const all=[...document.querySelectorAll('header,footer,footer button')].filter(x=>!x.hidden);const outside=all.filter(x=>{const r=x.getBoundingClientRect();return r.left<-.5||r.top<-.5||r.right>innerWidth+.5||r.bottom>innerHeight+.5}).map(x=>x.id||x.tagName);return {outside,step:document.querySelector('#page').className,width:innerWidth,height:innerHeight,bodyScroll:document.body.scrollWidth>innerWidth,font:getComputedStyle(document.querySelector('.lead')).fontSize,art:document.querySelector('.art img').naturalWidth}})()");
                     var check=Json.Object(audit);if(((System.Collections.ICollection)check["outside"]).Count>0||Convert.ToBoolean(check["bodyScroll"])||Convert.ToInt32(check["art"])==0)errors.Add("Page clipped or artwork missing: "+step+" / "+size);
+                    if(!await Script(form,@"(()=>{const img=document.querySelector('.hero-object').getBoundingClientRect();return [...document.querySelectorAll('.art-label,.scene-tags,.signal-route,.dependency-grid')].every(el=>{if(getComputedStyle(el).display==='none')return true;const r=el.getBoundingClientRect();return r.bottom<=img.top||r.top>=img.bottom||r.right<=img.left||r.left>=img.right})})()"))errors.Add("Artwork overlaps a caption: "+step+" / "+size);
                     layouts.Add(new{size=size.ToString(),step=step,audit=check});
-                    if(size==preferred&&(step==0||step==4||step==8||step==9)){await Task.Delay(1300);using(var stream=File.Create(Path.Combine(directory,"web-step-"+step+".png")))await form.Browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);}
+                    if(size==preferred&&(step==0||step==1||step==2||step==4||step==8||step==9)){await Task.Delay(1300);using(var stream=File.Create(Path.Combine(directory,"web-step-"+step+".png")))await form.Browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);}
                 }
             }
             await Wait(()=>Task.FromResult(!form.Controller.Busy));
             await form.Controller.Execute("go",new Dictionary<string,object>{{"step",2}});form.Browser.CoreWebView2.Reload();
             await Wait(()=>Script(form,"document.querySelector('#page')?.classList.contains('step-2')===true"));
-            await form.Browser.ExecuteScriptAsync("document.querySelector('[data-engine=\"1\"]').click();document.querySelector('#next').click();");
+            await form.Browser.ExecuteScriptAsync("document.querySelector('[data-engine=\"1\"]').click();document.querySelector('[data-engine=\"2\"]').click();document.querySelector('#next').click();");
             await Wait(()=>Script(form,"document.querySelector('#page')?.classList.contains('step-3')===true"));
             await Wait(()=>Task.FromResult(!form.Controller.Busy));
             if(!await Script(form,"document.querySelector('#feedback').hidden"))errors.Add("Navigation left a misleading pending-operation panel");
-            if(form.Controller.Flow.Config.voice.engine!="gpt-sovits")errors.Add("Real frontend Next did not save the engine");
+            if(form.Controller.Flow.Config.voice.engine!="cosyvoice"||!form.Controller.Flow.InstallEngines().SequenceEqual(new[]{0,1,2}))errors.Add("Multi-select did not save installation targets independently");
             await form.Controller.Execute("preferences",new Dictionary<string,object>{{"offline",true},{"reduceMotion",true},{"sound",false}});
             form.Browser.CoreWebView2.Reload();
             await Wait(()=>Script(form,"document.querySelector('#localEngine')?.open===true"));

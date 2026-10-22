@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -16,6 +17,9 @@ namespace AgentVoice {
             await CancelColdPreview(directory);
             await CleanupFailedPreview(directory);
             CheckPreferenceWrites(directory);
+            await CheckMultiEngine(directory);
+            await CheckLocalEngines(directory);
+            string python=Environment.GetEnvironmentVariable("AGENT_VOICE_TEST_PYTHON");if(!string.IsNullOrEmpty(python))await CheckBatchPreparation(directory,python);
             var store=new SettingsStore(Path.Combine(directory,"fixture-"+Guid.NewGuid().ToString("N")));
             var c=store.Read();c.port=1;c.token="must-not-reach-web-content";store.Write(c);
             dynamic controller=Activator.CreateInstance(type,System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic,null,new object[]{store},null);
@@ -35,6 +39,43 @@ namespace AgentVoice {
             var p=new WelcomeState(store).Read();if(!p.offline||!p.reduceMotion||p.interfaceSounds)throw new Exception("Preferences not persisted");
             await controller.Execute("defer",new Dictionary<string,object>());
             p=new WelcomeState(store).Read();if(!p.onboardingDeferred||p.onboardingComplete||p.heardVoice)throw new Exception("Defer reported verified configuration");
+        }
+        static async Task CheckMultiEngine(string directory){
+            var store=new SettingsStore(Path.Combine(directory,"multi-"+Guid.NewGuid().ToString("N")));var c=store.Read();c.port=1;c.voice.referenceText="cosy reference";c.voice.baseModel="cosy-trained";store.Write(c);
+            var controller=new EmbeddedSetupController(store);
+            await controller.Execute("go",new Dictionary<string,object>{{"step",2}});
+            await controller.Execute("next",new Dictionary<string,object>{{"engines",new object[]{0,1,2}}});
+            if(!controller.Flow.InstallEngines().SequenceEqual(new[]{0,1,2})||store.Read().voice.engine!="cosyvoice")throw new Exception("Multi-selection changed active voice or lost targets");
+            if(!EngineSwitching.Families(new[]{0,1,2}).SequenceEqual(new[]{"cosyvoice","gpt-sovits"}))throw new Exception("GPT variants downloaded twice");
+            var reloaded=new SetupWorkflow(store);if(reloaded.InstallEngines().Length!=3)throw new Exception("Install selection did not survive reload");
+            var p=reloaded.State.Read();p.offline=true;reloaded.State.Write(p);bool failed=false;
+            try{await reloaded.PrepareSelected(false,false);}catch(InvalidOperationException error){failed=error.Message.Contains("cosyvoice")&&error.Message.Contains("gpt-sovits");}
+            if(!failed||reloaded.State.Read().setupStates["engineFiles:cosyvoice"]!="failed"||reloaded.State.Read().setupStates["engineFiles:gpt-sovits"]!="failed")throw new Exception("Batch failure lost per-engine diagnostics");
+            await reloaded.SelectEngine(1);if(store.Read().voice.gptModel!="")throw new Exception("Cross-engine trained model carried across");
+            c=store.Read();c.voice.gptModel="turbo-trained";c.voice.referenceText="turbo reference";store.Write(c);
+            await reloaded.SelectEngine(2);if(store.Read().voice.gptModel!="")throw new Exception("Incompatible GPT variant reused trained model");
+            await reloaded.SelectEngine(0);if(store.Read().voice.baseModel!="cosy-trained"||store.Read().voice.referenceText!="cosy reference")throw new Exception("CosyVoice recall lost trained model or reference");
+            await reloaded.SelectEngine(1);if(store.Read().voice.gptModel!="turbo-trained"||store.Read().voice.referenceText!="turbo reference")throw new Exception("GPT recall lost trained model or reference");
+            bool rejected=false;try{await controller.Execute("go",new Dictionary<string,object>{{"step",2}});await controller.Execute("next",new Dictionary<string,object>{{"engines",new object[]{99}}});}catch(InvalidOperationException){rejected=true;}
+            if(!rejected||controller.Flow.InstallEngines().Length!=3)throw new Exception("Invalid multi-selection accepted");
+        }
+        static async Task CheckBatchPreparation(string directory,string python){
+            var store=new SettingsStore(Path.Combine(directory,"batch-"+Guid.NewGuid().ToString("N")));var c=store.Read();c.port=1;c.engines.pythonService=python;store.Write(c);
+            Directory.CreateDirectory(store.Resolve("tools"));
+            File.WriteAllText(store.Resolve("tools/environment_repair.py"),"import sys,json,pathlib\na=sys.argv;engine=a[a.index('--engine')+1];root=pathlib.Path(a[a.index('--root')+1]);log=root/'calls.txt'\nwith log.open('a') as f:f.write(engine+'\\n')\nprint(json.dumps({'ok':engine=='gpt-sovits','error':'fixture failure','message':'fixture ready'}))\n",Encoding.UTF8);
+            var flow=new SetupWorkflow(store);flow.SelectInstallEngines(new[]{0,1,2});bool failed=false;
+            try{await flow.PrepareSelected(false,false);}catch(InvalidOperationException){failed=true;}
+            if(!failed||!File.ReadAllLines(store.Resolve("calls.txt")).SequenceEqual(new[]{"cosyvoice","gpt-sovits"}))throw new Exception("Batch did not continue after failure or duplicated a shared environment");
+            var states=flow.State.Read().setupStates;if(states["engineFiles:cosyvoice"]!="failed"||states["engineFiles:gpt-sovits"]!="prepared"||store.Read().voice.engine!="cosyvoice")throw new Exception("Partial preparation lost status or switched active voice");
+        }
+        static async Task CheckLocalEngines(string directory){
+            var store=new SettingsStore(Path.Combine(directory,"local-"+Guid.NewGuid().ToString("N")));var c=store.Read();c.port=1;store.Write(c);var flow=new SetupWorkflow(store);flow.SelectInstallEngines(new int[0]);
+            foreach(string engine in new[]{"cosyvoice","gpt-sovits"}){
+                string source="tts-engines/"+engine+"/source",model="tts-engines/"+engine+"/models/fixture",prefix=engine=="cosyvoice"?"cosy":"gpt";
+                string file=ModuleChecks.Package(directory,"local-"+Guid.NewGuid().ToString("N"),new Dictionary<string,string>{{source+"/fixture.py","source fixture"},{model+"/fixture.bin","model fixture"}},new[]{source,model},new Dictionary<string,string>{{prefix+"Repo",source},{prefix+"Model",model}},null,"engine",engine);
+                await flow.InstallModule(file,"engine",text=>{});
+            }
+            if(!flow.InstallEngines().SequenceEqual(new[]{0,1})||!File.Exists(store.Resolve("tts-engines/cosyvoice/models/fixture/fixture.bin"))||!File.Exists(store.Resolve("tts-engines/gpt-sovits/models/fixture/fixture.bin"))||store.Read().voice.engine!="cosyvoice")throw new Exception("Multiple local imports replaced another engine, lost the install plan or changed active voice");
         }
         static void CheckPreferenceWrites(string directory){
             var state=new WelcomeState(new SettingsStore(Path.Combine(directory,"preferences-"+Guid.NewGuid().ToString("N"))));

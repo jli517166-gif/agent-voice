@@ -2,18 +2,21 @@
   'use strict';
   const $=selector=>document.querySelector(selector), B=window.setupBridge;
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let state=null,shownStep=-1,selection=0,busy=false,logs=[],drafts={},toastTimer,resizeTimer;
+  let state=null,shownStep=-1,selection=[],busy=false,logs=[],drafts={},toastTimer,resizeTimer;
   const btn=(action,text,primary=false,extra='')=>`<button data-action="${action}" class="${primary?'primary':'secondary'}" title="${text}" ${extra}>${text}</button>`;
   const actions=items=>`<div class="actions">${items.join('')}</div>`;
   const doc=(name,text)=>btn('doc',text,false,`data-doc="${name}"`);
   const resources=()=>`<div class="status-note" data-resources>${esc(state.resources)}</div>`;
+  const engineNames=['CosyVoice','GPT-SoVITS · v5 Turbo','GPT-SoVITS · ProPlus'];
+  const selectedNames=()=>(state.installEngines??[state.engine]).map(i=>engineNames[i]).join('、')||'尚未选择';
+  const activePicker=()=>'<label class="field">当前使用引擎<select id="activeEngine">'+engineNames.map((name,i)=>'<option value="'+i+'" '+(state.engine===i?'selected':'')+'>'+name+'</option>').join('')+'</select></label>'+actions([btn('switch-engine','切换当前引擎')]);
   const pages=[
     {title:'先把声音，准备好。',lead:'一段独立的首次配置。按你的节奏完成，然后进入日常工作台。',art:'headphone.webp',label:'YOUR VOICE, YOUR WAY',body:()=>`<p class="muted">软件、TTS 引擎、音色与环境可以分开准备。你可以跳过任何步骤，稍后再回来。</p><div class="chips"><span>本地运行</span><span>模块安装</span><span>自由选择</span></div>${actions([doc('模块安装与配置指南.md','了解模块安装')])}`},
     {title:'先认识这台电脑。',lead:'检查显卡、驱动、可用空间与软件目录。先知道条件，再选择资源。',art:'computer.webp',label:'CHECK YOUR DEVICE',body:()=>`<p class="muted">检查不会安装驱动或修改系统。文件存在也不代表声音已经可用。</p>${actions([btn('computer','检查这台电脑',true),btn('recover','恢复未完成安装')])}`},
-    {title:'先选一种声音引擎。',lead:'这里只选择生成声音的方式，不需要找文件。下一步会下载对应源码和模型。',art:'puzzle.webp',label:'CHOOSE AN ENGINE',body:()=>`<div class="tile-list">${[['CosyVoice','本地音色克隆，支持参考声音与训练权重。'],['GPT-SoVITS · v5 Turbo','使用对应版本模型和环境。'],['GPT-SoVITS · ProPlus','与 Turbo 独立选择，模型不混用。']].map((item,i)=>`<button class="tile ${selection===i?'selected':''}" data-engine="${i}" aria-pressed="${selection===i}"><strong>${item[0]}</strong><small>${item[1]}</small></button>`).join('')}</div><p class="muted">点击“下一步”才应用；跳过不会改变当前引擎。</p>`},
-    {title:'下载所选引擎。',lead:'优先在线准备源码和基础模型。网络不可用，或你已有资源时，再选择本地安装。',art:'folder.webp',label:'引擎文件',body:()=>`${resources()}${actions([btn('download-engine','下载所选引擎',true),btn('resources','检查已有文件'),btn('stop-service','停止服务以安装')])}<p class="muted">这一步不安装 GPU 依赖。已有文件会复用，模型下载可能需要数 GB。</p><details id="localEngine" ${state.offline?'open':''}><summary>无法下载，或已经准备好本地资源？</summary><p class="muted">本地安装是替代途径，无需重复下载。</p>${actions([btn('install-engine','导入本地引擎包'),btn('paths','定位已安装引擎')])}</details>${actions([doc('TTS使用手册.md','下载与安装说明')])}`},
-    {title:'检查运行依赖。',lead:'引擎文件已经单独准备。这一步只检查并补齐 Python、GPU 库与音频依赖。',art:'puzzle.webp',label:'运行环境',body:()=>`<label><input type="checkbox" id="offline" ${state.offline?'checked':''}>严格离线：只使用本地文件</label>${resources()}${actions([btn('inspect-environment','检查已有环境',true),btn('repair-environment','补齐缺失环境'),btn('stop-service','停止服务以安装')])}<details><summary>网络不可用？使用离线环境包</summary>${actions([btn('install-environment','导入离线环境包')])}</details>${actions([doc('环境补齐说明.md','环境安装说明')])}`},
-    {title:'选择你的声音。',lead:'导入已有音色包，或准备自己的参考录音与逐字台词。',art:'mic.webp',label:'MAKE IT YOURS',body:()=>`${resources()}${actions([btn('import-voice','导入音色包',true),btn('profiles','选择已保存的声音'),btn('reference','配置参考声音')])}<p class="muted">音色包会匹配引擎和版本；导入后仍需真实试听。</p>`},
+    {title:'选择要安装的引擎。',lead:'可以多选，同时保留多个引擎。安装选择与当前使用的声音分开管理。',art:'puzzle.webp',label:'按需安装，随时切换',body:()=>`<div class="tile-list">${engineNames.map((name,i)=>`<button class="tile ${selection.includes(i)?'selected':''}" data-engine="${i}" role="checkbox" aria-checked="${selection.includes(i)}"><strong>${selection.includes(i)?'✓ ':''}${name}</strong><small>${i===0?'参考音色与训练模型':'两个版本共用基础环境，权重分别调用'}</small></button>`).join('')}</div><p class="muted">下一步只保存安装清单，不切换当前声音。也可以全部取消，稍后再安装。</p>`},
+    {title:'准备所选引擎。',lead:'按清单依次下载，已有文件复用。下载失败时，也可以导入本地引擎包。',art:'folder.webp',label:'引擎文件',body:()=>`<p class="muted">安装清单：${esc(selectedNames())}</p>${resources()}${actions([btn('download-engine','下载所选引擎',true),btn('resources','检查已有文件'),btn('stop-service','停止服务以安装')])}<p class="muted">这一步不安装 GPU 依赖。GPT 两个版本合并准备一次；失败不会清除已完成项，下载可能需要数 GB。</p><details id="localEngine" ${state.offline?'open':''}><summary>无法下载，或已经准备好本地资源？</summary><p class="muted">可依次导入多个引擎包，每次保留其他引擎，无需重复下载。</p>${actions([btn('install-engine','导入本地引擎包'),btn('paths','定位已安装引擎')])}</details>${actions([doc('TTS使用手册.md','下载与安装说明')])}`},
+    {title:'检查运行依赖。',lead:'引擎文件已经单独准备。这一步按安装清单依次检查并补齐 Python、GPU 库与音频依赖。',art:'puzzle.webp',label:'运行环境',body:()=>`<p class="muted">安装清单：${esc(selectedNames())}</p><label><input type="checkbox" id="offline" ${state.offline?'checked':''}>严格离线：只使用本地文件</label>${resources()}${actions([btn('inspect-environment','检查已有环境',true),btn('repair-environment','补齐缺失环境'),btn('stop-service','停止服务以安装')])}<details><summary>网络不可用？使用离线环境包</summary>${actions([btn('install-environment','导入离线环境包')])}</details>${actions([doc('环境补齐说明.md','环境安装说明')])}`},
+    {title:'选择你的声音。',lead:'先选择当前使用的引擎，再导入对应音色包或准备参考录音。',art:'mic.webp',label:'MAKE IT YOURS',body:()=>`${activePicker()}${resources()}${actions([btn('import-voice','导入音色包',true),btn('profiles','选择已保存的声音'),btn('reference','配置参考声音')])}<p class="muted">音色包会匹配引擎和版本；导入后仍需真实试听。</p>`},
     {title:'听到，再确认。',lead:'程序检查实际播放是否完成，你来判断音色、语气和节奏。',art:'headphone.webp',label:'LISTEN BEFORE CONFIRMING',body:()=>`<p>试听会启动服务，并生成、播放一段测试文本。</p>${actions([btn('preview','生成并播放',true),btn('stop-preview','停止试听')])}${actions([btn('confirm','确认声音合适')])}<p class="muted" data-heard>${state.heardVoice?'已确认当前声音。':'当前声音尚未获得你的听感确认。'}</p><p class="muted">更换引擎、模型或参考条件后，需要重新试听。</p>`},
     {title:'让对话自动说出来。',lead:'可选。当前实测支持 Codex 与 DeepSeek Harness。',art:'link.webp',label:'CONNECT YOUR HARNESS',body:()=>`${actions([btn('connect-harness','选择目录并接入验证',true),doc('接入说明.md','查看接入步骤')])}<p class="muted">自动识别所选目录、安装连接器，再核对回复和播放。收到实际播放完成回执后才庆祝成功。</p>${actions([btn('copy-challenge','复制手动验证短句')])}<p class="muted">若桌面账号需要手动发送短句，可查看执行过程并复制；重载与登录问题会明确报告。</p>`},
     {title:'把声音交给桌宠。',lead:'AIRI 完全可选。保持关闭，也能在本机正常播放。',art:'airi-11-icon.png',label:'AIRI · OPTIONAL COMPANION',body:()=>`<label><input type="checkbox" id="airiEnabled" ${state.airiEnabled?'checked':''}>启用 AIRI 桌宠联动</label>${actions([btn('connect-airi','选择原 AIRI 并验证',true)])}<p class="muted">选择已经登录、包含 airi.exe 的原目录，不复制另一套 AIRI。播放与嘴型回执通过后才算成功。</p><p class="muted">AIRI 更新可能覆盖桥接；失效时重新接入验证。</p>`},
@@ -34,13 +37,14 @@
     $('#back').hidden=state.step===0;$('#skip').hidden=state.step===0||state.step===9;
     $('#next').textContent=state.step===0?'开始配置':state.step===9?'进入工作台':'下一步';
     if(changed){
-      selection=state.engine;shownStep=state.step;const page=pages[state.step];
+      selection=[...(state.installEngines??[state.engine])];shownStep=state.step;const page=pages[state.step];
       $('#page').className='step-'+state.step;
       $('#page').innerHTML=`<div class="copy"><h1 tabindex="-1">${page.title}</h1><p class="lead">${page.lead}</p><div class="body">${page.body()}</div></div>${scene(state.step,page)}`;
       $('#viewport').scrollTop=0;$('#page h1').focus({preventScroll:true});
       if(!busy){$('#feedback').hidden=true;$('#result').textContent='';}
     }else{
       document.querySelectorAll('[data-resources]').forEach(item=>item.textContent=state.resources);
+      const active=$('#activeEngine');if(active)active.value=String(state.engine);
       const heard=$('[data-heard]');if(heard)heard.textContent=state.heardVoice?'已确认当前声音。':'当前声音尚未获得你的听感确认。';
     }
     updateDisabled();
@@ -86,7 +90,7 @@
   }
   document.addEventListener('click',async event=>{
     const target=event.target.closest('button');if(!target||target.disabled)return;
-    if(target.dataset.engine!==undefined){selection=Number(target.dataset.engine);document.querySelectorAll('[data-engine]').forEach(item=>{const chosen=Number(item.dataset.engine)===selection;item.classList.toggle('selected',chosen);item.setAttribute('aria-pressed',chosen);});return;}
+    if(target.dataset.engine!==undefined){const index=Number(target.dataset.engine);selection=selection.includes(index)?selection.filter(i=>i!==index):[...selection,index].sort();document.querySelectorAll('[data-engine]').forEach(item=>{const n=Number(item.dataset.engine),chosen=selection.includes(n);item.classList.toggle('selected',chosen);item.setAttribute('aria-checked',chosen);item.querySelector('strong').textContent=(chosen?'✓ ':'')+engineNames[n];});return;}
     const action=target.dataset.action;if(!action)return;
     try{
       if(action==='doc'){await run('open-doc',{name:target.dataset.doc},'打开说明');return;}
@@ -99,11 +103,12 @@
       if(action==='browse-path'){const key=target.dataset.field;const path=await browse(key.startsWith('python')||key==='ffmpeg'?'executable':'folder');if(path){$('#path_'+key).value=path;drafts['path_'+key]=path;}return;}
       if(action==='save-reference'){const result=await run(action,{reference:$('#referencePath').value,transcript:$('#referenceText').value},'保存参考声音');if(result)$('#drawer').close();return;}
       if(action==='save-paths'){const args={};for(const key of Object.keys(pathLabels))args[key]=$('#path_'+key).value;const result=await run(action,args,'保存引擎路径');if(result)$('#drawer').close();return;}
+      if(action==='switch-engine'){await run(action,{engine:Number($('#activeEngine').value)},'切换当前引擎');return;}
       if(action==='apply-profile'){const result=await run(action,{id:$('#savedProfile').value},'应用声音');if(result)$('#drawer').close();return;}
       await run(action,{},target.textContent);
     }catch(error){feedback('未完成 · 请重试',error.message,true);}
   });
-  $('#next').onclick=()=>run('next',{engine:selection},state?.step===2?'应用所选引擎':'继续配置');
+  $('#next').onclick=()=>run('next',{engines:selection},state?.step===2?'保存安装清单':'继续配置');
   $('#back').onclick=()=>run('back',{},'返回上一步');$('#skip').onclick=()=>run('skip',{},'跳过本步');$('#defer').onclick=()=>run('defer',{},'保存进度，稍后配置');
   const preferences=()=>run('preferences',{offline:$('#offline')?.checked??state.offline,reduceMotion:$('#motion').checked,sound:$('#sound').checked},'保存偏好');
   $('#motion').onchange=preferences;$('#sound').onchange=preferences;
