@@ -25,9 +25,8 @@ namespace AgentVoice {
             }
         }
         async Task StopService(){await Work(async()=>{if(await Flow.Service.Running())await Flow.Service.Stop();environmentReport.Text=Flow.Resources()+"\r\n语音服务已停止，可以安装模块。";});}
-        async Task ImportVoice(){using(var d=new OpenFileDialog{Title="导入训练音色包",Filter="音色包|*.cosyvoice.ttsmodel;*.gpt-sovits.ttsmodel",InitialDirectory=Flow.Store.Resolve("voice-model-packages"),CheckFileExists=true}){if(d.ShowDialog(this)!=DialogResult.OK)return;await Work(async()=>{voiceReport.Text=await Flow.ImportVoice(d.FileName);SyncEngine();});}}
         async Task ChooseSavedVoice(){
-            var c=Flow.Config;if(c.profiles.Count==0){voiceReport.Text="尚无已保存的声音。可导入音色包，或展开参考声音配置。";return;}
+            var c=Flow.Config;if(c.profiles.Count==0){voiceReport.Text="尚无已保存的声音。请展开参考声音配置，选择自己的录音与台词。";return;}
             using(var dialog=Dialog("选择已保存的声音")){
                 var list=new ListBox{Dock=DockStyle.Fill,DataSource=c.profiles,BackColor=Color.FromArgb(30,31,40),ForeColor=ForeColor,Font=Font};dialog.Controls.Add(list);var apply=Button("使用选中声音",()=>dialog.DialogResult=DialogResult.OK,true);apply.Dock=DockStyle.Bottom;dialog.Controls.Add(apply);if(dialog.ShowDialog(this)!=DialogResult.OK||list.SelectedItem==null)return;var selected=list.SelectedItem as SavedVoice;
                 await Work(async()=>{if(await Flow.Service.Running())await Flow.Service.Request("/api/profiles/apply",new{id=selected.id},300000);else{c=Flow.Config;c.voice=selected.voice.Clone();Flow.Store.Write(c);}Flow.InvalidateVoice();voiceReport.Text="已选择："+selected.name+"。请在下一步试听。";SyncEngine();});

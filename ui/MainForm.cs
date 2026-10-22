@@ -1,4 +1,4 @@
-﻿using Button = AgentVoice.AnimeButton;
+using Button = AgentVoice.AnimeButton;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -68,7 +68,7 @@ namespace AgentVoice {
             var navigation=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoScroll=true,BackColor=Color.Transparent,Padding=new Padding(0,4,0,4)};sideLayout.Controls.Add(navigation,0,1);
             AddNav(navigation,"控制台","home","语音服务、引擎切换、输入文字与播放控制。",true);
             
-            AddNav(navigation,"音色包","configuration","导入或导出声音模型。",true);
+            AddNav(navigation,"模块","modules","导入或导出声音模型。",true);
             AddNav(navigation,"声音方案","voices","保存和切换整套声音设置。",true);
             AddNav(navigation,"连接","connections","连接 Harness 或 AIRI。",true);
             AddNav(navigation,"训练","training","准备数据并校验训练模型。",false);
@@ -125,7 +125,7 @@ namespace AgentVoice {
 
         }
         void PlayInterfaceSound(int step){bool listening=true;try{listening=System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners().Any(p=>p.Port==Config.port);}catch(System.Net.NetworkInformation.NetworkInformationException){}if(InterfaceSounds.Allowed(SetupPreference().interfaceSounds,testingMode,listening))interfaceSounds.Play(Store.Root,step);}
-        string PageName(string id){var names=new Dictionary<string,string>{{"home","控制台"},{"voiceEditor","声音设置"},{"voices","声音方案"},{"configuration","音色包"},{"training","基础训练"},{"advancedTraining","高级训练"},{"settings","设置"},{"appearance","外观"},{"engine","本地引擎"},{"connections","连接设备"},{"harness","Harness"},{"airi","AIRI 桌宠"},{"connectionGuide","连接帮助"},{"advanced","声音细调"},{"cleanup","音频清理"},{"cosyReference","参考声音"}};return names.ContainsKey(id)?names[id]:"agent语音";}
+        string PageName(string id){var names=new Dictionary<string,string>{{"home","控制台"},{"voiceEditor","声音设置"},{"voices","声音方案"},{"modules","模块"},{"training","基础训练"},{"advancedTraining","高级训练"},{"settings","设置"},{"appearance","外观"},{"engine","本地引擎"},{"connections","连接设备"},{"harness","Harness"},{"airi","AIRI 桌宠"},{"connectionGuide","连接帮助"},{"advanced","声音细调"},{"cleanup","音频清理"},{"cosyReference","参考声音"}};return names.ContainsKey(id)?names[id]:"agent语音";}
         ScenePanel NewPage(string id){var p=new ScenePanel{Host=this,Dock=DockStyle.Fill,AutoScroll=true,Padding=new Padding(0,8,0,12),Visible=false};pages.Add(id,p);content.Controls.Add(p);return p;}
         FlowLayoutPanel Stack(ScenePanel p){var stack=new BufferedFlow{Dock=DockStyle.Top,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,BackColor=Color.Transparent,Padding=new Padding(0,0,16,10)};p.Controls.Add(stack);p.SizeChanged+=(s,e)=>{foreach(Control c in stack.Controls){int width=Math.Max(300,p.ClientSize.Width-22);c.MinimumSize=new Size(width,0);c.Width=width;}};return stack;}
         ScenePanel Card(FlowLayoutPanel stack,string title){int width=Math.Max(300,content.Width-22);var card=new ScenePanel{Host=this,Card=true,Padding=new Padding(20,16,20,18),Width=width,MinimumSize=new Size(width,0),AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,Margin=new Padding(0,0,0,14)};stack.Controls.Add(card);var table=new BufferedTable{Dock=DockStyle.Top,ColumnCount=1,AutoSize=true,BackColor=Color.Transparent};table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));card.Controls.Add(table);var label=new Label{Text=title,AutoSize=true,Font=new Font(Font.FontFamily,13F,FontStyle.Bold),Margin=new Padding(0,0,0,12)};table.Controls.Add(label);return card;}
@@ -160,17 +160,8 @@ namespace AgentVoice {
         void NumberField(ScenePanel card,string key,string label,decimal min,decimal max,decimal step,int digits){var box=Number(min,max,step,digits);numbers[key]=box;Add(card,Row(Hint(label),box));}
         void PathField(ScenePanel card,string key,string label,string filter,bool folder){Field(card,key,label);Add(card,Row(Btn("选择"+(folder?"目录":"文件"),()=>SelectPath(fields[key],filter,folder))));}
         void SelectPath(TextBox box,string filter,bool folder){if(folder){using(var dialog=new FolderBrowserDialog{Description="选择目录",ShowNewFolderButton=true})if(dialog.ShowDialog(this)==DialogResult.OK)box.Text=Store.Portable(dialog.SelectedPath);}else{using(var dialog=new OpenFileDialog{Filter=filter,CheckFileExists=true})if(dialog.ShowDialog(this)==DialogResult.OK)box.Text=Store.Portable(dialog.FileName);}}
-        string VoicePackageDirectory(){string directory=Store.Resolve("voice-model-packages");Directory.CreateDirectory(directory);return directory;}
+        string TrainedModelDirectory(){string directory=Store.Resolve("trained-voices");Directory.CreateDirectory(directory);return directory;}
         string TtsEngineDirectory(){string directory=Store.Resolve("tts-engines");Directory.CreateDirectory(directory);return directory;}
-        async Task SelectVoiceModelPackage(){
-            string path;
-            using(var dialog=new OpenFileDialog{Title="从音色模型包库选择",Filter="TTS 音色包|*.cosyvoice.ttsmodel;*.gpt-sovits.ttsmodel",CheckFileExists=true,InitialDirectory=VoicePackageDirectory(),RestoreDirectory=false}){
-                if(dialog.ShowDialog(this)!=DialogResult.OK)return;
-                path=dialog.FileName;
-            }
-            await ImportConfiguration(path);ShowPage("home");
-            Status("已从音色模型包库导入并应用："+Path.GetFileName(path));
-        }
         Label homeVoiceSummary;
         ComboBox quickVoice;
         bool speechOperation;
@@ -255,7 +246,6 @@ namespace AgentVoice {
             reference.Controls.Add(WebText("语速（1 为原速）",9.5F,FontStyle.Regular,16,42,200,25,ContentAlignment.MiddleLeft));
             var speed=Number(.7M,1.3M,.01M,2);speed.SetBounds(228,40,110,30);numbers["speed"]=speed;reference.Controls.Add(speed);
             reference.Controls.Add(WebButton("参考声音","为当前引擎选择参考录音和逐字一致的台词。",()=>ShowPage("cosyReference"),16,78,110,38));
-            reference.Controls.Add(WebAsyncButton("选择音色包","导入并应用 CosyVoice 或 GPT-SoVITS 音色包。",SelectVoiceModelPackage,134,78,140,38,false));
             reference.Controls.Add(WebButton("保存或切换声音方案","把当前声音保存为可复用方案。",()=>ShowPage("voices"),282,78,210,38));
             voiceHint=WebText("当前引擎直接生成最终语音。",8F,FontStyle.Regular,16,122,870,42,ContentAlignment.TopLeft);
             reference.Controls.Add(voiceHint);
@@ -350,7 +340,7 @@ namespace AgentVoice {
             listCard.Controls.Add(apply);
             var remove=WebAsyncButton("删除",null,async()=>{var item=profileList.SelectedItem as SavedVoice;if(item==null)return;var next=Json.Copy(Config);next.profiles.RemoveAll(p=>p.id==item.id);await Persist(next,new {profiles=next.profiles});ArchiveProfileFolder(item);deleted=Json.Copy(item);RefreshProfiles();Status("声音方案已删除，模型文件保留；可撤销。");},840,38,60,34,false);
             Danger(remove);listCard.Controls.Add(remove);
-            page.Controls.Add(WebText("方案记录设置；音色包保存声音文件。两者分开管理，避免重复导出模型。",8.8F,FontStyle.Regular,38,358,902,28,ContentAlignment.MiddleLeft));
+            page.Controls.Add(WebText("方案保存当前模型、参考声音和参数，可随时切换。",8.8F,FontStyle.Regular,38,358,902,28,ContentAlignment.MiddleLeft));
             var maintain=WebCard(page,38,402,902,168);
             maintain.Controls.Add(WebText("方案名称",9.5F,FontStyle.Bold,16,18,90,24,ContentAlignment.MiddleLeft));
             profileName=Input();profileName.Text="我的声音";profileName.SetBounds(110,15,250,28);maintain.Controls.Add(profileName);
@@ -358,7 +348,7 @@ namespace AgentVoice {
             maintain.Controls.Add(WebAsyncButton("撤销删除",null,async()=>{if(deleted==null)return;var next=Json.Copy(Config);next.profiles.Add(deleted);await Persist(next,new {profiles=next.profiles});WriteProfileFolder(deleted);deleted=null;RefreshProfiles();},536,13,110,36,false));
             maintain.Controls.Add(WebButton("打开方案目录","查看每个声音方案保存的参数副本。",()=>{string directory=ProfileDirectory();ServiceClient.Open(directory);Status("每个声音方案有独立同名文件夹："+directory);},654,13,150,36));
             maintain.Controls.Add(WebText("保存时会把参考录音复制到 data/voice-configurations/方案名称-ID。",9F,FontStyle.Regular,16,60,860,20,ContentAlignment.MiddleLeft));
-            maintain.Controls.Add(WebText("模型只记录校验信息，不重复复制大权重；跨电脑请导出音色包。",9F,FontStyle.Regular,16,84,860,20,ContentAlignment.MiddleLeft));
+            maintain.Controls.Add(WebText("模型只记录校验信息，不重复复制大权重。",9F,FontStyle.Regular,16,84,860,20,ContentAlignment.MiddleLeft));
             page.Controls.Add(WebText("每次保存都会在 data/voice-configurations 下建立“方案名称 + ID”文件夹。",9F,FontStyle.Regular,38,590,902,28,ContentAlignment.MiddleLeft));
             page.Controls.Add(WebText("删除方案只归档配置文件夹并保留模型文件；可撤销最近一次删除。",8.8F,FontStyle.Regular,38,626,902,28,ContentAlignment.MiddleLeft));
         }
@@ -381,7 +371,7 @@ namespace AgentVoice {
         protected override bool ProcessCmdKey(ref Message msg,Keys key){if(key==Keys.Escape){ShowPage("home");return true;}return base.ProcessCmdKey(ref msg,key);}
         protected override void OnFormClosing(FormClosingEventArgs e){if(!exiting&&tray!=null){e.Cancel=true;Hide();return;}poll.Stop();tips.Dispose();if(tray!=null){tray.Visible=false;tray.Dispose();}if(background!=null)background.Dispose();if(scaledBackground!=null)scaledBackground.Dispose();if(defaultBackdrop!=null)defaultBackdrop.Dispose();if(pageBackdrop!=null)pageBackdrop.Dispose();if(scaledPageBackdrop!=null)scaledPageBackdrop.Dispose();base.OnFormClosing(e);}
         string DefaultMascotPath(){return Path.Combine(Store.Root,".agents","plugins","agent-voice-control","assets","voice-core.png");}
-        void LoadPageBackdrop(string id){if(pageBackdrop!=null){pageBackdrop.Dispose();pageBackdrop=null;}if(scaledPageBackdrop!=null){scaledPageBackdrop.Dispose();scaledPageBackdrop=null;}if(background!=null||id=="home"||IsWebLayoutPage(id))return;string name=id=="home"?"speech":id=="configuration"?"voices":id=="voices"?"schemes":id;string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"assets","workspace",name+".png");if(File.Exists(path))using(var source=Image.FromFile(path))pageBackdrop=new Bitmap(source);}
+        void LoadPageBackdrop(string id){if(pageBackdrop!=null){pageBackdrop.Dispose();pageBackdrop=null;}if(scaledPageBackdrop!=null){scaledPageBackdrop.Dispose();scaledPageBackdrop=null;}if(background!=null||id=="home"||IsWebLayoutPage(id))return;string name=id=="home"?"speech":id=="voices"?"schemes":id;string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"assets","workspace",name+".png");if(File.Exists(path))using(var source=Image.FromFile(path))pageBackdrop=new Bitmap(source);}
         public void PaintScene(Graphics g,Control control){
             g.Clear(BackColor);
             Bitmap active=background??pageBackdrop;Bitmap scaled=background!=null?scaledBackground:scaledPageBackdrop;

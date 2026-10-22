@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -57,7 +57,7 @@ namespace AgentVoice {
             // Keep the detailed diagnostic, including failed paths, available in this step.
             string text=Json.Encode(result);Directory.CreateDirectory(Store.Resolve("data/setup"));File.WriteAllText(Store.Resolve("data/setup/environment-report.json"),text,Encoding.UTF8);
             if(!Convert.ToBoolean(result["ok"]))throw new InvalidOperationException("环境检查未通过："+Json.Text(result,"error")+"\r\n详细报告："+Store.Resolve("data/setup/environment-report.json"));
-            return "运行文件检查通过。接下来导入音色，再进行真实试听。\r\n详细报告："+Store.Resolve("data/setup/environment-report.json");
+            return "运行文件检查通过。接下来选择自己的参考录音，再进行真实试听。\r\n详细报告："+Store.Resolve("data/setup/environment-report.json");
         }
         internal async Task<string> PrepareEngine(string engine="current"){
             if(State.Read().offline)throw new InvalidOperationException("严格离线已开启，请展开本地安装，导入引擎包或定位已有引擎。");
@@ -75,15 +75,9 @@ namespace AgentVoice {
             }
             return await task;
         }
-        internal async Task<string> ImportVoice(string file){
-            bool running=await Service.Running();if(running){var health=await Service.Request("/health");if(Convert.ToBoolean(health["busy"])||Convert.ToInt32(health["queued"])>0)throw new InvalidOperationException("请先停止当前朗读，再导入音色。");await Service.Stop();}
-            string message="";Exception failure=null;
-            try{var r=Json.Object(await Service.RunTool("tts_bundle.py","import --root "+ServiceClient.Quote(Store.Root)+" --file "+ServiceClient.Quote(file)));string library=Store.Resolve("voice-model-packages");string prefix=Path.GetFullPath(library).TrimEnd('\\')+"\\";if(!Path.GetFullPath(file).StartsWith(prefix,StringComparison.OrdinalIgnoreCase)){string name=Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(file));foreach(char ch in Path.GetInvalidFileNameChars())name=name.Replace(ch,'_');string folder=Path.Combine(library,name);Directory.CreateDirectory(folder);await Task.Run(()=>File.Copy(file,Path.Combine(folder,Path.GetFileName(file)),true));}InvalidateVoice();Mark("voice","imported");message="已导入："+Json.Text(r,"name")+"。引擎与版本由音色包自动匹配，请继续试听。\r\n兼容提醒："+(r.ContainsKey("warnings")?Json.Encode(r["warnings"]):"无");}catch(Exception error){failure=error;}
-            try{if(running)await Service.Start();}catch(Exception error){throw new InvalidOperationException((failure==null?"":failure.Message+"；")+"服务恢复失败："+error.Message,error);}if(failure!=null)throw failure;return message;
-        }
         internal void InvalidateVoice(){var p=State.Read();p.voiceEvidence="";p.heardVoice=false;State.Write(p);}
         internal string Evidence(){var c=Config;Func<string,string> stamp=path=>{if(string.IsNullOrEmpty(path))return "missing";var f=new FileInfo(Store.Resolve(path));return f.Exists?f.Length+":"+f.LastWriteTimeUtc.Ticks:"missing";};string model=c.voice.engine=="cosyvoice"?(c.voice.baseModel.Length>0?c.voice.baseModel:c.engines.cosyModel):(c.voice.gptModel.Length>0?c.voice.gptModel:c.engines.gptModel);string weight=Path.Combine(model,c.voice.engine=="cosyvoice"?"llm.pt":c.voice.gptVariant=="v5turbo"?"gsv-v5-pretrained/s2Gv5turbo.pth":"v2Pro/s2Gv2ProPlus.pth");using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(Json.Encode(new{voice=c.voice,engines=c.engines,airi=c.airi,reference=stamp(c.voice.reference),model=stamp(weight)}))));}
-        internal async Task EnsureService(CancellationToken cancellation=default(CancellationToken)){cancellation.ThrowIfCancellationRequested();if(!await Service.Running()){cancellation.ThrowIfCancellationRequested();Report("正在启动语音服务……");await Service.Start(cancellation);}var expected=Config.voice;var watch=Stopwatch.StartNew();while(watch.Elapsed.TotalMinutes<4){cancellation.ThrowIfCancellationRequested();var h=await Service.Request("/health");if(Json.Text(h,"engine")!=expected.engine||(expected.engine=="gpt-sovits"&&Json.Text(h,"variant")!=expected.gptVariant))throw new InvalidOperationException("另一项操作改变了当前引擎，请重新选择声音。");cancellation.ThrowIfCancellationRequested();if(Convert.ToBoolean(h["ready"]))return;string state=Json.Text(h,"serviceState");if(state=="error"||state=="unconfigured")throw new InvalidOperationException("声音未就绪："+Json.Text(h,"error")+"。请返回环境或音色步骤修复。");Report("正在加载当前声音模型……");await Task.Delay(300,cancellation);}throw new InvalidOperationException("模型加载超过四分钟。请查看日志并检查显存。");}
+        internal async Task EnsureService(CancellationToken cancellation=default(CancellationToken)){cancellation.ThrowIfCancellationRequested();if(!await Service.Running()){cancellation.ThrowIfCancellationRequested();Report("正在启动语音服务……");await Service.Start(cancellation);}var expected=Config.voice;var watch=Stopwatch.StartNew();while(watch.Elapsed.TotalMinutes<4){cancellation.ThrowIfCancellationRequested();var h=await Service.Request("/health");if(Json.Text(h,"engine")!=expected.engine||(expected.engine=="gpt-sovits"&&Json.Text(h,"variant")!=expected.gptVariant))throw new InvalidOperationException("另一项操作改变了当前引擎，请重新选择声音。");cancellation.ThrowIfCancellationRequested();if(Convert.ToBoolean(h["ready"]))return;string state=Json.Text(h,"serviceState");if(state=="error"||state=="unconfigured")throw new InvalidOperationException("声音未就绪："+Json.Text(h,"error")+"。请返回环境或参考声音步骤修复。");Report("正在加载当前声音模型……");await Task.Delay(300,cancellation);}throw new InvalidOperationException("模型加载超过四分钟。请查看日志并检查显存。");}
         internal async Task<string> Preview(CancellationToken cancellation=default(CancellationToken)){
             bool submitted=false;Exception failure=null;string result=null;
             Func<Task<string>> run=async()=>{

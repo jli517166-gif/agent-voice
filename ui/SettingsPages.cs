@@ -1,4 +1,4 @@
-﻿using Button = AgentVoice.AnimeButton;
+using Button = AgentVoice.AnimeButton;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -43,7 +43,7 @@ namespace AgentVoice {
             SettingsLine(engineCard,3,"连接设备","连接 Harness 或 AIRI，并做真实播放验证。","连接设备",()=>ShowPage("connections"));
             var soundCard=WebCard(panels[1],0,0,902,240);
             SettingsLine(soundCard,0,"声音细调","调整表达指令、句首空白和播放音量。","调整",()=>ShowPage("advanced"));
-            SettingsLine(soundCard,1,"音色包","导入或导出声音模型与训练结果。","管理",()=>ShowPage("configuration"));
+            SettingsLine(soundCard,1,"可选模块","按需安装功能模块；本体不包含音色包导入导出。","管理模块",()=>ShowPage("modules"));
             SettingsLine(soundCard,2,"声音方案","保存和切换整套声音设置。","管理",()=>ShowPage("voices"));
             var lookCard=WebCard(panels[2],0,0,902,160);
             SettingsLine(lookCard,0,"外观与图标","设置背景、配色、程序图标和等待动画。","打开外观",()=>ShowPage("appearance"));
@@ -51,11 +51,11 @@ namespace AgentVoice {
             panels[2].Controls.Add(WebText("背景、配色、图标和等待动画在外观页统一保存。",8.8F,FontStyle.Regular,0,176,902,20,ContentAlignment.MiddleLeft));
             var storageCard=WebCard(panels[3],0,0,902,240);
             SettingsLine(storageCard,0,"音频清理","设置生成音频的保留时间、数量和空间上限。","打开清理",()=>ShowPage("cleanup"));
-            SettingsLine(storageCard,1,"音色包目录","查看导入与导出的音色包。","打开目录",()=>ServiceClient.Open(VoicePackageDirectory()));
+            SettingsLine(storageCard,1,"训练模型目录","查看自己训练的本地模型文件。","打开目录",()=>ServiceClient.Open(TrainedModelDirectory()));
             SettingsLine(storageCard,2,"程序数据目录","settings.json、日志和生成音频的位置。","打开数据",()=>ServiceClient.Open(Store.Resolve("data")));
-            panels[3].Controls.Add(WebText("清理会保护生成或播放中的文件；跨电脑迁移请导出音色包。",8.8F,FontStyle.Regular,0,256,902,20,ContentAlignment.MiddleLeft));
+            panels[3].Controls.Add(WebText("清理会保护生成或播放中的文件；可选功能在模块页单独安装。",8.8F,FontStyle.Regular,0,256,902,20,ContentAlignment.MiddleLeft));
             select(0);
-            BuildAppearance();BuildEngines();BuildEnvironmentRepair();BuildHarness();BuildAiri();BuildConnectionHub();BuildAdvanced();BuildCleanup();BuildConfiguration();BuildTraining();BuildAdvancedTraining();
+            BuildAppearance();BuildEngines();BuildEnvironmentRepair();BuildHarness();BuildAiri();BuildConnectionHub();BuildAdvanced();BuildCleanup();BuildModules();BuildTraining();BuildAdvancedTraining();
         }
         void SettingsLine(ScenePanel card,int index,string title,string detail,string action,Action handler){
             int y=index*80;

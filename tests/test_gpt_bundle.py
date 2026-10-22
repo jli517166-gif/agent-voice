@@ -1,4 +1,5 @@
-﻿import copy,json,shutil,socket,sys,tempfile,unittest,wave,zipfile
+import optional_voice_module
+import copy,json,shutil,socket,sys,tempfile,unittest,wave,zipfile
 from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'service'))

@@ -89,8 +89,8 @@ def audit(root,manifest,private_manifest=None):
                 errors.append('公共清单混入私有配置包或其中的受保护资产');continue
         except (ValueError,KeyError,TypeError,zipfile.BadZipFile):errors.append('配置归档内容无法校验：'+name);continue
         entries.append({'file':name,'size':path.stat().st_size,'sha256':sha})
-    if not data.get('publicVoiceProvided'):errors.append('公共模型、参考录音与台词待提供')
-    if not data.get('runtimeIncluded'):errors.append('完整运行环境尚未进入发布清单')
+    if data.get('publicVoiceProvided'):errors.append('本体不允许附带默认音色')
+    if data.get('packageKind')=='environment' and not data.get('runtimeIncluded'):errors.append('完整运行环境尚未进入环境包清单')
     if not data.get('userAccepted'):errors.append('最终程序尚未由用户确认通过，不能打包')
     return {'packageReady':not errors,'files':entries,'errors':errors}
 

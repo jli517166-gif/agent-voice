@@ -1,4 +1,4 @@
-﻿using Button = AgentVoice.AnimeButton;
+using Button = AgentVoice.AnimeButton;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -19,6 +19,8 @@ namespace AgentVoice {
             if(phrases.Items.Count>0){phrases.SelectedIndex=0;ApplySelectedPhrase();if(body.Text!=Convert.ToString(phrases.SelectedItem))errors.Add("Phrase did not reach speech editor");}body.Text=draft;
             UpdateQueue(new Dictionary<string,object>{{"queued",2},{"current",new Dictionary<string,object>{{"state","playing"},{"source","codex"},{"text","队列真实状态"}}}});if(!queueSummary.Text.Contains("队列真实状态")||!queueSummary.Text.Contains("2"))errors.Add("Queue status remains a static placeholder");
             if(navigationButtons["home"].Text!="控制台"||PageName("home")!="控制台")errors.Add("Console labels inconsistent");
+            if(pages.ContainsKey("configuration")||!pages.ContainsKey("modules"))errors.Add("Core retains voice-package page or lacks module manager");
+            foreach(string removed in new[]{"导入音色包","导出音色包","选择音色包"})if(FindButton(this,removed)!=null)errors.Add("Core still exposes optional transfer: "+removed);
             foreach(string engine in expected){ShowPage("voiceEditor");engineChoice.SelectedItem=engine;Application.DoEvents();if(cosyOnlyControls.Any(c=>c.Visible!=(SelectedEngine()=="cosyvoice"))||gptOnlyControls.Any(c=>c.Visible!=(SelectedEngine()=="gpt-sovits")))errors.Add("Engine controls overlap: "+engine);if(!new[]{"v5turbo","proplus"}.Contains(ReadVoice().gptVariant))errors.Add("CosyVoice selection corrupts the GPT variant field");}
             for(int n=0;n<30;n++){engineChoice.SelectedIndex=n%expected.Length;var selected=ReadVoice();if(!new[]{"v5turbo","proplus"}.Contains(selected.gptVariant))errors.Add("Repeated engine switch corrupts saved settings");}
             ShowPage("training");var trainingSelect=Controls.Find("trainingEngineChoice",true).FirstOrDefault() as ComboBox;
@@ -40,7 +42,7 @@ namespace AgentVoice {
             if(CountControls(this)!=before)errors.Add("Busy overlay leaked controls");
             foreach(string label in new[]{"RVC 变声","启用 RVC","选择输出方式","选择 Piper 模型"})if(FindButton(this,label)!=null)errors.Add("Removed button remains: "+label);
             SelectEngineVoice(original);body.Text=draft;ShowPage("home");Application.DoEvents();
-            foreach(string id in new[]{"home","voiceEditor","voices","configuration","connections","settings","training","engine","advanced","environmentRepair"}){ShowPage(id);Application.DoEvents();using(var bitmap=new Bitmap(Width,Height)){DrawToBitmap(bitmap,new Rectangle(0,0,Width,Height));bitmap.Save(Path.Combine(directory,id+".png"));}}
+            foreach(string id in new[]{"home","voiceEditor","voices","modules","connections","settings","training","engine","advanced","environmentRepair"}){ShowPage(id);Application.DoEvents();using(var bitmap=new Bitmap(Width,Height)){DrawToBitmap(bitmap,new Rectangle(0,0,Width,Height));bitmap.Save(Path.Combine(directory,id+".png"));}}
             var shotTrainingSelect=Controls.Find("trainingEngineChoice",true).FirstOrDefault() as ComboBox;
             if(shotTrainingSelect!=null)foreach(int n in new[]{0,2}){ShowPage("training");shotTrainingSelect.SelectedIndex=n;Application.DoEvents();using(var bitmap=new Bitmap(Width,Height)){DrawToBitmap(bitmap,new Rectangle(0,0,Width,Height));bitmap.Save(Path.Combine(directory,n==0?"training-cosy.png":"training-gpt.png"));}}
             ShowPage("settings");
@@ -49,7 +51,7 @@ namespace AgentVoice {
             ShowPage("home");return new{ok=errors.Count==0,pages=pages.Count,switches=120,engines=expected,webControls=webControls,errors=errors};
         }
         public async Task<object> VerifyFlow(string directory){Directory.CreateDirectory(directory);var original=Json.Copy(Config);bool running=await Service.Running();Exception failure=null;try{await Service.Start();var result=await Service.Request("/speak",new{text="工作好久啦，起来动一动、喝口水吧。",play=false,source="ui-test"});await WaitJob(Json.Text(result,"jobId"));await Service.Request("/stop",new{});}catch(Exception error){failure=error;}if(await Service.Running())await Service.Stop();Store.Write(original);Config=original;BindVoice();if(running)await Service.Start();if(failure!=null)throw failure;return new{ok=true,ttsGeneration=true,stop=true};}
-        public async Task<object> VerifyBundle(string file,string directory){Directory.CreateDirectory(directory);var original=Json.Copy(Config);bool running=await Service.Running();if(running)await Service.Stop();try{if(!File.Exists(file))await ExportConfiguration(file,"lightweight");await ImportConfiguration(file);if(Config.voice.engine!=original.voice.engine||(Config.voice.engine=="gpt-sovits"&&Config.voice.gptVariant!=original.voice.gptVariant)||Json.Encode(Config.harness)!=Json.Encode(original.harness)||Config.token!=original.token)throw new InvalidOperationException("音色包改变了连接设置");return new{ok=true,engine=Config.voice.engine,variant=Config.voice.gptVariant,voiceImportExport=true};}finally{Store.Write(original);Config=original;BindVoice();}}
+
     }
     static class UiChecks {
         public static int SetupVoice(SettingsStore store,string[] args){
@@ -67,13 +69,6 @@ namespace AgentVoice {
                 var client=new ServiceClient(store);string text=client.RunTool("environment_repair.py","repair --root "+ServiceClient.Quote(store.Root)+" --engine core").GetAwaiter().GetResult();
                 var result=Json.Object(text);File.WriteAllText(Path.Combine(directory,"environment-results.json"),Json.Encode(result));return Convert.ToBoolean(result["ok"])?0:1;
             }catch(Exception error){File.WriteAllText(Path.Combine(directory,"environment-error.txt"),error.ToString());return 1;}
-        }
-        public static int Bundle(SettingsStore store,string[] args){
-            if(args.Length<3)return 2;string file=args[1],directory=args[2];int exit=1;
-            using(var form=new MainForm(store,true)){
-                form.ShowInTaskbar=false;form.StartPosition=FormStartPosition.Manual;form.Location=new Point(-32000,-32000);
-                form.Shown+=async(s,e)=>{try{var result=await form.VerifyBundle(file,directory);Directory.CreateDirectory(directory);File.WriteAllText(Path.Combine(directory,"bundle-results.json"),Json.Encode(result));exit=0;}catch(Exception error){Directory.CreateDirectory(directory);File.WriteAllText(Path.Combine(directory,"bundle-error.txt"),error.ToString());}try{if(await form.Service.Running())await form.Service.Stop();}catch{}form.Close();};Application.Run(form);
-            }return exit;
         }
         public static int Flow(SettingsStore store,string[] args){string directory=args.Length>1?args[1]:Path.Combine(store.Root,"acceptance","ui-flow");int exit=1;using(var form=new MainForm(store,true)){form.ShowInTaskbar=false;form.StartPosition=FormStartPosition.Manual;form.Location=new Point(-32000,-32000);form.Shown+=async(s,e)=>{try{var results=await form.VerifyFlow(directory);File.WriteAllText(Path.Combine(directory,"flow-results.json"),Json.Encode(results));exit=0;}catch(Exception error){Directory.CreateDirectory(directory);File.WriteAllText(Path.Combine(directory,"flow-error.txt"),error.ToString());}try{if(await form.Service.Running())await form.Service.Stop();}catch{}form.Close();};Application.Run(form);}return exit;}
         internal static string PrepareTargetErrorPath(string directory){Directory.CreateDirectory(directory);string errorPath=Path.Combine(directory,"runner-error.txt");if(File.Exists(errorPath))File.Delete(errorPath);return errorPath;}

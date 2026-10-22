@@ -2,7 +2,7 @@ import json,sys,tempfile,unittest,zipfile
 from pathlib import Path
 from unittest.mock import Mock,patch
 sys.path[:0]=[str(Path(__file__).resolve().parents[1]/'service'),str(Path(__file__).resolve().parents[1]/'tools')]
-from module_packages import engine_package,environment_package,application_package
+from module_packages import engine_package,environment_package,application_package,feature_package
 from environment_repair import Repair,CATALOG
 
 class ModulePackageTests(unittest.TestCase):
@@ -43,5 +43,19 @@ class ModulePackageTests(unittest.TestCase):
         self.assertIn('Agent语音/agent语音.exe',names)
         self.assertIn('Agent语音/assets/sfx/step-0.wav',names);self.assertNotIn('Agent语音/assets/private.wav',names)
         for denied in ['data/','runtime/','voices/','bundled-voice.json']:self.assertFalse(any(denied in name for name in names))
+    def test_stale_core_transfer_files_and_installed_modules_never_enter_application(self):
+        for name in ['agent语音.exe','service/server.py','service/tts_bundle.py','service/config_bundle.py','tools/tts_bundle.py','tools/config_bundle.py','modules/voice-packages/module.exe']:self.put(name)
+        for folder in ('integrations','docs','.agents'):(self.root/folder).mkdir()
+        output=self.root/'core.zip';application_package(self.root,output)
+        with zipfile.ZipFile(output) as z:names=z.namelist()
+        self.assertIn('Agent语音/service/server.py',names)
+        self.assertFalse(any('tts_bundle' in n or 'config_bundle' in n or '/modules/' in n for n in names))
+    def test_feature_package_is_independent_and_rejects_recordings(self):
+        self.put('modules/voice-packages/module.exe');self.put('modules/voice-packages/backend/module_cli.py')
+        output=self.root/'feature.avmodule';feature_package(self.root,output)
+        m,names=self.manifest(output);self.assertEqual(m['kind'],'feature');self.assertEqual(m['apiVersion'],1);self.assertEqual(m['defaults'],{})
+        self.assertTrue(all(n=='manifest.json' or n.startswith('payload/modules/voice-packages/') for n in names))
+        self.put('modules/voice-packages/reference.wav')
+        with self.assertRaisesRegex(ValueError,'录音'):feature_package(self.root,self.root/'audio.avmodule')
 
 if __name__=='__main__':unittest.main()

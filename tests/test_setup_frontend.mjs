@@ -22,4 +22,5 @@ test('frontend ships local CSP, ten steps, bounded illustrations and reduced mot
   assert.match(html,/Content-Security-Policy/);assert.doesNotMatch(html,/https:\/\/cdn/);
   assert.match(css,/prefers-reduced-motion/);assert.match(css,/object-fit:\s*contain/);
   assert.match(js,/收到实际播放/);assert.match(js,/save-reference/);assert.match(js,/connect-airi/);
+  assert.doesNotMatch(js,/import-voice|导入音色包|\.ttsmodel/);
 });

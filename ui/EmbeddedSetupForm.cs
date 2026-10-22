@@ -95,9 +95,9 @@ namespace AgentVoice {
             if(Controller.Busy)throw new InvalidOperationException("当前任务仍在执行。");string kind=Json.Text(args,"kind"),path="";
             if(new[]{"folder","harness","airi","model"}.Contains(kind))using(var d=new FolderBrowserDialog{Description=kind=="airi"?"选择已登录的原 AIRI 安装目录":"选择对应的已有目录",ShowNewFolderButton=false}){if(d.ShowDialog(this)==DialogResult.OK)path=d.SelectedPath;}
             else{
-                var filters=new Dictionary<string,string>{{"engine","引擎包|*.ttsengine"},{"environment","环境包|*.ttsenvironment"},{"voice","音色包|*.cosyvoice.ttsmodel;*.gpt-sovits.ttsmodel"},{"reference","参考音频|*.wav;*.flac;*.mp3;*.m4a"},{"executable","运行程序|*.exe"}};
+                var filters=new Dictionary<string,string>{{"engine","引擎包|*.ttsengine"},{"environment","环境包|*.ttsenvironment"},{"reference","参考音频|*.wav;*.flac;*.mp3;*.m4a"},{"executable","运行程序|*.exe"}};
                 if(!filters.ContainsKey(kind))throw new InvalidOperationException("不支持的文件选择类型。");
-                using(var d=new OpenFileDialog{Filter=filters[kind],CheckFileExists=true,InitialDirectory=kind=="voice"?Controller.Flow.Store.Resolve("voice-model-packages"):Controller.Flow.Store.Root})if(d.ShowDialog(this)==DialogResult.OK)path=d.FileName;
+                using(var d=new OpenFileDialog{Filter=filters[kind],CheckFileExists=true,InitialDirectory=Controller.Flow.Store.Root})if(d.ShowDialog(this)==DialogResult.OK)path=d.FileName;
                 if((kind=="engine"||kind=="environment")&&path.Length>0){var package=ModulePackages.Inspect(path);if(package.kind!=kind)throw new InvalidOperationException("模块类型不匹配。");if(MessageBox.Show(this,package.name+"\r\n安装目录："+Controller.Flow.Store.Root+"\r\n模块含可执行代码。确认来源可信后安装；已有文件保留回退副本。","安装所选模块",MessageBoxButtons.OKCancel,MessageBoxIcon.Information)!=DialogResult.OK)path="";}
             }
             return new{path=path};

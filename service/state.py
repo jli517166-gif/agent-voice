@@ -139,22 +139,6 @@ class Store:
                 atomic_json(self.path,self.data)
         else:
             self.data = defaults()
-            bundled=self.root/'assets/bundled-voice.json'
-            if bundled.is_file():
-                preset=json.loads(bundled.read_text(encoding='utf-8-sig'))
-                if set(preset)!={'version','name','voice'} or preset['version']!=1 or not isinstance(preset['name'],str) or not preset['name'].strip() or len(preset['name'])>100:
-                    raise ValueError('内置音色清单格式无效')
-                voice=preset['voice'];validate_voice(voice)
-                if voice['engine']!='cosyvoice' or voice['assetScope']!='public' or voice['gptModel'] or not voice['referenceText'].strip():
-                    raise ValueError('内置音色必须使用公共 CosyVoice 资源')
-                for key,prefix in [('baseModel','tts-engines/cosyvoice/models/'),('reference','voices/')]:
-                    value=voice[key]
-                    if not value.startswith(prefix) or '\\' in value or '..' in Path(value).parts or self.root not in (self.root/value).resolve().parents:
-                        raise ValueError('内置音色资源必须位于软件专用目录内')
-                self.data['voice']=copy.deepcopy(voice)
-                self.data['engines']['cosyModel']=voice['baseModel']
-                self.data['profiles']=[{'id':'builtin-default','name':preset['name'],'voice':copy.deepcopy(voice)}]
-                validate(self.data)
             atomic_json(self.path,self.data)
 
     def resolve(self,value):

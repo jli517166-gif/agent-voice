@@ -13,10 +13,11 @@ class PortablePackageTests(unittest.TestCase):
         for name in ('agent语音.exe','runtime/core/python.exe','tts-engines/cosyvoice/runtime/tools/python.exe','tts-engines/gpt-sovits/runtime/Scripts/python.exe'):self.put(name)
         self.put('assets/bundled-voice.json',b'{}');self.put('release-info.json',b'{"commit":"fixture"}')
         self.put('data/settings.json',b'{"token":"never-publish"}');self.put('data/secret.txt');self.put('acceptance/session.json');self.put('service/__pycache__/fixture.pyc');self.put('runtime/core/Lib/library/data/needed.txt')
+        for folder in ('tools','integrations','docs','.agents'):(self.root/folder).mkdir(exist_ok=True)
         output=self.parent/'release.zip';result=archive(self.root,output,True)
         self.assertTrue(result['packageReady']);self.assertEqual(len(result['archiveSha256']),64)
         with zipfile.ZipFile(output) as z:
-            names=z.namelist();self.assertFalse(any(n.startswith('Agent语音/data/') or '/__pycache__/' in n or '/acceptance/' in n for n in names));self.assertIn('Agent语音/runtime/core/Lib/library/data/needed.txt',names)
+            names=z.namelist();self.assertFalse(any(n.startswith('Agent语音/data/') or '/__pycache__/' in n or '/acceptance/' in n for n in names));self.assertNotIn('Agent语音/runtime/core/Lib/library/data/needed.txt',names);self.assertFalse(any('bundled-voice.json' in n for n in names))
     def test_unaccepted_or_existing_output_is_rejected(self):
         target=self.parent/'release.zip'
         with self.assertRaisesRegex(ValueError,'确认'):archive(self.root,target,False)
@@ -28,7 +29,7 @@ class PortablePackageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'未批准'):list(release_files(self.root))
         self.root.joinpath('private/reference.wav').unlink();self.root.joinpath('private').rmdir()
         self.put('voice-model-packages/小挽昼/model.bin')
-        with self.assertRaisesRegex(ValueError,'Fairy|排除'):list(release_files(self.root))
+        with self.assertRaisesRegex(ValueError,'未批准|排除'):list(release_files(self.root))
     def test_link_is_not_followed_to_other_files(self):
         if sys.platform=='win32':
             import os,subprocess

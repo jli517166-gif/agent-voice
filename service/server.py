@@ -259,7 +259,7 @@ class Handler(BaseHTTPRequestHandler):
                         voice=merge(self.server.store.get()["voice"],data["voice"])
                         validate_voice(voice)
                         if voice['engine']=='cosyvoice' and voice['baseModel']:
-                            from tts_bundle import model_ready
+                            from model_integrity import model_ready
                             model_ready(self.server.store.resolve(voice['baseModel']))
                         if voice['engine']!='cosyvoice':
                             from local_tts import worker_config,validate_config

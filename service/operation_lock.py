@@ -17,7 +17,7 @@ class OperationLock:
                 import fcntl
                 fcntl.flock(stream.fileno(),fcntl.LOCK_EX|fcntl.LOCK_NB)
         except OSError as exc:
-            stream.close();raise ValueError('语音服务或另一项音色包操作正在运行；请关闭服务或等待操作完成后重试') from exc
+            stream.close();raise ValueError('语音服务或另一项文件操作正在运行；请关闭服务或等待操作完成后重试') from exc
         self.stream=stream;return self
     def __exit__(self,*exc):
         if self.stream:

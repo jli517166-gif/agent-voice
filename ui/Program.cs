@@ -32,7 +32,6 @@ namespace AgentVoice {
             if(args.Contains("--scrolltest"))return ScrollChecks.Run(store,args);
             if(args.Contains("--flowtest"))return UiChecks.Flow(store,args);
             if(args.Contains("--targettest"))return UiChecks.Target(store,args);
-            if(args.Contains("--bundletest"))return UiChecks.Bundle(store,args);
             if(args.Contains("--welcometest"))return WelcomeChecks.Run(store,args);
             if(args.Contains("--moduletest"))return ModuleChecks.Run(store,args);
             if(args.Contains("--import-module"))return ModulePackages.ImportCommand(store,args);

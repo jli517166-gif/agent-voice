@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -10,7 +10,7 @@ namespace AgentVoice {
     // page content area, which starts at (150, 76) inside the window.
     public sealed partial class MainForm {
         internal bool IsWebLayoutPage(string id){
-            return id=="configuration"||id=="voices"||id=="connections"||id=="settings"||id=="training"
+            return id=="voices"||id=="connections"||id=="settings"||id=="training"
                 ||id=="voiceEditor"||id=="harness"||id=="airi"||id=="connectionGuide"||id=="advancedTraining";
         }
         internal ScenePanel WebPage(string id){

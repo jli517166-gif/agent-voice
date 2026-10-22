@@ -12,24 +12,20 @@ class BundledVoiceTests(unittest.TestCase):
         self.write()
     def tearDown(self):self.temp.cleanup()
     def write(self): (self.root/'assets/bundled-voice.json').write_text(json.dumps(self.preset),'utf-8')
-    def test_clean_first_start_has_voice_and_unique_credentials(self):
-        result=Store(self.root).get();self.assertEqual(result['voice'],self.preset['voice']);self.assertEqual(result['engines']['cosyModel'],result['voice']['baseModel']);self.assertEqual(result['profiles'][0]['name'],'Fairy');self.assertFalse(result['airi']['enabled']);self.assertEqual(result['appearance'],defaults()['appearance']);self.assertEqual(result['harness'],{'codex':True,'deepseek':False})
-        (self.root/'data/settings.json').unlink();other=Store(self.root).get();self.assertNotEqual(result['token'],other['token'])
-    def test_existing_user_configuration_is_never_overwritten(self):
-        store=Store(self.root);store.update({'voice':{'speed':1.1}})
-        self.preset['voice']['assetScope']='private';self.write()
-        self.assertEqual(Store(self.root).get()['voice']['speed'],1.1)
-    def test_external_or_parent_paths_are_rejected_before_writing_settings(self):
-        for key,value in [('baseModel','C:/private/model'),('baseModel','tts-engines/cosyvoice/models/../../../../private'),('reference','voices/../../private.wav'),('reference','voices\\private.wav')]:
-            with self.subTest(key=key,value=value):
-                preset=copy.deepcopy(self.preset);preset['voice'][key]=value
-                (self.root/'assets/bundled-voice.json').write_text(json.dumps(preset),'utf-8')
-                with self.assertRaises(ValueError):Store(self.root)
-                self.assertFalse((self.root/'data/settings.json').exists())
-    def test_private_assets_or_connection_settings_are_rejected(self):
-        self.preset['voice']['assetScope']='private';self.write()
-        with self.assertRaisesRegex(ValueError,'公共'):Store(self.root)
-        self.preset['voice']['assetScope']='public';self.preset['token']='machine-secret';self.write()
-        with self.assertRaisesRegex(ValueError,'清单'):Store(self.root)
+    def test_clean_start_ignores_legacy_factory_voice_and_has_unique_credentials(self):
+        first=Store(self.root).get()
+        self.assertEqual(first['voice'],defaults()['voice']);self.assertEqual(first['profiles'],[])
+        self.assertEqual(first['voice']['reference'],'');self.assertFalse(first['airi']['enabled'])
+        (self.root/'data/settings.json').unlink();self.assertNotEqual(Store(self.root).get()['token'],first['token'])
+    def test_existing_user_voice_is_never_erased(self):
+        store=Store(self.root);store.update({'voice':{'speed':1.1,'reference':'mine.wav','referenceText':'own recording'}})
+        (self.root/'assets/bundled-voice.json').write_text('invalid','utf-8')
+        again=Store(self.root).get();self.assertEqual(again['voice']['reference'],'mine.wav');self.assertEqual(again['voice']['speed'],1.1)
+    def test_old_manifest_cannot_inject_paths_or_credentials(self):
+        self.preset['token']='other-machine';self.preset['voice']['reference']='C:/private/reference.wav';self.write()
+        current=Store(self.root).get();self.assertNotEqual(current['token'],'other-machine');self.assertEqual(current['voice']['reference'],'')
+    def test_malformed_factory_manifest_is_completely_ignored(self):
+        (self.root/'assets/bundled-voice.json').write_text('invalid','utf-8')
+        self.assertEqual(Store(self.root).get()['profiles'],[])
 
 if __name__=='__main__':unittest.main()

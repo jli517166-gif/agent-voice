@@ -12,7 +12,7 @@ namespace AgentVoice {
             try{using(var wizard=SetupEntry.Create(Store))wizard.ShowDialog();Config=Store.Read();BindVoice();BindSettings();ApplyTheme();Status("已返回工作台；实际接入状态由服务重新核对。");}
             finally{Show();WindowState=FormWindowState.Normal;Activate();if(!testingMode)poll.Start();}
         }
-        internal void ApplyWelcomeChoice(string choice){ShowPage(choice=="import"?"configuration":"home");}
+        internal void ApplyWelcomeChoice(string choice){ShowPage(choice=="import"?"modules":"home");}
         internal async System.Threading.Tasks.Task VerifySetupPlayback(){
             var flow=new SetupWorkflow(Store);if(await flow.Service.Running())throw new InvalidOperationException("此验收只用于独立且服务关闭的目录。");
             Exception failure=null;try{await flow.Preview();if(flow.State.Read().heardVoice)throw new InvalidOperationException("实际播放不应自动确认听感。");flow.Confirm();if(!flow.State.Read().heardVoice)throw new InvalidOperationException("听感确认未保存。");}catch(Exception error){failure=error;}

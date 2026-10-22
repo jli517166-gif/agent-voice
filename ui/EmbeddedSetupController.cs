@@ -72,7 +72,6 @@ namespace AgentVoice {
                         string kind=action=="install-engine"?"engine":"environment",file=Text(args,"file");
                         if(ModulePackages.Inspect(file).kind!=kind)throw new InvalidOperationException("所选模块与当前步骤不匹配。");
                         await Flow.InstallModule(file,kind,text=>Progress(text));message=Flow.Resources()+"\n文件安装完成，仍需真实试听验证。";break;
-                    case "import-voice":message=await Flow.ImportVoice(Text(args,"file"));break;
                     case "apply-profile":
                         var saved=Flow.Config.profiles.FirstOrDefault(v=>v.id==Text(args,"id"));if(saved==null)throw new InvalidOperationException("请选择已保存的声音。");
                         var config=Flow.Config;config.voice=saved.voice.Clone();await Flow.Save(config,new{voice=config.voice});Flow.InvalidateVoice();message="已应用："+saved.name+"。请继续试听。";break;

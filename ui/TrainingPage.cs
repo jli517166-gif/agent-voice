@@ -1,4 +1,4 @@
-﻿using Button = AgentVoice.AnimeButton;
+using Button = AgentVoice.AnimeButton;
 using System;
 using System.Drawing;
 using System.IO;
@@ -24,9 +24,9 @@ namespace AgentVoice {
             var cosySteps=WebCard(cosyGuide,0,151,902,312);
             TrainingStep(cosySteps,0,"准备声音","录音清楚、无背景音乐；台词与录音一致。","检查素材",()=>{var ignored=Guard(async()=>await CheckTraining(false),"检查训练素材");},590,110,"生成清单",()=>{var ignored=Guard(async()=>await CheckTraining(true),"生成训练清单");},706,110);
             TrainingStep(cosySteps,1,"选择训练路线","参考克隆用录音与台词；硬件较好时按高级指南。","从零开始",()=>ServiceClient.Open(Store.Resolve("音色训练从零开始.md")),560,110,"AI 训练约定",()=>ServiceClient.Open(Store.Resolve("AI训练操作约定.md")),678,150);
-            TrainingStep(cosySteps,2,"本地试听并验证","确认引擎、模型与台词一致，再用长短句验证。","选择训练模型",SelectTrainedModel,550,155,"打开音色包",()=>ShowPage("configuration"),713,125);
+            TrainingStep(cosySteps,2,"本地试听并验证","确认引擎、模型与台词一致，再用长短句验证。","选择训练模型",SelectTrainedModel,550,155,"管理可选模块",()=>ShowPage("modules"),713,125);
             TrainingStep(cosySteps,3,"导出训练结果","按内容选择轻量、完整、训练增量或训练完整包。","高级训练",()=>ShowPage("advancedTraining"),540,105,"检查脚本",()=>{var ignored=Guard(InspectTrainingScript,"检查训练脚本");},653,105);
-            cosySteps.Controls.Add(WebButton("打开目录","打开音色包库内的训练输出目录。",OpenTrainingWorkspace,770,255,110,36));
+            cosySteps.Controls.Add(WebButton("打开目录","打开本地训练结果目录。",OpenTrainingWorkspace,770,255,110,36));
             var cosyFooter=WebCard(cosyGuide,0,468,902,48);
             cosyFooter.Controls.Add(WebButton("查看详细操作手册","包含素材表格、Windows/WSL 路径、命令、失败处理和输出验收。",()=>ServiceClient.Open(Store.Resolve("音色训练从零开始.md")),0,4,185,39));
             cosyFooter.Controls.Add(WebButton("打开 CosyVoice 源码","查看本机安装的 CosyVoice。",()=>ServiceClient.Open(Store.Resolve(Config.engines.cosyRepo)),191,4,230,39));
@@ -45,11 +45,11 @@ namespace AgentVoice {
             TrainingStep(gptSteps,0,"准备素材","干净短句、官方切片与标注；保留试听句。","训练手册",()=>ServiceClient.Open(Store.Resolve("GPT-SoVITS训练指南.md")),700,100);
             TrainingStep(gptSteps,1,"训练特征","独立环境运行官方脚本，完成特征提取。","打开源码",()=>ServiceClient.Open(Store.Resolve(Config.engines.gptRepo)),700,100);
             TrainingStep(gptSteps,2,"验证模型","先在官方推理页测试；不支持自动合并 LoRA。","官方说明",()=>ServiceClient.Open("https://github.com/RVC-Boss/GPT-SoVITS/blob/main/docs/cn/README.md"),700,100);
-            TrainingStep(gptSteps,3,"导出结果","参考音频 3～10 秒，试听后导出音色包。","打开目录",OpenTrainingWorkspace,700,100);
+            TrainingStep(gptSteps,3,"验证结果","参考音频 3～10 秒，选择训练结果并试听。","打开目录",OpenTrainingWorkspace,700,100);
             var gptFooter=WebCard(gptGuide,0,468,902,48);
             gptFooter.Controls.Add(WebButton("查看详细操作手册","分别说明 ProPlus 与 v5 Turbo 的流程、权重格式和当前接入限制。",()=>ServiceClient.Open(Store.Resolve("GPT-SoVITS训练指南.md")),0,4,185,39));
             gptFooter.Controls.Add(WebButton("打开训练目录","保存独立训练结果和验收记录。",OpenTrainingWorkspace,191,4,140,39));
-            gptFooter.Controls.Add(WebButton("打开音色包","导出训练结果或导入已有音色包。",()=>ShowPage("configuration"),337,4,120,39));
+            gptFooter.Controls.Add(WebButton("管理可选模块","打开独立的可选功能模块。",()=>ShowPage("modules"),337,4,120,39));
             gptFooter.Controls.Add(WebButton("高级训练","查看高配置电脑训练专属权重的完整流程。",()=>ShowPage("advancedTraining"),463,4,110,39));
             gptFooter.Controls.Add(WebButton("返回首页","回到首页设置参考声音并试听。",()=>ShowPage("home"),579,4,105,39));
 
@@ -109,14 +109,14 @@ namespace AgentVoice {
             flow.Controls.Add(WebText("1. 固定 CosyVoice、基础模型、Python、PyTorch 和 CUDA 版本。\r\n2. 清洗多段录音，准备逐字台词、训练集、验证集和试听集。\r\n3. 按官方 recipe 训练、选择或平均 checkpoint，并整理完整模型目录。\r\n4. 用未见文本验收，再导出高级训练包或高级完整包。",8F,FontStyle.Regular,16,44,870,102,ContentAlignment.TopLeft));
 
             var packages=WebCard(page,38,442,902,218);
-            WebCardTitle(packages,"导出选择与验收");
-            packages.Controls.Add(WebText("高级训练包只保存相对基础模型变化的权重，体积较小，但导入电脑必须有完全一致的基础模型。高级完整包保存完整训练模型，迁移更方便；两者都不包含 CosyVoice 源码、Python 或 CUDA。",8F,FontStyle.Regular,16,44,870,42,ContentAlignment.TopLeft));
+            WebCardTitle(packages,"训练结果验收");
+            packages.Controls.Add(WebText("保留完整训练结果、基础模型版本和训练参数。模型可以直接在声音设置中选择；核心朗读与声音方案不依赖功能模块。",8F,FontStyle.Regular,16,44,870,42,ContentAlignment.TopLeft));
             packages.Controls.Add(WebText("验收清单",9F,FontStyle.Bold,16,94,300,24,ContentAlignment.MiddleLeft));
-            packages.Controls.Add(WebText("导出前确认基础模型与训练环境一致；验证集与试听句不参与训练；完整模型目录包含全部权重文件；用未见文本试听通过后再导出。",7.5F,FontStyle.Regular,16,118,870,40,ContentAlignment.TopLeft));
+            packages.Controls.Add(WebText("确认基础模型与训练环境一致；验证集与试听句不参与训练；完整模型目录包含全部权重文件；用未见文本试听通过后再应用。",7.5F,FontStyle.Regular,16,118,870,40,ContentAlignment.TopLeft));
             packages.Controls.Add(WebButton("校验训练模型","选择完整训练结果并填到首页。",SelectTrainedModel,16,168,150,38));
-            packages.Controls.Add(WebButton("打开音色包","选择高级训练包或高级完整包。",()=>ShowPage("configuration"),174,168,140,38));
+            packages.Controls.Add(WebButton("管理可选模块","按需安装独立功能模块。",()=>ShowPage("modules"),174,168,140,38));
         }
-        string TrainingWorkspace(){string directory=Path.Combine(VoicePackageDirectory(),"训练输出");Directory.CreateDirectory(directory);return directory;}
+        string TrainingWorkspace(){string directory=Path.Combine(TrainedModelDirectory(),"训练输出");Directory.CreateDirectory(directory);return directory;}
         async Task CheckTraining(bool prepare){
             using(var dialog=new FolderBrowserDialog{Description="选择包含 metadata.csv 和单声道 WAV 录音的素材目录",ShowNewFolderButton=false}){
                 if(dialog.ShowDialog(this)!=DialogResult.OK)return;
@@ -133,7 +133,7 @@ namespace AgentVoice {
         void SelectTrainedModel(){
             using(var dialog=new FolderBrowserDialog{Description="从音色模型包库的训练输出中选择完整 CosyVoice3 模型目录",ShowNewFolderButton=false,SelectedPath=TrainingWorkspace()}){
                 if(dialog.ShowDialog(this)!=DialogResult.OK)return;
-                string library=Path.GetFullPath(VoicePackageDirectory()).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar)+Path.DirectorySeparatorChar;
+                string library=Path.GetFullPath(TrainedModelDirectory()).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar)+Path.DirectorySeparatorChar;
                 string selected=Path.GetFullPath(dialog.SelectedPath).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar)+Path.DirectorySeparatorChar;
                 if(!selected.StartsWith(library,StringComparison.OrdinalIgnoreCase)){Status("训练完成的模型必须放在音色模型包文件夹中；已为你打开对应目录。");ServiceClient.Open(TrainingWorkspace());return;}
                 var probe=Config.voice.Clone();probe.engine="cosyvoice";probe.baseModel=Store.Portable(dialog.SelectedPath);ValidatePaths(probe);baseModelPath.Text=probe.baseModel;SelectEngineVoice(probe);ShowPage("home");Status("模型目录校验通过，已切回 CosyVoice 并填入模型；请补全参考声音后试听。");

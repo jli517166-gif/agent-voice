@@ -1,3 +1,4 @@
+import optional_voice_module
 import copy,json,shutil,socket,sys,tempfile,time,unittest,wave,zipfile
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'service'))

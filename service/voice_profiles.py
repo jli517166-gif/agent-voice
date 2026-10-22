@@ -2,7 +2,7 @@
 import copy,hashlib,json,os,shutil,uuid
 from pathlib import Path
 from state import atomic_json,validate_voice
-from config_bundle import digest
+from file_integrity import digest
 
 def manifest_path(store,ident):
     if not isinstance(ident,str) or not ident or any(c not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_' for c in ident):raise ValueError('声音方案 ID 无效')
@@ -10,7 +10,7 @@ def manifest_path(store,ident):
 
 def model_inventory(store,voice):
     from engine_registry import model_directory,variant
-    from tts_bundle import model_sources,inventory_fingerprint
+    from model_integrity import model_sources,inventory_fingerprint
     sources=model_sources(model_directory(store,voice),voice['engine'],variant(voice))
     cache_path=store.root/'data/model-digests.json'
     cache=json.loads(cache_path.read_text(encoding='utf-8')) if cache_path.exists() else {}
@@ -29,7 +29,7 @@ def pin_reference(store,voice):
     if src.suffix.lower() not in ('.wav','.flac','.mp3','.m4a','.ogg'):raise ValueError('参考录音格式不支持')
     sha=digest(src);parent=store.root/'data/voice-assets';parent.mkdir(parents=True,exist_ok=True);dest=parent/(sha+src.suffix.lower())
     if dest.exists():
-        if digest(dest)!=sha:raise ValueError('已固定的参考录音损坏，请从备份或音色包恢复')
+        if digest(dest)!=sha:raise ValueError('已固定的参考录音损坏，请从自己的录音备份恢复')
     else:
         temp=dest.with_name(dest.name+'.'+uuid.uuid4().hex+'.tmp')
         try:
@@ -75,7 +75,7 @@ def apply_profile(store,ident):
     path=manifest_path(store,ident)
     if path.exists():
         record=json.loads(path.read_text(encoding='utf-8'))
-        if digest(store.resolve(profile['voice']['reference']))!=record['reference']['sha256']:raise ValueError('声音方案的固定参考录音损坏，请从音色包恢复')
+        if digest(store.resolve(profile['voice']['reference']))!=record['reference']['sha256']:raise ValueError('声音方案的固定参考录音损坏，请从自己的录音备份恢复')
         _,fp=model_inventory(store,profile['voice'])
         if fp!=record['modelFingerprint']:raise ValueError('模型文件已被替换，与保存时不一致；请恢复原模型，或确认新声音后另存方案')
     return {'ok':True,'config':store.update({'voice':profile['voice']}),'referencePinned':path.exists()}

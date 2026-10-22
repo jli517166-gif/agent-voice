@@ -1,4 +1,4 @@
-﻿# 维护与回归
+# 维护与回归
 
 ## GitHub 同步与回退
 
@@ -17,9 +17,9 @@
 - `jobs.py`：串行队列、分段生成、渐进播放、取消和 AIRI 投递；`pipeline.py`：实际推理、校验、重试与流式合并。
 - `audio_limits.py`：统一音频与任务等待上限；长文正文最多 4000 字，异常长句分段限制 220 字，正常完整句子优先。
 - `environment_repair.py`、`environment-catalog.json`：软件内环境检查、固定版本下载与修复，禁止改写外部 Python 或覆盖训练权重。
-- `voice_profiles.py`、`tts_bundle.py`：声音方案与带引擎标记的音色包；轻量包指纹不匹配必须拒绝，不能静默换模型。
-- `assets/bundled-voice.json`：便携发行时由打包工具生成的公共默认音色清单；Python 与桌面端仅在无用户设置时读取。清单不能指定密钥、外观、Harness 或 AIRI，也不能引用程序外的声音文件。
-- `tools/package_portable.py`：从新构建、指定引擎环境与单个公共音色生成独立暂存；发布清单、私有资产检查、ZIP CRC 与 SHA-256 必须通过。不得用复制整个日常安装目录替代此流程。
+- `service/voice_profiles.py`、`model_integrity.py`、`file_integrity.py`：本体的声音方案及本地文件／模型校验；不得依赖可选音色包模块。
+- `optional-modules/voice-packages/`：音色包窗口和全部归档读写后端，独立编译成 `.avmodule`，根构建不复制。通用功能模块宿主只处理安装、完整性、启动与移除，不内置业务。
+- 不得注入默认音色；旧 `bundled-voice.json` 在首次启动被忽略。旧 `package_portable.py stage` 已停用，软件本体、引擎、环境和功能模块独立制作；本体构建与归档必须排除可选实现及用户资产。
 - `integrations/`：Codex MCP、DeepSeek 连接器和 AIRI 桥接；界面成功提示必须依赖真实回执。
 - `tools/train_cosy_lora.py`：可复现的小显存 CosyVoice3 注意力 LoRA 微调；合并后使用普通 llm.pt，无需修改推理器。
 
@@ -77,3 +77,5 @@ node --test tests/test_setup_frontend.mjs
 首次配置图片使用原作者带 alpha 的 PNG，来源和哈希在 `assets/setup/art/cutouts/sources.json`；不要再次用反色混合近似抠图。场景在 `scenes.css` 中表现扫描、文件投递、依赖装配与声浪，只有对应任务进行时才循环，减少动画和缩放暂停仍必须生效。AIRI 原图标与 CSS 曲面、SVG 声浪作为页面元素组合，不可拿配置截图替代 UI。
 
 资源准备与运行依赖分别使用 `resources` 和 `repair --prepare-only --dependencies-only`，文件完整不代表真实推理。保持 Windows 路径归一化、下载器不改外部 Python、源码替换后重查 Matcha，以及 GPT 特征提取配置完整性的回归。
+
+模块回归必须包含独立 Python 子进程（不能看到可选源码）的本地模型／声音方案测试、无 Python 安装功能模块、安装／复用／损坏拒绝／移除、真实包往返和移除后真实 TTS。不要在全局给 Python 加可选目录，再用通过结果证明本体独立。

@@ -1,4 +1,4 @@
-﻿param([string]$OutputDirectory = '')
+param([string]$OutputDirectory = '')
 $ErrorActionPreference = 'Stop'
 $sourceRoot = $PSScriptRoot
 $webSdk = & (Join-Path $sourceRoot 'tools\restore_webview2.ps1') -Root $sourceRoot
@@ -22,12 +22,12 @@ Get-ChildItem -LiteralPath (Join-Path $sourceRoot 'docs\licenses') -File -ErrorA
 foreach ($folder in @('service','integrations','tools')) {
     $target = Join-Path $OutputDirectory $folder
     New-Item -ItemType Directory -Path $target -Force | Out-Null
-    Get-ChildItem -LiteralPath (Join-Path $sourceRoot $folder) -File | Where-Object { $folder -ne 'tools' -or $_.Name -in @('module_packages.py','prepare_airi.py','release_audit.py','export_connector.py','config_bundle.py','tts_bundle.py','connect_harness.py','verify_harness.py','install_mcp.py','diagnose.py','voice_profiles.py','provision_core_runtime.py','core-requirements.txt','prepare_training.py','prepare_gpt_resources.py','environment_repair.py','train_cosy_lora.py','prepare_cosy_tokens.py') } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $target $_.Name) -Force }
+    Get-ChildItem -LiteralPath (Join-Path $sourceRoot $folder) -File | Where-Object { $folder -ne 'tools' -or $_.Name -in @('prepare_airi.py','export_connector.py','connect_harness.py','verify_harness.py','install_mcp.py','diagnose.py','voice_profiles.py','provision_core_runtime.py','core-requirements.txt','prepare_training.py','prepare_gpt_resources.py','environment_repair.py','train_cosy_lora.py','prepare_cosy_tokens.py') } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $target $_.Name) -Force }
 }
 $agentAssets = Join-Path $sourceRoot '.agents'
 if (Test-Path -LiteralPath (Join-Path $sourceRoot 'assets')) {
     $assetRoot = Join-Path $sourceRoot 'assets'
-    Get-ChildItem -LiteralPath $assetRoot -File -Recurse | ForEach-Object {
+    Get-ChildItem -LiteralPath $assetRoot -File -Recurse | Where-Object { $_.Name -ne 'bundled-voice.json' } | ForEach-Object {
         $targetAsset = Join-Path (Join-Path $OutputDirectory 'assets') $_.FullName.Substring($assetRoot.Length + 1)
         New-Item -ItemType Directory -Path (Split-Path $targetAsset) -Force | Out-Null
         Copy-Item -LiteralPath $_.FullName -Destination $targetAsset -Force
@@ -38,7 +38,7 @@ if (Test-Path -LiteralPath $agentAssets) {
     New-Item -ItemType Directory -Path $pluginTarget -Force | Out-Null
     Get-ChildItem -LiteralPath $agentAssets -Force | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $pluginTarget -Recurse -Force }
 }
-foreach ($obsolete in @('integrations\opencode-plugin.mjs','integrations\pi-extension.ts','integrations\piper-requirements.txt','service\rvc_tone.py','service\rvc_accepted.py','service\rvc_index.py','service\moss_client.py','service\moss_worker.py','service\moss_audio.py','service\piper_client.py','service\piper_worker.py','MOSS引擎说明.md')) {
+foreach ($obsolete in @('integrations\opencode-plugin.mjs','integrations\pi-extension.ts','integrations\piper-requirements.txt','service\tts_bundle.py','service\config_bundle.py','tools\tts_bundle.py','tools\config_bundle.py','tools\release_audit.py','tools\module_packages.py','assets\bundled-voice.json','service\rvc_tone.py','service\rvc_accepted.py','service\rvc_index.py','service\moss_client.py','service\moss_worker.py','service\moss_audio.py','service\piper_client.py','service\piper_worker.py','MOSS引擎说明.md')) {
     $obsoletePath = Join-Path $OutputDirectory $obsolete
     if (Test-Path -LiteralPath $obsoletePath) { Remove-Item -LiteralPath $obsoletePath -Force }
 }
@@ -46,5 +46,5 @@ Get-ChildItem -LiteralPath $sourceRoot -Filter '*.md' -File | ForEach-Object { C
 New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'docs') -Force | Out-Null
 Get-ChildItem -LiteralPath (Join-Path $sourceRoot 'docs') -Filter '*.md' -File | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path (Join-Path $OutputDirectory 'docs') $_.Name) -Force }
 New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'tts-engines\gpt-sovits') -Force | Out-Null
-New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'voices'),(Join-Path $OutputDirectory 'voice-model-packages'),(Join-Path $OutputDirectory 'data'),(Join-Path $OutputDirectory 'tts-engines'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\source'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\runtime\tools'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\models') -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'voices'),(Join-Path $OutputDirectory 'trained-voices'),(Join-Path $OutputDirectory 'data'),(Join-Path $OutputDirectory 'tts-engines'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\source'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\runtime\tools'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\models') -Force | Out-Null
 Write-Output $finalExecutable

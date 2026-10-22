@@ -25,6 +25,8 @@ voice-model-packages/
 *.ttsenvironment.sha256
 *.ckpt
 *.avconfig
+*.avmodule
+*.avmodule.sha256
 *.wav
 !assets/sfx/step-?.wav
 *.flac

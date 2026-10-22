@@ -21,7 +21,7 @@ class IsolationTests(unittest.TestCase):
             payload=b'private-test-fixture';(root/'renamed.pth').write_bytes(payload)
             atomic_json(root/'data/private-assets.json',{'files':[{'sha256':hashlib.sha256(payload).hexdigest()}]})
             atomic_json(root/'release.json',{'files':['renamed.pth','../escape.wav','data/settings.json'],
-                        'publicVoiceProvided':True,'runtimeIncluded':True,'userAccepted':True})
+                        'publicVoiceProvided':False,'runtimeIncluded':True,'userAccepted':True})
             result=audit(root,root/'release.json')
             self.assertFalse(result['packageReady']);self.assertEqual(len(result['errors']),3);self.assertEqual(result['files'],[])
     def test_accepted_settings_and_profile_survive_reopening(self):

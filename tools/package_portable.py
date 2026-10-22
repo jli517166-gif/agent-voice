@@ -1,4 +1,4 @@
-﻿"""Build a clean portable release from explicit code, runtimes and one public voice.
+"""Compatibility entry point for a voice-free application package.
 
 Never copies installation data/settings, custom appearance or voice collections.
 Archive membership is audited; validation data created in staging is excluded.
@@ -10,7 +10,7 @@ from release_audit import audit,digest
 import runtime_paths
 
 SKIP_DIRS={'.git','__pycache__','.cache','.pytest_cache','.mypy_cache'}
-ROOTS={'service','integrations','tools','assets','.agents','docs','runtime','tts-engines','voices','voice-model-packages'}
+ROOTS={'service','integrations','tools','assets','.agents','docs'}
 GPT_LINKS={f'GPT_SoVITS/pretrained_models/{name}' for name in ('chinese-hubert-base','chinese-roberta-wwm-ext-large','gsv-v5-pretrained','sv','v2Pro')}
 
 def files(root,skip=()):
@@ -36,81 +36,28 @@ def copy_tree(source,target,skip=()):
         shutil.copy2(path,dest);count+=1;size+=path.stat().st_size
     print(json.dumps({'phase':'copied','folder':str(target),'files':count,'bytes':size},ensure_ascii=False),flush=True)
 
-def stage(build,installation,model,reference,spec,target,commit):
-    build=Path(build).resolve();installation=Path(installation).resolve();target=Path(target).resolve()
-    if target.exists():raise ValueError('暂存目录必须不存在，不能覆盖旧安装或已有文件')
-    if not (build/'agent语音.exe').is_file():raise ValueError('请先构建程序')
-    preset=json.loads(Path(spec).read_text('utf-8-sig'))
-    if set(preset)!={'version','name','voice'} or preset['name']!='Fairy':raise ValueError('本次发布只允许 Fairy 公共音色')
-    from state import validate_voice
-    validate_voice(preset['voice'])
-    if preset['voice']['assetScope']!='public' or preset['voice']['engine']!='cosyvoice':raise ValueError('禁止发布私有音色')
-    target.mkdir(parents=True)
-    copy_tree(build,target,skip={'data','acceptance','voice-model-packages','voices','tts-engines'})
-    copy_tree(installation/'runtime/core',target/'runtime/core')
-    for engine in ('cosyvoice','gpt-sovits'):
-        for folder in ('source','runtime'):
-            skip=GPT_LINKS|{'GPT_SoVITS/text/G2PWModel'} if engine=='gpt-sovits' and folder=='source' else set()
-            copy_tree(installation/'tts-engines'/engine/folder,target/'tts-engines'/engine/folder,skip)
-    copy_tree(installation/'tts-engines/gpt-sovits/models/GPT-SoVITS',target/'tts-engines/gpt-sovits/models/GPT-SoVITS')
-    copy_tree(installation/'tts-engines/gpt-sovits/nltk_data',target/'tts-engines/gpt-sovits/nltk_data')
-    # G2PW must exist at upstream's lookup path. Materialize this one known link,
-    # checking its target stays inside the selected installation first.
-    g2pw=(installation/'tts-engines/gpt-sovits/source/GPT_SoVITS/text/G2PWModel').resolve()
-    if installation not in g2pw.parents:raise ValueError('G2PW 链接指向软件外部')
-    copy_tree(g2pw,target/'tts-engines/gpt-sovits/source/GPT_SoVITS/text/G2PWModel')
-    copy_tree(model,target/'tts-engines/cosyvoice/models/Fairy-CosyVoice3')
-    ref=target/'voices/Fairy/reference.wav';ref.parent.mkdir(parents=True,exist_ok=True)
-    if Path(reference).suffix.lower()!='.wav':raise ValueError('默认参考必须是 WAV')
-    shutil.copy2(reference,ref)
-    voice=copy.deepcopy(preset['voice']);voice.update(baseModel='tts-engines/cosyvoice/models/Fairy-CosyVoice3',reference='voices/Fairy/reference.wav',gptModel='')
-    (target/'assets').mkdir(exist_ok=True)
-    (target/'assets/bundled-voice.json').write_text(json.dumps({'version':1,'name':'Fairy','voice':voice},ensure_ascii=False,indent=2),'utf-8')
-    for name in ('ffmpeg.exe','ffprobe.exe'):
-        shutil.copy2(installation/'tools'/name,target/'tools'/name)
-    (target/'release-info.json').write_text(json.dumps({'format':'agent-voice-portable','version':1,'commit':commit,'defaultVoice':'Fairy','includedEngines':['cosyvoice','gpt-sovits-v5turbo','gpt-sovits-proplus'],'userDataIncluded':False},ensure_ascii=False,indent=2),'utf-8')
-    # Repair the copy, never the source installation. After extraction the
-    # launcher and environment repair relocate it again to its final directory.
-    runtime_paths.repair_bundled_runtime(target)
-    print(json.dumps({'phase':'staged','directory':str(target)},ensure_ascii=False),flush=True)
+def stage(*args,**kwargs):
+    raise ValueError('旧的一体式声音打包已停用，请使用 module_packages.py 分别构建本体、引擎、环境和功能模块')
+
 
 def release_files(root):
     root=Path(root).resolve()
     for relative,path in files(root,skip={'data','acceptance','voice-model-packages/已导入'}):
         if len(relative.parts)>1 and relative.parts[0] not in ROOTS:raise ValueError('未批准的发布目录：'+str(relative))
         if len(relative.parts)==1 and relative.suffix.lower() not in {'.exe','.md','.json'}:raise ValueError('未批准的发布文件：'+str(relative))
-        if relative.parts[0] in {'voices','voice-model-packages'} and (len(relative.parts)<3 or relative.parts[1]!='Fairy'):raise ValueError('发布包只允许 Fairy 声音资源')
+        if relative.parts[0] in {'voices','voice-model-packages','modules'}:raise ValueError('本体禁止附带音色和功能模块')
         if path.suffix.lower()=='.index' or any(p.casefold() in {'小挽昼','星见雅','rvc','rvc20240604nvidia'} for p in relative.parts):raise ValueError('发布包包含排除的音色或变声资源')
         yield relative.as_posix(),path
 
 def archive(root,output,accepted):
-    root=Path(root).resolve();output=Path(output).resolve()
     if not accepted:raise ValueError('必须在用户确认发布后使用 --accepted')
-    if output.exists() or output.with_suffix(output.suffix+'.partial').exists():raise ValueError('目标文件已存在，禁止覆盖')
-    entries=list(release_files(root))
-    if not entries:raise ValueError('发布目录为空')
-    manifest={'publicVoiceProvided':(root/'assets/bundled-voice.json').is_file(),'runtimeIncluded':all((root/p).is_file() for p in ('runtime/core/python.exe','tts-engines/cosyvoice/runtime/tools/python.exe','tts-engines/gpt-sovits/runtime/Scripts/python.exe')),'userAccepted':accepted,'files':[name for name,_ in entries]}
-    manifest_path=output.with_suffix('.manifest.json');manifest_path.write_text(json.dumps(manifest,ensure_ascii=False,indent=2),'utf-8')
-    print(json.dumps({'phase':'audit','files':len(entries)},ensure_ascii=False),flush=True)
-    result=audit(root,manifest_path)
-    if not result['packageReady']:raise ValueError('发布审计失败：'+repr(result['errors']))
-    partial=output.with_suffix(output.suffix+'.partial');last=time.monotonic()
-    with zipfile.ZipFile(partial,'x',compression=zipfile.ZIP_DEFLATED,compresslevel=1,allowZip64=True) as archive:
-        for index,(name,path) in enumerate(entries):
-            archive.write(path,'Agent语音/'+name)
-            if time.monotonic()-last>8:
-                print(json.dumps({'phase':'compress','done':index+1,'total':len(entries)},ensure_ascii=False),flush=True);last=time.monotonic()
-    print(json.dumps({'phase':'verify-crc'},ensure_ascii=False),flush=True)
-    with zipfile.ZipFile(partial) as archive:
-        names=archive.namelist()
-        if len(names)!=len(set(n.casefold() for n in names)) or len(names)!=len(entries):raise ValueError('归档条目不一致')
-        bad=archive.testzip()
-        if bad:raise ValueError('归档 CRC 校验失败：'+bad)
-    os.replace(partial,output)
-    result.update(archive=str(output),archiveBytes=output.stat().st_size,archiveSha256=digest(output),codeCommit=json.loads((root/'release-info.json').read_text('utf-8-sig'))['commit'],defaultVoice='Fairy')
-    output.with_suffix('.audit.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),'utf-8')
-    print(json.dumps({k:v for k,v in result.items() if k!='files'},ensure_ascii=False),flush=True)
+    output=Path(output).resolve()
+    if output.exists():raise ValueError('目标文件已存在，禁止覆盖')
+    from module_packages import application_package
+    result=application_package(root,output)
+    result.update(packageReady=True,archive=str(output),archiveSha256=result['sha256'],defaultVoice=None)
     return result
+
 
 def main():
     parser=argparse.ArgumentParser();commands=parser.add_subparsers(dest='mode',required=True)

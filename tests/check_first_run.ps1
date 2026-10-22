@@ -1,4 +1,4 @@
-param([string]$BuildDirectory='dist',[string]$OutputDirectory='acceptance/first-run')
+﻿param([string]$BuildDirectory='dist',[string]$OutputDirectory='acceptance/first-run')
 $ErrorActionPreference='Stop'
 $built=(Resolve-Path -LiteralPath $BuildDirectory).Path
 $exeName='agent'+[char]0x8bed+[char]0x97f3+'.exe'
@@ -33,10 +33,10 @@ function Launch-Fixture {
     }
 }
 $first=Launch-Fixture
-if($first.voice.baseModel -ne $voice.baseModel -or $first.profiles[0].name -ne 'Fairy' -or $first.airi.enabled -or $first.token.Length -lt 24){throw 'First launch did not apply factory voice safely'}
+if($first.voice.reference -ne '' -or $first.profiles.Count -ne 0 -or $first.airi.enabled -or $first.token.Length -lt 24){throw 'First launch injected a default voice or unsafe connection'}
 $first.voice.speed=1.1
 $first | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $settingsFile -Encoding UTF8
 Set-Content -LiteralPath (Join-Path $root 'assets/bundled-voice.json') -Value 'invalid' -Encoding UTF8
 $again=Launch-Fixture
 if($again.voice.speed -ne 1.1 -or $again.token -ne $first.token){throw 'Existing settings changed during launch'}
-@{ok=$true;checks=@('actual exe first launch','factory Fairy','AIRI disabled','existing settings and credential preserved')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'first-run-results.json') -Encoding UTF8
+@{ok=$true;checks=@('actual exe first launch','no default voice; stale factory manifest ignored','AIRI disabled','existing settings and credential preserved')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'first-run-results.json') -Encoding UTF8

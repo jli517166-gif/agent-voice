@@ -1,4 +1,4 @@
-﻿"""App-local environment repair with a real end-to-end synthesis check."""
+"""App-local environment repair with a real end-to-end synthesis check."""
 import argparse,copy,hashlib,json,os,platform,shutil,subprocess,sys,time,urllib.request,uuid,zipfile
 from pathlib import Path
 import runtime_paths
@@ -179,7 +179,7 @@ class Repair:
         if 'dll load failed' in low or 'winerror 126' in low or 'vcruntime' in low or 'msvcp' in low:
             return 'Windows 原生运行库加载失败。请安装 Microsoft Visual C++ 2015–2022 x64 运行库并重启。'
         if '参考' in text or 'reference' in low:
-            return '参考音频或逐字台词不可用。请重新导入音色包，或在首页重新选择参考音频。'
+            return '参考音频或逐字台词不可用。请在声音设置中重新选择自己的参考音频并核对台词。'
         if 'timed out' in low or '超时' in text:
             return '模型加载超时。关闭占用显卡的软件后重试，并检查杀毒软件是否正在扫描模型文件。'
         return '打开安装日志和工作进程日志查看原始错误；修复后再次运行补齐。'
@@ -293,7 +293,7 @@ class Repair:
         for name in selected:
             data=spec(name);python=self.store.resolve(cfg['engines'][data['pythonKey']]);source=self.store.resolve(cfg['engines'][data['sourceKey']]);model=self.store.resolve(cfg['engines'][data['modelKey']]);probe=self.probe(python,['torch','torchaudio',*CATALOG[name]['packages']])
             source_file=source/('cosyvoice/cli/cosyvoice.py' if name=='cosyvoice' else 'GPT_SoVITS/TTS_infer_pack/TTS.py')
-            from tts_bundle import REQUIRED
+            from model_integrity import REQUIRED
             missing_model=[f for f in REQUIRED if not (model/f).is_file()] if name=='cosyvoice' else [str(p.relative_to(model)) for variant in ('proplus','v5turbo') for p in gpt_required(dict(worker_config(self.store,dict(cfg['voice'],engine=name,gptVariant=variant)),model=str(model),source=str(source)))[1:] if not p.is_file()]
             if name=='cosyvoice' and (not (model/'CosyVoice-BlankEN/config.json').is_file() or not list((model/'CosyVoice-BlankEN').glob('*.safetensors'))):missing_model.append('CosyVoice-BlankEN/*')
             resource_ok=True
@@ -342,7 +342,7 @@ class Repair:
                     if self.root not in model.resolve().parents:
                         model=home/'models'/('Fun-CosyVoice3-0.5B' if name=='cosyvoice' else 'GPT-SoVITS')
                         if name=='cosyvoice':
-                            from tts_bundle import REQUIRED
+                            from model_integrity import REQUIRED
                             patterns=[*REQUIRED,'CosyVoice-BlankEN/*']
                         else:patterns=[str(p.relative_to(model)) for v in ('proplus','v5turbo') for p in gpt_required({'source':str(source),'model':str(model),'variant':v})[1:]]
                     python=self.store.resolve(self.store.get()['engines']['pythonService'])
@@ -399,7 +399,7 @@ class Repair:
                     patterns=row['missingModelFiles'];stage=inside(self.root,self.work/('model-download-'+uuid.uuid4().hex))
                     if str(model)!=row['model']:
                         if name=='cosyvoice':
-                            from tts_bundle import REQUIRED
+                            from model_integrity import REQUIRED
                             patterns=[*REQUIRED,'CosyVoice-BlankEN/*']
                         else:patterns=[str(p.relative_to(model)) for variant in ('proplus','v5turbo') for p in gpt_required({'source':str(source),'model':str(model),'variant':variant})[1:]]
                     patterns=self.model_patterns(name,patterns)

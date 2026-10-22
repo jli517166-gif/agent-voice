@@ -34,9 +34,9 @@ def inventory(root,relative):
         if path.is_dir():pending.extend(p for p in sorted(path.iterdir(),reverse=True) if p.name not in SKIP)
         elif path.suffix.lower() not in {'.pyc','.pyo','.log','.tmp','.part'}:yield path.relative_to(root).as_posix(),path
 
-def write_package(output,kind,engine,components,paths,defaults,profile='bundled',minimum_driver=''):
+def write_package(output,kind,engine,components,paths,defaults,profile='bundled',minimum_driver='',feature=None):
     output=Path(output).resolve()
-    suffix='.ttsengine' if kind=='engine' else '.ttsenvironment'
+    suffix='.ttsengine' if kind=='engine' else '.avmodule' if kind=='feature' else '.ttsenvironment'
     if not str(output).endswith(suffix) or output.exists():raise ValueError('输出需要新文件，后缀为 '+suffix)
     paths=list(paths);names=[p[0] for p in paths]
     if not paths or len(names)!=len(set(n.casefold() for n in names)):raise ValueError('模块资源为空或路径重复')
@@ -44,6 +44,7 @@ def write_package(output,kind,engine,components,paths,defaults,profile='bundled'
               'engine':engine,'platform':'windows-x64','profile':profile,'minimumDriver':minimum_driver,
               'components':components,'defaults':defaults,
               'files':[{'path':name,'size':path.stat().st_size,'sha256':digest(path)} for name,path in paths]}
+    if feature:manifest.update(feature)
     output.parent.mkdir(parents=True,exist_ok=True);temporary=output.with_name(output.name+'.partial')
     if temporary.exists():raise ValueError('存在未完成包，请改名或检查旧操作')
     try:
@@ -91,6 +92,8 @@ def application_package(build,output):
     roots.extend(name for name in ui_libraries if (build/name).is_file())
     paths=[entry for relative in roots for entry in inventory(build,relative)]
     paths.extend((p.name,p) for p in build.glob('*.md'))
+    forbidden={'service/tts_bundle.py','service/config_bundle.py','tools/tts_bundle.py','tools/config_bundle.py'}
+    paths=[(name,path) for name,path in paths if name not in forbidden and '/__pycache__/' not in name]
     # Public stock graphics only; no bundled-voice manifest or user imagery.
     if (build/'assets').is_dir():paths.extend((n,p) for n,p in inventory(build,'assets') if n.startswith('assets/') and (p.suffix.lower() in {'.png','.ico','.svg'} or re.fullmatch(r'assets/sfx/step-[0-8]\.wav',n) or n=='assets/onboarding/layout.json' or (n.startswith('assets/setup/') and p.suffix.lower() in {'.html','.css','.js','.json','.webp'})))
     output.parent.mkdir(parents=True,exist_ok=True)
@@ -107,11 +110,21 @@ def application_package(build,output):
     finally:temporary.unlink(missing_ok=True)
     return {'ok':True,'kind':'application','file':str(output),'bytes':output.stat().st_size,'sha256':digest(output)}
 
+
+def feature_package(root,output,ident='voice-packages',name='音色包导入导出',version='1.0.0'):
+    if not re.fullmatch(r'[a-z][a-z0-9-]{0,63}',ident):raise ValueError('功能模块标识无效')
+    root=Path(root).resolve();prefix='modules/'+ident
+    if not (root/prefix/'module.exe').is_file():raise ValueError('请先单独构建功能模块')
+    paths=list(inventory(root,prefix))
+    if any(Path(n).suffix.lower() not in {'.exe','.dll','.py','.json','.md','.txt','.png','.svg','.gif'} or n==prefix+'/module.json' for n,p in paths):raise ValueError('功能模块只能包含实现和界面资源，不能携带录音和权重')
+    return write_package(output,'feature','',[prefix],paths,{},feature={'id':ident,'name':name,'moduleVersion':version,'apiVersion':1,'entrypoint':prefix+'/module.exe'})
+
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('kind',choices=['application','engine','environment']);parser.add_argument('--root',required=True);parser.add_argument('--output',required=True)
+    parser=argparse.ArgumentParser();parser.add_argument('kind',choices=['application','engine','environment','feature']);parser.add_argument('--root',required=True);parser.add_argument('--output',required=True)
     parser.add_argument('--engine',choices=ENGINES);parser.add_argument('--engines',nargs='*',choices=ENGINES,default=list(ENGINES));parser.add_argument('--model');parser.add_argument('--include-downloads',action='store_true');parser.add_argument('--profile',default='bundled');parser.add_argument('--minimum-driver',default='')
     args=parser.parse_args()
     if args.kind=='application':result=application_package(args.root,args.output)
+    elif args.kind=='feature':result=feature_package(args.root,args.output)
     elif args.kind=='engine':result=engine_package(args.root,args.engine,args.output,args.model)
     else:result=environment_package(args.root,args.engines,args.output,args.include_downloads,args.profile,args.minimum_driver)
     print(json.dumps(result,ensure_ascii=False))

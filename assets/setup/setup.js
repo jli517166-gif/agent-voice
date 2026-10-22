@@ -16,7 +16,7 @@
     {title:'声音的笔触，由你挑选。',lead:'引擎把文字写成声音。选一种，也可以多留几种，让同一段对话有不同的表达。',art:'puzzle.webp',label:'多留几种可能',body:()=>`<div class="tile-list">${engineNames.map((name,i)=>`<button class="tile ${selection.includes(i)?'selected':''}" data-engine="${i}" role="checkbox" aria-checked="${selection.includes(i)}"><strong>${selection.includes(i)?'✓ ':''}${name}</strong><small>${i===0?'用参考录音或训练模型，延续喜欢的音色':'共用基础环境，各自使用对应版本的权重'}</small></button>`).join('')}</div><p class="muted">可以多选。下一步会记下安装清单，当前声音保持原样。还没想好，就先不选，以后再添。</p>`},
     {title:'把声音的来处，安放好。',lead:'把选好的引擎带到这台电脑。在线下载，或导入手边的引擎包，走你方便的那条路。',art:'folder.webp',label:'引擎文件',body:()=>`<p class="muted">安装清单：${esc(selectedNames())}</p>${resources()}${actions([btn('download-engine','下载所选引擎',true),btn('resources','检查已有文件'),btn('stop-service','停止服务以安装')])}<p class="muted">源码与基础模型会依次下载，已有的就留下；GPT 两个版本的共用文件只准备一次。下载可能需要数 GB，运行依赖留到下一步。失败项可以重试，已完成的会保留。</p><details id="localEngine" ${state.offline?'open':''}><summary>手边已有引擎包，或下载遇到了阻碍？</summary><p class="muted">把已有的引擎包带进来就好。可以逐个导入，彼此共存，也可以直接找到已经安装的引擎。</p>${actions([btn('install-engine','导入本地引擎包'),btn('paths','定位已安装引擎')])}</details>${actions([doc('TTS使用手册.md','下载与安装说明')])}`},
     {title:'为每一句话，铺好来路。',lead:'让引擎与这台电脑配合起来。按安装清单检查运行环境，把缺少的部分一项项补齐。',art:'puzzle.webp',label:'运行环境',body:()=>`<p class="muted">安装清单：${esc(selectedNames())}</p><label><input type="checkbox" id="offline" ${state.offline?'checked':''}>严格离线：只使用本地文件</label>${resources()}${actions([btn('inspect-environment','检查已有环境',true),btn('repair-environment','补齐缺失环境'),btn('stop-service','停止服务以安装')])}<details><summary>网络暂时走不通？带上离线环境包</summary>${actions([btn('install-environment','导入离线环境包')])}</details>${actions([doc('环境补齐说明.md','环境安装说明')])}`},
-    {title:'把偏爱，调成声音。',lead:'先选当前使用的引擎，再导入喜欢的音色，或留下一段参考录音。让 Harness 的每一次开口，都带着你的选择。',art:'mic.webp',label:'让每次开口，都有你的选择',body:()=>`${activePicker()}${resources()}${actions([btn('import-voice','导入音色包',true),btn('profiles','选择已保存的声音'),btn('reference','配置参考声音')])}<p class="muted">音色包会寻找对应的引擎与版本。声音是否合意，留到下一步亲耳听听。</p>`},
+    {title:'把偏爱，调成声音。',lead:'先选当前使用的引擎，再选择你自己的参考录音。让 Harness 的每一次开口，都带着你的选择。',art:'mic.webp',label:'让每次开口，都有你的选择',body:()=>`${activePicker()}${resources()}${actions([btn('profiles','选择已保存的声音'),btn('reference','配置参考声音')])}<p class="muted">参考声音由你自己提供，软件不附带默认音色。下一步可以实际试听。</p>`},
     {title:'让耳朵，替你点头。',lead:'音色像不像，停顿是否舒服，语气是不是你想要的样子。先听一段，再由你决定。',art:'headphone.webp',label:'喜欢与否，听过再说',body:()=>`<p>点下试听，服务会启动，为你读一段话。可以停下、换一种声音，再听一次。</p>${actions([btn('preview','生成并播放',true),btn('stop-preview','停止试听')])}${actions([btn('confirm','确认声音合适')])}<p class="muted" data-heard>${state.heardVoice?'这份声音，你已亲耳听过并确认。':'这份声音，还在等你听过后点头。'}</p><p class="muted">程序会核对播放是否完成；喜欢与否，由你确认。换过引擎、模型或参考录音，再听一次，让选择落在耳朵里。</p>`},
     {title:'让 Harness，开口回应。',lead:'把屏幕里的文字，接成耳边的回应。目前实测支持 Codex 与 DeepSeek Harness；也可以先跳过，稍后再接。',art:'link.webp',label:'让文字，走近一点',body:()=>`${actions([btn('connect-harness','选择目录并接入验证',true),doc('接入说明.md','查看接入步骤')])}<p class="muted">选好安装目录，我们来识别 Harness、装好连接器，再走一遍回复与朗读。收到实际播放完成回执，才为这次相遇庆祝。</p>${actions([btn('copy-challenge','复制手动验证短句')])}<p class="muted">有些账号需要你亲手送出验证短句，点击“复制手动验证短句”即可复制。若卡在登录或重载，执行过程会写明原因和下一步。</p>`},
     {title:'让声音，有个身影。',lead:'如果你愿意，让 AIRI 接住这份声音。它的回复、Harness 的话语，都可以由桌宠陪你说出来。',art:'airi-11-icon.png',label:'AIRI，另一种陪伴',body:()=>`<label><input type="checkbox" id="airiEnabled" ${state.airiEnabled?'checked':''}>启用 AIRI 桌宠联动</label>${actions([btn('connect-airi','选择原 AIRI 并验证',true)])}<p class="muted">找到你已经登录、包含 airi.exe 的那个 AIRI，我们就在原处接上声音。播放与嘴型都收到回执后，才确认联动成功。</p><p class="muted">这份陪伴由你开启；保持关闭，仍能在本机听见声音。AIRI 更新后若联动失效，回来重新接入验证即可。</p>`},
@@ -66,7 +66,7 @@
       const result=await B.request(action,args);if(result?.state)render(result.state);
       if(result?.message)feedback('操作完成',result.message);
       if(result?.celebrate)celebrate();
-      if(['save-reference','save-paths','apply-profile','import-voice'].includes(action))drafts={};
+      if(['save-reference','save-paths','apply-profile'].includes(action))drafts={};
       if(['save-reference','save-paths','preferences','copy-challenge','save-airi'].includes(action))toast(result?.message||'已保存');
       return result;
     }catch(error){if(action==='download-engine'&&$('#localEngine'))$('#localEngine').open=true;if($('#drawer').open){let note=$('#drawerError');if(!note){note=document.createElement('p');note.id='drawerError';note.className='error-copy';note.setAttribute('role','alert');$('#drawerBody').prepend(note);}note.textContent=error.message;}if(error.state)render(error.state);feedback('未完成 · 请修复后重试',error.message,true);return null;}
@@ -80,7 +80,7 @@
     const fields=Object.entries(pathLabels).map(([key,label])=>`<div class="field-row">${field('path_'+key,label,key==='baseModel'?state.baseModel:key==='voiceGptModel'?state.gptModel:state.paths[key])}${btn('browse-path','选择',false,`data-field="${key}"`)}</div>`).join('');
     drawer('已有引擎与模型路径',`<p class="muted">已经备好引擎，就把它所在的位置告诉我们。先停止服务再保存；当前声音模型留空时，会使用对应的基础模型。</p>${fields}<div class="drawer-actions">${btn('save-paths','保存路径',true)}${btn('stop-service','停止服务')}</div>`,'paths');
   }
-  function openProfiles(){drawer('已保存的声音',state.profiles.length?`<label class="field">声音方案<select id="savedProfile">${state.profiles.map(item=>`<option value="${esc(item.id)}">${esc(item.name)}</option>`).join('')}</select></label><div class="drawer-actions">${btn('apply-profile','应用选中声音',true)}</div>`:'<p>这里还没有留下声音。先导入一个音色包，或准备一段参考录音，再把喜欢的配置存下来。</p>','profiles');}
+  function openProfiles(){drawer('已保存的声音',state.profiles.length?`<label class="field">声音方案<select id="savedProfile">${state.profiles.map(item=>`<option value="${esc(item.id)}">${esc(item.name)}</option>`).join('')}</select></label><div class="drawer-actions">${btn('apply-profile','应用选中声音',true)}</div>`:'<p>这里还没有留下声音。准备自己的参考录音，再在控制台把喜欢的配置存下来。</p>','profiles');}
   function celebrate(){
     const layer=$('#celebration .celebration-lines');layer.replaceChildren();
     if(!state.reduceMotion&&!matchMedia('(prefers-reduced-motion:reduce)').matches)for(let i=0;i<70;i++){
@@ -95,8 +95,8 @@
     try{
       if(action==='doc'){await run('open-doc',{name:target.dataset.doc},'打开说明');return;}
       if(action==='paths'){openPaths();return;}if(action==='reference'){openReference();return;}if(action==='profiles'){openProfiles();return;}
-      if(action==='install-engine'||action==='install-environment'||action==='import-voice'){
-        const kind=action==='install-engine'?'engine':action==='install-environment'?'environment':'voice';const file=await browse(kind);if(file)await run(action,{file},target.textContent);return;
+      if(action==='install-engine'||action==='install-environment'){
+        const kind=action==='install-engine'?'engine':'environment';const file=await browse(kind);if(file)await run(action,{file},target.textContent);return;
       }
       if(action==='connect-harness'||action==='connect-airi'){const directory=await browse(action==='connect-airi'?'airi':'harness');if(directory)await run(action,{directory},target.textContent);return;}
       if(action==='browse-reference'){const path=await browse('reference');if(path){$('#referencePath').value=path;drafts.referencePath=path;}return;}

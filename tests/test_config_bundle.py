@@ -1,3 +1,4 @@
+import optional_voice_module
 import copy
 import json
 from pathlib import Path
@@ -108,7 +109,7 @@ class BundleTests(unittest.TestCase):
         finally:server.shutdown_owned();server.jobs.close();server.server_close();worker.join(2)
     def check_release_rejected(self,package):
         resource=self.root/'renamed-example.bin';shutil.copy2(package,resource)
-        manifest=self.base/'release.json';atomic_json(manifest,{'publicVoiceProvided':True,'runtimeIncluded':True,'userAccepted':True,'files':[resource.name]})
+        manifest=self.base/'release.json';atomic_json(manifest,{'publicVoiceProvided':False,'runtimeIncluded':True,'userAccepted':True,'files':[resource.name]})
         result=audit(self.root,manifest);self.assertFalse(result['packageReady']);self.assertTrue(any('私有' in error for error in result['errors']))
     def test_renamed_private_bundle_is_blocked_from_release(self):self.check_release_rejected(self.package)
     def test_mislabeled_bundle_still_detects_protected_asset_bytes(self):

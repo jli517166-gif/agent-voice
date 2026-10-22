@@ -13,7 +13,7 @@ import uuid
 import zipfile
 
 from state import Store, validate_voice
-from config_bundle import assert_offline, digest, remove_owned
+from file_integrity import assert_offline, digest, remove_owned
 from engine_registry import spec, CATALOG
 from operation_lock import offline_operation
 

@@ -11,8 +11,8 @@ using System.Web.Script.Serialization;
 namespace AgentVoice {
     public sealed class ModuleFile {public string path,sha256;public long size;}
     public sealed class ModuleManifest {
-        public string format,kind,name,engine,platform,profile,minimumDriver;
-        public int version;public string[] components;public Dictionary<string,string> defaults;public ModuleFile[] files;
+        public string format,kind,name,engine,platform,profile,minimumDriver,id,entrypoint,moduleVersion;
+        public int version,apiVersion;public string[] components;public Dictionary<string,string> defaults;public ModuleFile[] files;
     }
     public sealed class ModuleMove {public string target,backup;public bool existed;}
     public sealed class ModuleJournal {public string stage,backup;public bool hadSettings;public List<ModuleMove> moves=new List<ModuleMove>();}
@@ -39,6 +39,7 @@ namespace AgentVoice {
             return path;
         }
         static bool ComponentAllowed(ModuleManifest m,string path){
+            if(m.kind=="feature")return System.Text.RegularExpressions.Regex.IsMatch(path??"","^modules/[a-z][a-z0-9-]{0,63}$")&&(m.id==null||path=="modules/"+m.id);
             if(m.kind=="engine"){
                 string prefix="tts-engines/"+m.engine+"/";
                 return path==prefix+"source"||(m.engine=="gpt-sovits"&&path==prefix+"nltk_data")||(path.StartsWith(prefix+"models/",StringComparison.Ordinal)&&path.Split('/').Length==4);
@@ -46,9 +47,9 @@ namespace AgentVoice {
             return path=="runtime/core"||path=="tools/ffmpeg.exe"||path=="tools/ffprobe.exe"||path=="tools/system-prerequisites"||path=="tts-engines/cosyvoice/runtime"||path=="tts-engines/gpt-sovits/runtime"||path=="data/environment-repair/wheels"||path=="data/environment-repair/downloads";
         }
         static void Validate(ModuleManifest m,string file){
-            if(m==null||m.format!="agent-voice-module"||m.version!=1||m.platform!="windows-x64"||!new[]{"engine","environment"}.Contains(m.kind))throw new InvalidDataException("不支持的模块格式、平台或版本");
+            if(m==null||m.format!="agent-voice-module"||m.version!=1||m.platform!="windows-x64"||!new[]{"engine","environment","feature"}.Contains(m.kind))throw new InvalidDataException("不支持的模块格式、平台或版本");
             if(m.kind=="engine"&&!new[]{"cosyvoice","gpt-sovits"}.Contains(m.engine))throw new InvalidDataException("尚未适配的 TTS 引擎");
-            if(!file.EndsWith(m.kind=="engine"?".ttsengine":".ttsenvironment",StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("包后缀和模块类型不一致");
+            if(!file.EndsWith(m.kind=="engine"?".ttsengine":m.kind=="feature"?".avmodule":".ttsenvironment",StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("包后缀和模块类型不一致");
             if(m.files==null||m.files.Length==0||m.files.Length>100000||m.components==null||m.components.Length==0||m.defaults==null)throw new InvalidDataException("模块清单为空或超出限制");
             if(m.components.Distinct(StringComparer.OrdinalIgnoreCase).Count()!=m.components.Length)throw new InvalidDataException("模块目标重复");
             if(m.kind=="environment"&&!m.components.Contains("runtime/core"))throw new InvalidDataException("环境包必须包含主服务运行时");
@@ -61,6 +62,11 @@ namespace AgentVoice {
             foreach(string path in names){string ancestor=path;while(ancestor.Contains('/')){ancestor=ancestor.Substring(0,ancestor.LastIndexOf('/'));if(names.Contains(ancestor))throw new InvalidDataException("文件和目录路径冲突");}}
             if(total>128L*1024*1024*1024)throw new InvalidDataException("模块解压体积超过限制");
             foreach(string c in m.components)if(!m.files.Any(f=>Under(f.path,c)))throw new InvalidDataException("模块目标没有文件："+c);
+            if(m.kind=="feature"){
+                if(!System.Text.RegularExpressions.Regex.IsMatch(m.id??"","^[a-z][a-z0-9-]{0,63}$")||m.apiVersion!=1||m.components.Length!=1||m.components[0]!="modules/"+m.id||m.entrypoint!="modules/"+m.id+"/module.exe"||string.IsNullOrWhiteSpace(m.name)||m.name.Length>80)throw new InvalidDataException("功能模块标识或主程序接口版本不兼容");
+                if(m.defaults.Count!=0||total>128L*1024*1024||m.files.Any(f=>f.path=="modules/"+m.id+"/module.json"||!new[]{".exe",".dll",".py",".json",".md",".txt",".png",".svg",".gif"}.Contains(Path.GetExtension(f.path).ToLowerInvariant()))||!m.files.Any(f=>f.path==m.entrypoint&&f.size>0))throw new InvalidDataException("功能模块不能携带声音权重、录音、改写设置或缺少入口");
+                return;
+            }
             var allowed=new Dictionary<string,string>{{"pythonService","runtime/core/python.exe"},{"pythonTts","tts-engines/cosyvoice/runtime/tools/python.exe"},{"pythonGpt","tts-engines/gpt-sovits/runtime/Scripts/python.exe"},{"ffmpeg","tools/ffmpeg.exe"}};
             if(m.kind=="engine"){string key=m.engine=="cosyvoice"?"cosy":"gpt";allowed=new Dictionary<string,string>{{key+"Repo","tts-engines/"+m.engine+"/source"},{key+"Model",""}};}
             foreach(var entry in m.defaults){
@@ -85,7 +91,7 @@ namespace AgentVoice {
         static void Restore(SettingsStore store,ModuleJournal journal){
             if(journal==null||!journal.stage.StartsWith("data/module-install/stage-",StringComparison.Ordinal)||!journal.backup.StartsWith("data/module-backups/",StringComparison.Ordinal))throw new InvalidDataException("安装恢复记录损坏，请保留备份并查看日志");
             foreach(var item in Enumerable.Reverse(journal.moves)){
-                if(!new[]{new ModuleManifest{kind="environment"},new ModuleManifest{kind="engine",engine="cosyvoice"},new ModuleManifest{kind="engine",engine="gpt-sovits"}}.Any(m=>ComponentAllowed(m,item.target)))throw new InvalidDataException("恢复记录包含未批准目标");
+                if(!new[]{new ModuleManifest{kind="environment"},new ModuleManifest{kind="engine",engine="cosyvoice"},new ModuleManifest{kind="engine",engine="gpt-sovits"},new ModuleManifest{kind="feature"}}.Any(m=>ComponentAllowed(m,item.target)))throw new InvalidDataException("恢复记录包含未批准目标");
                 string target=Inside(store,item.target),backup=Inside(store,item.backup);
                 if(!item.backup.StartsWith(journal.backup+"/",StringComparison.Ordinal))throw new InvalidDataException("安装备份路径异常");
                 if(File.Exists(backup)||Directory.Exists(backup)){Remove(target);Move(backup,target);}
@@ -122,6 +128,7 @@ namespace AgentVoice {
                     var settings=store.Read();bool same=true;
                     foreach(var f in m.files){string path=Inside(store,f.path);if(!File.Exists(path)||HashFile(path)!=HashFile(Inside(store,stage+"/"+f.path))){same=false;break;}}
                     foreach(var entry in m.defaults)if(Convert.ToString(typeof(Engines).GetField(entry.Key).GetValue(settings.engines))!=entry.Value)same=false;
+                    if(m.kind=="feature"&&(!File.Exists(Inside(store,"modules/"+m.id+"/module.json"))||File.ReadAllText(Inside(store,"modules/"+m.id+"/module.json"),Encoding.UTF8)!=Json.Encode(m)))same=false;
                     if(same){Remove(Inside(store,stage));return new{ok=true,reused=true,kind=m.kind,name=m.name,verifiedUsable=false};}
                     cancellation.ThrowIfCancellationRequested();Directory.CreateDirectory(Inside(store,backup));if(journal.hadSettings)File.Copy(store.FilePath,Inside(store,backup+"/settings.json"));
                     Write(Pending(store),journal);committing=true;progress("正在应用模块；此阶段会完成安装或恢复原文件。");
@@ -131,6 +138,7 @@ namespace AgentVoice {
                         if(exists)Move(target,saved);Move(source,target);
                     }
                     foreach(var entry in m.defaults)typeof(Engines).GetField(entry.Key).SetValue(settings.engines,entry.Value);
+                    if(m.kind=="feature")Write(Inside(store,"modules/"+m.id+"/module.json"),m);
                     Write(store.FilePath,settings);Write(store.Resolve("data/module-install/last.json"),new{ok=true,kind=m.kind,name=m.name,installedAt=DateTimeOffset.Now.ToString("o"),backup=backup,verifiedUsable=false,profile=m.profile});
                     // Removing the journal is the transaction commit point. No settings or
                     // component changes occur afterward; a leftover stage is disposable.
@@ -138,6 +146,17 @@ namespace AgentVoice {
                     return new{ok=true,reused=false,kind=m.kind,name=m.name,backup=backup,verifiedUsable=false};
                 }catch{if(committing)Restore(store,journal);else Remove(Inside(store,stage));throw;}
             }
+        }
+        public static string[] FeatureIds(SettingsStore store){string root=store.Resolve("modules");if(!Directory.Exists(root))return new string[0];return Directory.GetDirectories(root).Select(Path.GetFileName).Where(id=>System.Text.RegularExpressions.Regex.IsMatch(id,"^[a-z][a-z0-9-]{0,63}$")).ToArray();}
+        public static ModuleManifest InstalledFeature(SettingsStore store,string id){
+            if(!System.Text.RegularExpressions.Regex.IsMatch(id??"","^[a-z][a-z0-9-]{0,63}$"))throw new InvalidDataException("模块标识无效");
+            string record=Inside(store,"modules/"+id+"/module.json");if(new FileInfo(record).Length>32L*1024*1024)throw new InvalidDataException("模块记录过大，请重新安装");
+            var m=Read<ModuleManifest>(File.ReadAllText(record,Encoding.UTF8));Validate(m,id+".avmodule");if(m.id!=id)throw new InvalidDataException("模块目录与标识不符");
+            foreach(var f in m.files){string path=Inside(store,f.path);if(!File.Exists(path)||new FileInfo(path).Length!=f.size||HashFile(path)!=f.sha256)throw new InvalidDataException("模块文件损坏，请重新导入："+f.path);}return m;
+        }
+        public static void RemoveFeature(SettingsStore store,string id){
+            if(!System.Text.RegularExpressions.Regex.IsMatch(id??"","^[a-z][a-z0-9-]{0,63}$"))throw new InvalidDataException("模块标识无效");
+            using(var guard=Lock(store)){string path=Inside(store,"modules/"+id);if(!Directory.Exists(path))throw new InvalidOperationException("模块尚未安装");Move(path,Inside(store,"data/module-backups/removed-"+id+"-"+Guid.NewGuid().ToString("N")));}
         }
     }
 }

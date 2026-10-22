@@ -39,7 +39,7 @@ def inspect_installation(store,deep=False):
             missing=store.missing(voice)
             model=model_directory(store,voice)
             if spec['id']=='cosyvoice':
-                from tts_bundle import REQUIRED
+                from model_integrity import REQUIRED
                 missing += [str(model/n) for n in REQUIRED if not (model/n).is_file()]
                 if not (model/'CosyVoice-BlankEN').is_dir():missing.append('CosyVoice-BlankEN')
                 source=store.resolve(cfg['engines'][spec['sourceKey']])
@@ -55,7 +55,7 @@ def inspect_installation(store,deep=False):
             info=sf.info(ref);seconds=info.duration;valid=seconds>0
             if cfg['voice']['engine']=='gpt-sovits':valid=3<=seconds<=10
             item('当前参考录音',valid,'%.2f 秒，%d 声道；GPT 要求 3～10 秒完整短句'%(seconds,info.channels))
-            if store.root not in ref.resolve().parents:item('参考资源位置',True,'参考录音在程序目录之外；保存固定参考方案或导出音色包后再换机',warning=True)
+            if store.root not in ref.resolve().parents:item('参考资源位置',True,'参考录音在程序目录之外；保存声音方案，并在换机时自行迁移相关文件',warning=True)
         except Exception as exc:item('当前参考录音',False,str(exc))
     active=cfg['voice']['engine']+'/'+(cfg['voice']['gptVariant'] if cfg['voice']['engine']=='gpt-sovits' else 'cosyvoice3')
     ok=all(x['ok'] for x in checks if x['section'] in ('core',active) and not x['warning'])

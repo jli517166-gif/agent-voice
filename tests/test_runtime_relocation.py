@@ -72,10 +72,15 @@ class RuntimeRelocationTests(unittest.TestCase):
         reference=self.put(self.parent,'reference.wav')
         voice=defaults()['voice'];voice['referenceText']='公共参考台词。'
         spec=self.parent/'voice.json';spec.write_text(json.dumps({'version':1,'name':'Fairy','voice':voice}),encoding='utf-8')
-        stage(build,installation,model,reference,spec,target,'fixture')
+        with self.assertRaisesRegex(ValueError,'停用'):stage(build,installation,model,reference,spec,target,'fixture')
+        self.assertFalse(target.exists())
+        import shutil
+        shutil.copytree(installation,target)
+        from runtime_paths import repair_bundled_runtime
+        repair_bundled_runtime(target)
         self.assert_relocated(target)
         self.assertEqual((cfg.read_bytes(),pth.read_bytes()),original)
-        self.assertFalse((target/'data').exists())
+        self.assertFalse((target/'voices').exists())
         moved=self.parent/'目标机 (4)';target.rename(moved)
         Repair(moved)
         self.assert_relocated(moved)

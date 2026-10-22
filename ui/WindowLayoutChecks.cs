@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -9,7 +9,7 @@ using System.Windows.Forms;
 namespace AgentVoice {
     public sealed partial class MainForm {
         static readonly string[] WindowLayoutPages = {
-            "home", "configuration", "voices", "connections", "settings", "training",
+            "home", "modules", "voices", "connections", "settings", "training",
             "voiceEditor", "harness", "airi", "connectionGuide", "advancedTraining"
         };
 
