@@ -108,10 +108,11 @@ def main():
     (args.output / 'inventory.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     fields = ['archive', 'entry', 'name', 'version', 'licenseDeclared', 'licenseClassifiers', 'reviewStatus']
     buffer = io.StringIO(newline='')
-    writer = csv.DictWriter(buffer, fieldnames=fields)
+    writer = csv.DictWriter(buffer, fieldnames=fields, lineterminator='\n')
     writer.writeheader()
     writer.writerows(rows)
-    (args.output / 'components.csv').write_text(buffer.getvalue(), encoding='utf-8-sig')
+    # Avoid translating csv's existing CRLF to CRCRLF on Windows.
+    (args.output / 'components.csv').write_bytes(buffer.getvalue().encode('utf-8-sig'))
     print(json.dumps({'archives': len(report['archives']), 'metadataRecords': len(rows),
                       'output': str(args.output), 'legalClearance': False}, ensure_ascii=False))
 
