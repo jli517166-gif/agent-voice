@@ -68,7 +68,7 @@ namespace AgentVoice {
             var navigation=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoScroll=true,BackColor=Color.Transparent,Padding=new Padding(0,4,0,4)};sideLayout.Controls.Add(navigation,0,1);
             AddNav(navigation,"控制台","home","语音服务、引擎切换、输入文字与播放控制。",true);
             
-            AddNav(navigation,"模块","modules","导入或导出声音模型。",true);
+            AddNav(navigation,"模块","modules","安装或管理扩展、TTS 引擎和运行环境。",true);
             AddNav(navigation,"声音方案","voices","保存和切换整套声音设置。",true);
             AddNav(navigation,"连接","connections","连接 Harness 或 AIRI。",true);
             AddNav(navigation,"训练","training","准备数据并校验训练模型。",false);
