@@ -24,7 +24,14 @@ namespace AgentVoice {
             catch(Exception error){Write(report,new{ok=false,error=error.Message});return 1;}
         }
         public static string Pending(SettingsStore store){return store.Resolve("data/module-install/pending.json");}
-        static void Write(string file,object value){Directory.CreateDirectory(Path.GetDirectoryName(file));string temp=file+".tmp";File.WriteAllText(temp,Json.Encode(value),new UTF8Encoding(false));if(File.Exists(file))File.Replace(temp,file,null);else File.Move(temp,file);}
+        static void Write(string file,object value){
+            Directory.CreateDirectory(Path.GetDirectoryName(file));string temp=file+"."+Guid.NewGuid().ToString("N")+".tmp";
+            try{
+                File.WriteAllText(temp,Json.Encode(value),new UTF8Encoding(false));
+                for(int attempt=0;;attempt++)try{if(File.Exists(file))File.Replace(temp,file,null);else File.Move(temp,file);break;}
+                catch(IOException error){int code=error.HResult&0xffff;if(attempt>=5||(code!=32&&code!=33))throw;Thread.Sleep(40*(attempt+1));}
+            }finally{if(File.Exists(temp))File.Delete(temp);}
+        }
         static T Read<T>(string text){return new JavaScriptSerializer{MaxJsonLength=32*1024*1024}.Deserialize<T>(text);}
         static string Hash(Stream stream){using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(stream)).Replace("-","").ToLowerInvariant();}
         static string HashFile(string file){using(var stream=File.OpenRead(file))return Hash(stream);}

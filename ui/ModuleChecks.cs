@@ -21,7 +21,8 @@ namespace AgentVoice {
             string directory=Path.GetFullPath(args.Length>1?args[1]:ignored.Resolve("acceptance/modules"));Directory.CreateDirectory(directory);string run=Path.Combine(directory,"run-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(run);var errors=new List<string>();int checks=0;
             try{
                 var store=new SettingsStore(Path.Combine(run,"bare app (2)"));var cfg=store.Read();store.Write(cfg);string before=File.ReadAllText(store.FilePath);var core=new Dictionary<string,string>{{"runtime/core/python.exe","fixture interpreter"}};var components=new[]{"runtime/core"};var defaults=new Dictionary<string,string>{{"pythonService","runtime/core/python.exe"}};
-                string package=Package(run,"core",core,components,defaults);Install(store,package);checks++;
+                string package=Package(run,"core",core,components,defaults);Directory.CreateDirectory(store.Resolve("data/module-install"));
+                using(var staleTemp=new FileStream(store.Resolve("data/module-install/pending.json.tmp"),FileMode.Create,FileAccess.ReadWrite,FileShare.None))Install(store,package);checks++;
                 if(!File.Exists(store.Resolve("runtime/core/python.exe"))||store.Read().token!=cfg.token||store.Read().voice.reference!=cfg.voice.reference)errors.Add("Bare native install changed voice or credentials");
                 if(!Json.Encode(Install(store,package)).Contains("\"reused\":true"))errors.Add("Repeated import was not reused");checks++;
                 string bad=Package(run,"bad-hash",core,components,defaults,m=>m.files[0].sha256=new string('0',64));string prior=File.ReadAllText(store.FilePath);
