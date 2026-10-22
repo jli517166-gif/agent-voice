@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -22,103 +22,68 @@ namespace AgentVoice {
 
         void BuildConnectionGuide(){
             var page=WebPage("connectionGuide");
-            WebTitle(page,"连接帮助","接入步骤、真实验证标准和故障处理。");
+            WebTitle(page,"连接帮助","MCP 接入标准、适用范围和故障处理。");
             var intro=WebCard(page,38,126,902,392);
-            WebCardTitle(intro,"接入步骤与真实验证");
-            intro.Controls.Add(WebText("① 先在首页试听声音并启动服务。② Harness 选择安装目录即可自动识别；AIRI 需先启用联动再选目录。③ 程序自动安装连接器并验证真实回复与播放，失败会停在具体步骤并给出处理方法。",7.5F,FontStyle.Regular,16,44,870,40,ContentAlignment.TopLeft));
+            WebCardTitle(intro,"接入步骤与 MCP 自检");
+            intro.Controls.Add(WebText("① 选择 Harness 目录，推荐安装 MCP。② 核对路径、启用状态、协议握手与只读状态调用。③ 客户端重载后自检，收到 8 个工具回执才庆祝。无需先启动 TTS。AIRI 另行验证。",7.5F,FontStyle.Regular,16,44,870,40,ContentAlignment.TopLeft));
             intro.Controls.Add(WebText("Codex",9F,FontStyle.Bold,16,86,300,24,ContentAlignment.MiddleLeft));
-            intro.Controls.Add(WebText("定位 CODEX_HOME/sessions（默认 .codex/sessions）；在 Codex 发送验证短句，最终回复进入队列。收不到时确认使用同一 Windows 用户和会话目录。",7.5F,FontStyle.Regular,16,110,870,40,ContentAlignment.TopLeft));
+            intro.Controls.Add(WebText("选择 Codex 安装目录或 CODEX_HOME；安装后重载插件／会话，再点击 MCP 自检。通过语言命令调用工具；不提供常驻自定义按钮，也不接管内置朗读。",7.5F,FontStyle.Regular,16,110,870,40,ContentAlignment.TopLeft));
             intro.Controls.Add(WebText("DeepSeek Harness",9F,FontStyle.Bold,16,154,300,24,ContentAlignment.MiddleLeft));
-            intro.Controls.Add(WebText("自动定位 .dsh/profiles/desktop，为 headless 验证配置连接器并同步桌面账号与受信任 CA；备份配置并关闭旧 dsh-tts-autoread。桌面端重启后 turn/end 才提交日常回复。",7.5F,FontStyle.Regular,16,178,870,40,ContentAlignment.TopLeft));
+            intro.Controls.Add(WebText("定位 .dsh/profiles/desktop，安装 MCP 客户端插件与当前程序路径配置，写后回读。重启 Harness 后自检。独立探针通过但客户端未加载，显示等待客户端。",7.5F,FontStyle.Regular,16,178,870,40,ContentAlignment.TopLeft));
             intro.Controls.Add(WebText("其他 Harness",9F,FontStyle.Bold,16,222,300,24,ContentAlignment.MiddleLeft));
-            intro.Controls.Add(WebText("正式版不提供未真机验证的开关；请按二次开发指南新增适配器后执行同样的随机回复与真实播放验证。",7.5F,FontStyle.Regular,16,246,870,20,ContentAlignment.MiddleLeft));
+            intro.Controls.Add(WebText("仅正式支持实测的 Codex 和 DeepSeek Harness；其他宿主按二次开发指南补适配器、MCP 配置与协议自检。",7.5F,FontStyle.Regular,16,246,870,20,ContentAlignment.MiddleLeft));
             intro.Controls.Add(WebText("AIRI",9F,FontStyle.Bold,16,270,300,24,ContentAlignment.MiddleLeft));
             intro.Controls.Add(WebText("默认不启用。勾选并保存联动后选择含 airi.exe 的原安装目录；程序安装桥接并保留 app.asar 备份。收到桌宠实际播放回执才算通过，心跳不算成功。",7.5F,FontStyle.Regular,16,294,870,40,ContentAlignment.TopLeft));
-            intro.Controls.Add(WebText("收不到正文：确认目标已启用、目录正确、客户端已重载。收到正文但失败：检查声音资源与输出设备。Harness 备份在 data/connection-backups，AIRI 备份在 resources 目录。",7.5F,FontStyle.Regular,16,340,870,40,ContentAlignment.TopLeft));
+            intro.Controls.Add(WebText("MCP 失败会指出路径、插件、启用状态或协议错误。客户端未读取工具请重载后再自检。通过 MCP 自检不等于声音可用或自动朗读开启。备份在 data/connection-backups。",7.5F,FontStyle.Regular,16,340,870,40,ContentAlignment.TopLeft));
 
             var end=WebCard(page,38,526,902,133);
-            verificationHint=WebText("尚未开始验证。监听就绪和连接器心跳只表示可用状态。换机、服务重启或超过 15 分钟需重新验证。",8F,FontStyle.Regular,16,14,870,63,ContentAlignment.TopLeft);
+            verificationHint=WebText("推荐先安装 MCP，再执行自检。配置正确但客户端未重载时仍显示等待；此结果不测试语音或声音授权。",8F,FontStyle.Regular,16,14,870,63,ContentAlignment.TopLeft);
             end.Controls.Add(verificationHint);
             end.Controls.Add(WebButton("返回",null,()=>ShowPage("connections"),16,83,70,38));
             end.Controls.Add(WebButton("打开 Harness",null,()=>ShowPage("harness"),94,83,170,38));
             end.Controls.Add(WebButton("打开 AIRI",null,()=>ShowPage("airi"),272,83,150,38));
             end.Controls.Add(WebButton("打开日志","查看连接与播放诊断记录。",()=>{Directory.CreateDirectory(Store.Resolve("data/logs"));ServiceClient.Open(Store.Resolve("data/logs"));},430,83,110,38));
         }
-        string HarnessManualHelp(string source){
-            if(source=="codex")return "请确认 Codex CLI 已登录且可运行 codex exec；也可在 Codex 中手动发送页面显示的验证短句。";
-            return "请确认 DeepSeek Harness 已登录，且安装目录中存在 resources/runtime/cli/bin/dsh.cmd。配置 API Key 时程序可全自动验证；只使用桌面账号登录时，请把已复制的验证短句粘贴到桌面 Harness 并发送，后续回执仍由程序自动验证。";
-        }
         static bool HarnessNeedsDesktop(Dictionary<string,object> launch){object value;return launch!=null&&launch.TryGetValue("manualRequired",out value)&&value!=null&&Convert.ToBoolean(value);}
         async Task InstallHarnessMcp(string source){
             BusyStatus("正在为 "+(source=="codex"?"Codex":"DeepSeek Harness")+" 安装聊天栏快捷控制……");
             var result=Json.Object(await Service.RunTool("install_mcp.py","--source "+source+" --root "+ServiceClient.Quote(Store.Root)));
-            if(source=="deepseek"){lastMcpCheck=DateTime.MinValue;await RefreshMcpConnection(false);}
-            string message=Json.Text(result,"message"),usage=source=="codex"?"在聊天栏技能选择器选择“语音控制”，或输入 $agent-voice-control；安装完成不表示客户端支持常驻自定义按钮。":"重启 DeepSeek Harness 后，检查 8 个 mcp__agent_voice__ 工具，再调用状态和朗读工具。聊天栏“语音”按钮与 MCP 工具是两条独立通道。";Status(message);MessageBox.Show(this,message+"\r\n\r\n"+usage+"\r\n底层工具名为 agent_voice。","聊天控制安装完成",MessageBoxButtons.OK,MessageBoxIcon.Information);
+            lastMcpCheck=DateTime.MinValue;await RefreshMcpConnection(true,true);
+            string message=Json.Text(result,"message"),usage=source=="codex"?"在聊天栏技能选择器选择“语音控制”，或输入 $agent-voice-control；安装完成不表示客户端支持常驻自定义按钮。":"重启 DeepSeek Harness 后点击 MCP 自检，检查 8 个工具与只读状态调用。不需要朗读验证。聊天栏“语音”按钮与 MCP 工具是两条独立通道。";Status(message);MessageBox.Show(this,message+"\r\n\r\n"+usage+"\r\n底层工具名为 agent_voice。","聊天控制安装完成",MessageBoxButtons.OK,MessageBoxIcon.Information);
         }
-        async Task RefreshMcpConnection(bool repair){
-            if(mcpChecking||(!repair&&(DateTime.UtcNow-lastMcpCheck).TotalSeconds<10))return;
+        readonly Dictionary<string,bool> mcpPassed=new Dictionary<string,bool>();
+        async Task RefreshMcpConnection(bool verify,bool celebrate=false){
+            if(mcpChecking||(!verify&&(DateTime.UtcNow-lastMcpCheck).TotalSeconds<10))return;
             mcpChecking=true;lastMcpCheck=DateTime.UtcNow;
-            string message;bool read=false;
-            try{
-                if(!File.Exists(Store.Resolve(Config.engines.pythonService))){message="MCP：请先补齐主服务 Python 环境。";}
-                else{var result=Json.Object(await Service.RunTool("install_mcp.py","--source deepseek --root "+ServiceClient.Quote(Store.Root)+(repair?" --repair":" --check")));message="DeepSeek MCP："+Json.Text(result,"message");read=Json.Text(result,"state")=="tools-read";if(result.ContainsKey("repaired")&&Convert.ToBoolean(result["repaired"]))Status(message);}
-            }catch(Exception error){message="DeepSeek MCP 检查失败："+error.Message;}
-            finally{mcpChecking=false;}
-            foreach(var label in new[]{mcpConnectionHint,mcpHubHint})if(label!=null&&!label.IsDisposed){label.Text=message;label.ForeColor=read?ForeColor:Color.Gold;tips.SetToolTip(label,message);}
-        }
-        async Task WaitForHarnessVerification(string source,string challenge){
-            for(int i=0;i<240;i++){
-                var item=await Service.Request("/api/verify/"+source,null,3000);string state=Json.Text(item,"state");
-                if(state=="verified"){
-                    bool first=verificationIds.Remove(source);verificationHint.Text=source+"：连接器、真实回复和语音播放全部验证通过。";BusyStatus("第 5/5 步："+verificationHint.Text);if(first)ShowCelebration(source);return;
-                }
-                if(state=="failed")throw new InvalidOperationException("播放验证失败："+Json.Text(item,"error"));
-                BusyStatus(state=="playing"?"已收到真实回复，正在生成并播放验证语音……":"Harness 已执行，正在等待连接器返回验证短句……");
-                await Task.Delay(500);
-            }
-            Clipboard.SetText("请只回复下面这段文字，不加解释和标点：\r\n"+challenge);
-            throw new InvalidOperationException("程序没有在两分钟内收到完整播放回执。验证短句已复制。"+HarnessManualHelp(source));
+            var messages=new List<string>();var passedNames=new List<string>();
+            try{foreach(string source in new[]{"codex","deepseek"}){
+                try{
+                    if(verify&&source=="deepseek")await Service.RunTool("install_mcp.py","--source deepseek --root "+ServiceClient.Quote(Store.Root)+" --repair");
+                    var result=Json.Object(await Service.RunTool("install_mcp.py","--source "+source+" --root "+ServiceClient.Quote(Store.Root)+(verify?" --self-test":" --check")));
+                    bool loaded=result.ContainsKey("clientLoaded")&&Convert.ToBoolean(result["clientLoaded"]);
+                    if(verify)mcpPassed[source]=result.ContainsKey("passed")&&Convert.ToBoolean(result["passed"]);
+                    else if(!loaded)mcpPassed[source]=false;
+                    messages.Add(source+"："+(mcpPassed.ContainsKey(source)&&mcpPassed[source]?"MCP 自检通过":loaded?"客户端已读取工具，待协议自检":"待重载或检查安装"));
+                    if(verify&&mcpPassed[source])passedNames.Add(source);
+                    if(verify&&verificationHint!=null)verificationHint.Text=Json.Text(result,"message");
+                }catch(Exception error){mcpPassed[source]=false;messages.Add(source+"："+error.Message);}
+            }}finally{mcpChecking=false;}
+            string message=string.Join("\r\n",messages);
+            foreach(var label in new[]{mcpConnectionHint,mcpHubHint})if(label!=null&&!label.IsDisposed){label.Text=message;tips.SetToolTip(label,message);}
+            UpdateHarnessIndicators(harnessStates,harnessOnline);
+            if(celebrate&&passedNames.Count>0)ShowCelebration(string.Join("、",passedNames)+" MCP");
         }
         async Task BeginAutoHarness(){
-            if(!await Service.Running())throw new InvalidOperationException("请先启动语音服务。");
-            using(var dialog=new FolderBrowserDialog{Description="选择任意已支持 Harness 的安装目录或用户配置目录（程序会自动识别）",ShowNewFolderButton=false}){
-                if(dialog.ShowDialog(this)!=DialogResult.OK){Status("已取消定位，当前接入状态保留。");return;}
-                BusyStatus("第 1/5 步：正在识别 Harness 并安装连接器……");
-                var result=Json.Object(await Service.RunTool("connect_harness.py","--source auto --root "+ServiceClient.Quote(Store.Root)+" --location "+ServiceClient.Quote(dialog.SelectedPath)));
-                string source=Json.Text(result,"source"),name=Json.Text(result,"name");
-                if(!Config.harness.ContainsKey(source))throw new InvalidOperationException("识别结果未适配："+source);
-                connectionHints[source]="已自动识别为 "+name+"，连接器安装完成。";
-                verificationHint.Text=connectionHints[source]+" 正在检查真实验证命令。";
-                BusyStatus("第 2/5 步：正在检查 "+name+" 命令行组件……");
-                try{await Service.RunTool("verify_harness.py","--source "+source+" --location "+ServiceClient.Quote(dialog.SelectedPath)+" --probe");}
-                catch(Exception error){verificationHint.Text=source+"：连接器已安装，但未启用；真实验证命令检查失败。修复后重新选择同一目录即可继续。"+HarnessManualHelp(source);ShowPage("connectionGuide");throw new InvalidOperationException(verificationHint.Text+" 原因："+error.Message);}
-                var next=Json.Copy(Config);next.harness[source]=true;checks[source].Checked=true;await Persist(next,new {harness=next.harness});
-                try{
-                    if(source=="codex")await Service.Request("/api/connections/reload",new {});
-                    verificationHint.Text=connectionHints[source]+" 命令行组件可用，开始真实回复验证。";
-                    await VerifyHarness(source,dialog.SelectedPath);
-                }catch(Exception error){
-                    connectionHints[source]="连接器已安装并保持启用，但真实回复或播放验证尚未通过。修复提示中的问题后，重新选择同一目录即可继续验证。";
-                    verificationHint.Text=source+"："+connectionHints[source];ShowPage("connectionGuide");
-                    throw new InvalidOperationException(verificationHint.Text+" 原因："+error.Message,error);
-                }
+            using(var dialog=new FolderBrowserDialog{Description="选择 Codex 或 DeepSeek Harness 安装目录／用户配置目录，安装推荐的 MCP 控制",ShowNewFolderButton=false}){
+                if(dialog.ShowDialog(this)!=DialogResult.OK)return;
+                var connector=new ConnectionSetup(new SetupWorkflow(Store));connector.Report=BusyStatus;
+                var result=await connector.Harness(dialog.SelectedPath);string source=Json.Text(result,"source");
+                bool passed=result.ContainsKey("passed")&&Convert.ToBoolean(result["passed"]);
+                if(source.Length>0)mcpPassed[source]=passed;
+                verificationHint.Text=Json.Text(result,"message");Status(verificationHint.Text);
+                if(passed)ShowCelebration(source+" MCP");
+                lastMcpCheck=DateTime.MinValue;await RefreshMcpConnection(false);ShowPage("connectionGuide");
             }
-        }
-        async Task VerifyHarness(string source,string harnessLocation){
-            var item=await Service.Request("/api/verify/"+source,new {});verificationIds[source]=Json.Text(item,"id");
-            string challenge=Json.Text(item,"text");string prompt=Json.Text(item,"prompt");
-            if(String.IsNullOrWhiteSpace(prompt))prompt="Reply with exactly this line and nothing else:\n"+challenge;
-            BusyStatus("第 3/5 步：正在启动 "+source+" 的真实验证会话……");
-            Dictionary<string,object> launch;
-            try{launch=Json.Object(await Service.RunTool("verify_harness.py","--source "+source+" --location "+ServiceClient.Quote(harnessLocation)+" --prompt "+ServiceClient.Quote(prompt)+" --timeout 180"));}
-            catch(Exception error){Clipboard.SetText("请只回复下面这段文字，不加解释和标点：\r\n"+challenge);verificationHint.Text=source+"：自动验证停在“启动 Harness 并获取回复”。验证短句已复制。"+HarnessManualHelp(source);ShowPage("connectionGuide");throw new InvalidOperationException(verificationHint.Text+" 原因："+error.Message);}
-            bool manual=HarnessNeedsDesktop(launch);
-            if(manual){
-                Clipboard.SetText("请只回复下面这段文字，不加解释和标点：\r\n"+challenge);
-                verificationHint.Text=source+"：连接器已安装并保持启用。当前桌面账号不能供 headless 调用，验证短句已复制；请到已登录的桌面 Harness 粘贴发送，程序将继续核对回复和实际播放。";
-                ShowPage("connectionGuide");BusyStatus("第 4/5 步：等待你在桌面 Harness 发送已复制的验证短句……");
-            }else BusyStatus("第 4/5 步：Harness 已回复，正在确认连接器和播放回执……");
-            await WaitForHarnessVerification(source,challenge);verificationHint.Text=source+"：自动识别、接入和真实播放验证成功。";ShowPage("connectionGuide");Status(verificationHint.Text);
         }
         async Task WaitForAiriVerification(){
             for(int i=0;i<240;i++){
@@ -184,21 +149,21 @@ namespace AgentVoice {
         }
         void BuildConnectionHub(){
             var page=WebPage("connections");
-            WebTitle(page,"连接","先选目录，再验证真实回复与播放回执。");
+            WebTitle(page,"连接","推荐安装 MCP；自检安装、启用与工具调用，不生成语音。");
             page.Controls.Add(WebButton("接入验证说明","查看识别依据、真实验证标准和故障排查。",()=>ShowPage("connectionGuide"),784,46,156,39));
             var clients=WebCard(page,38,126,902,350);
             ClientIcon(clients,0,"Cx");
             clients.Controls.Add(WebText("Codex",13F,FontStyle.Bold,70,18,600,26,ContentAlignment.MiddleLeft));
             clients.Controls.Add(WebText("MCP 语言控制与生成过程自动朗读。",9F,FontStyle.Regular,70,47,650,20,ContentAlignment.MiddleLeft));
             clients.Controls.Add(WebHarnessStatus("codex","Codex",70,73,640));
-            clients.Controls.Add(WebAsyncButton("选择并验证","选择 Codex 或 DeepSeek Harness 的安装目录或用户配置目录，自动识别、安装连接器并做真实回复与播放验证。",BeginAutoHarness,762,39,132,39));
+            clients.Controls.Add(WebAsyncButton("安装 MCP","选择目录，自动识别并安装 MCP，再核对启用状态、协议与客户端工具回执。",BeginAutoHarness,762,39,132,39));
             WebDivider(clients,16,117,870);
 
             ClientIcon(clients,117,"DS");
             clients.Controls.Add(WebText("DeepSeek Harness",13F,FontStyle.Bold,70,135,600,26,ContentAlignment.MiddleLeft));
             clients.Controls.Add(WebText("聊天栏控制入口与生成过程自动朗读。",9F,FontStyle.Regular,70,164,650,20,ContentAlignment.MiddleLeft));
             clients.Controls.Add(WebHarnessStatus("deepseek","DeepSeek Harness",70,190,640));
-            clients.Controls.Add(WebAsyncButton("选择并验证","自动定位 DeepSeek Harness 的用户配置目录，安装连接器并完成真实回复与播放验证。",BeginAutoHarness,762,156,132,39));
+            clients.Controls.Add(WebAsyncButton("安装 MCP","选择目录，安装 MCP；客户端重载后再次自检，无需发送验证消息。",BeginAutoHarness,762,156,132,39));
             WebDivider(clients,16,234,870);
 
             ClientIcon(clients,234,"AI");
@@ -218,9 +183,9 @@ namespace AgentVoice {
             clients.Controls.Add(airiToggle);
             clients.Controls.Add(WebButton("AIRI 设置","打开 AIRI 页面，选择目录并做真实播放验证。",()=>ShowPage("airi"),768,273,126,39));
 
-            var mcp=WebCard(page,38,484,902,96);WebCardTitle(mcp,"DeepSeek MCP 控制状态");
-            mcpHubHint=WebText("尚未检查 MCP。安装、工具读取和播放验证是不同阶段。",11F,FontStyle.Regular,16,42,660,42);mcpHubHint.AutoEllipsis=true;mcp.Controls.Add(mcpHubHint);
-            mcp.Controls.Add(WebAsyncButton("检查 MCP","检查当前程序路径和客户端读取工具的回执。",async()=>{lastMcpCheck=DateTime.MinValue;await RefreshMcpConnection(true);},742,40,144,38));
+            var mcp=WebCard(page,38,484,902,96);WebCardTitle(mcp,"MCP 控制状态");
+            mcpHubHint=WebText("MCP 安装与客户端加载分开检查，不测试语音播放。",11F,FontStyle.Regular,16,42,660,42);mcpHubHint.AutoEllipsis=true;mcp.Controls.Add(mcpHubHint);
+            mcp.Controls.Add(WebAsyncButton("检查 MCP","检查当前程序路径和客户端读取工具的回执。",async()=>{lastMcpCheck=DateTime.MinValue;await RefreshMcpConnection(true,true);},742,40,144,38));
             var auto=WebCard(page,38,588,902,80);
             auto.Controls.Add(WebText("自动朗读",10F,FontStyle.Bold,16,12,300,24,ContentAlignment.MiddleLeft));
             auto.Controls.Add(WebText("任务执行过程中的正文与最终回复都可朗读；完整句子按顺序播放。",9F,FontStyle.Regular,16,38,620,34,ContentAlignment.TopLeft));

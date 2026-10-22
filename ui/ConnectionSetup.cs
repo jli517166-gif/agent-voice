@@ -12,20 +12,21 @@ namespace AgentVoice {
         internal Action<string> Report=delegate{};
         internal Action<string> ManualPrompt=delegate{};
         internal ConnectionSetup(SetupWorkflow value){flow=value;}
-        internal async Task Harness(string location){
-            if(!await flow.Service.Running())throw new InvalidOperationException("请先启动语音服务。");
-            Report("1/5 · 识别目录并安装连接器……");
+        internal async Task<Dictionary<string,object>> Harness(string location){
+            Report("1/3 · 识别目录并配置连接……");
             var r=Json.Object(await flow.Service.RunTool("connect_harness.py","--source auto --root "+ServiceClient.Quote(flow.Store.Root)+" --location "+ServiceClient.Quote(location)));
             string source=Json.Text(r,"source");if(source!="codex"&&source!="deepseek")throw new InvalidOperationException("仅支持实测的 Codex 与 DeepSeek Harness。其他客户端请按二次开发指南接入。");
-            Report("2/5 · 检查真实验证命令……");await flow.Service.RunTool("verify_harness.py","--source "+source+" --location "+ServiceClient.Quote(location)+" --probe");
-            var c=flow.Config;c.harness[source]=true;await flow.Save(c,new{harness=c.harness});if(source=="codex")await flow.Service.Request("/api/connections/reload",new{});
-            var item=await flow.Service.Request("/api/verify/"+source,new{});string challenge=Json.Text(item,"text"),prompt=Json.Text(item,"prompt");if(prompt.Length==0)prompt="Reply with exactly this line and nothing else:\n"+challenge;
-            string manual="请只回复下面这段文字，不加解释和标点：\r\n"+challenge;
-            Report("3/5 · 启动真实 Harness 验证会话……");Dictionary<string,object> launch;
-            try{launch=Json.Object(await flow.Service.RunTool("verify_harness.py","--source "+source+" --location "+ServiceClient.Quote(location)+" --prompt "+ServiceClient.Quote(prompt)+" --timeout 180"));}
-            catch(Exception e){ManualPrompt(manual);throw new InvalidOperationException("连接器已安装，但自动获取回复失败。可在对应 Harness 发送下方验证短句后重试。原因："+e.Message,e);}
-            object v;if(launch.TryGetValue("manualRequired",out v)&&v!=null&&Convert.ToBoolean(v)){ManualPrompt(manual);Report("4/5 · 桌面账号需要手动发送下方验证短句；程序仍会自动核对正文和实际播放。");}else Report("4/5 · 已执行，等待真实回复与播放回执……");
-            await Wait(source);Report("5/5 · "+source+" 的真实回复与播放验证通过。");flow.Mark("harness","verified");
+            flow.Mark("mcpSource",source);
+            Report("2/3 · 安装推荐的 MCP 控制并回读配置……");
+            await flow.Service.RunTool("install_mcp.py","--source "+source+" --root "+ServiceClient.Quote(flow.Store.Root));
+            Report("3/3 · 检查启用状态、协议和客户端工具回执……");
+            return await CheckMcp(source);
+        }
+        internal async Task<Dictionary<string,object>> CheckMcp(string source){
+            if(source!="codex"&&source!="deepseek")throw new InvalidOperationException("仅支持 Codex 与 DeepSeek Harness 的 MCP 自检。");
+            var result=Json.Object(await flow.Service.RunTool("install_mcp.py","--source "+source+" --root "+ServiceClient.Quote(flow.Store.Root)+" --self-test"));
+            bool passed=result.ContainsKey("passed")&&Convert.ToBoolean(result["passed"]);
+            flow.Mark("mcp:"+source,passed?"verified":"pending");Report(Json.Text(result,"message"));return result;
         }
         internal async Task Airi(string directory){
             if(!File.Exists(Path.Combine(directory,"airi.exe")))throw new InvalidOperationException("请选择包含 airi.exe 的原 AIRI 安装目录。");

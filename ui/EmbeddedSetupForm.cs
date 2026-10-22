@@ -84,7 +84,6 @@ namespace AgentVoice {
                 object result;
                 if(action=="browse")result=Browse(args);
                 else if(action=="open-doc")result=OpenDoc(args);
-                else if(action=="copy-challenge"){if(Controller.ManualPrompt.Length==0)throw new InvalidOperationException("当前没有待发送的验证短句，请先执行连接验证。");Clipboard.SetText(Controller.ManualPrompt);result=new{message="验证短句已复制。"};}
                 else{if(action!="stop-preview"&&!Controller.Busy)activeRequest=id;result=await Controller.Execute(action,args);}
                 Send(new{type="result",id=id,ok=true,result=result});
                 if(new[]{"next","back","skip"}.Contains(action))PlayCue();
@@ -103,12 +102,12 @@ namespace AgentVoice {
             return new{path=path};
         }
         object OpenDoc(Dictionary<string,object> args){
-            string name=Json.Text(args,"name");if(!new[]{"模块安装与配置指南.md","TTS使用手册.md","环境补齐说明.md","接入说明.md","音色训练从零开始.md","稳定性与故障排查.md"}.Contains(name))throw new InvalidOperationException("不支持的文档。");ServiceClient.Open(Controller.Flow.Store.Resolve(name));return new{message="已打开说明。"};
+            string name=Json.Text(args,"name");if(!new[]{"模块安装与配置指南.md","TTS使用手册.md","环境补齐说明.md","接入说明.md","音色训练从零开始.md","稳定性与故障排查.md","docs/使用须知与TTS许可.md","docs/licenses/CosyVoice-Apache-2.0.txt","docs/licenses/GPT-SoVITS-MIT.txt"}.Contains(name))throw new InvalidOperationException("不支持的文档。");ServiceClient.Open(Controller.Flow.Store.Resolve(name));return new{message="已打开说明。"};
         }
         void Send(object value){if(IsDisposed||Browser==null||Browser.IsDisposed||Browser.CoreWebView2==null)return;Browser.CoreWebView2.PostWebMessageAsJson(Json.Encode(value));}
         async void PlayCue(){try{var p=Controller.Flow.State.Read();bool running=await Controller.Flow.Service.Running();if(!IsDisposed&&InterfaceSounds.Allowed(p.interfaceSounds,testing,running))sounds.Play(Controller.Flow.Store.Root,Math.Max(0,p.onboardingStep-1));}catch{/* Sound is optional and must never block setup. */}}
         async void OnClosing(object sender,FormClosingEventArgs e){
-            if(Controller.Busy||repairing||initializing){e.Cancel=true;Send(new{type="notice",message="任务仍在执行。请先停止试听，或等待安装写入完成后关闭。"});return;}
+            if(Controller.Busy||repairing||initializing){e.Cancel=true;Send(new{type="notice",message="任务仍在执行。请等待当前操作完成后关闭。"});return;}
             if(allowClose||Controller.Finished)return;e.Cancel=true;if(closing)return;closing=true;
             if(Controller.Flow.PreviewMayBePending){
                 Exception stopError=null;try{await Controller.Flow.StopPreview();}catch(Exception error){stopError=error;}

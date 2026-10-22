@@ -1,0 +1,16 @@
+[
+  {
+    "file": "CosyVoice-Apache-2.0.txt",
+    "url": "https://raw.githubusercontent.com/FunAudioLLM/CosyVoice/main/LICENSE",
+    "checkedAt": "2026-10-22",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "scope": "upstream source license; not all weights or dependencies"
+  },
+  {
+    "file": "GPT-SoVITS-MIT.txt",
+    "url": "https://raw.githubusercontent.com/RVC-Boss/GPT-SoVITS/main/LICENSE",
+    "checkedAt": "2026-10-22",
+    "sha256": "8a064eada186601fc602e45feef61c6abb62246d5ae9c3764dd1fc92d946c3c6",
+    "scope": "upstream source license; not all weights or dependencies"
+  }
+]

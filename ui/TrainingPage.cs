@@ -11,18 +11,19 @@ namespace AgentVoice {
         Label gptVariantNote;
         void BuildTraining(){
             var page=WebPage("training");
-            WebTitle(page,"训练指南","先选引擎，再按当前阶段继续。");
+            WebTitle(page,"训练指南","先确认素材授权，再按引擎选择训练路线。");
+            page.Controls.Add(WebButton("训练须知","训练、声音克隆、发布及权重分发须分别核对授权与许可。",()=>ServiceClient.Open(Store.Resolve("docs/使用须知与TTS许可.md")),784,46,150,39));
             var cosyGuide=new ScenePanel{Host=this,Location=new Point(38,160),Size=new Size(902,516),Margin=new Padding(0),Name="cosyTrainingGuide"};
             var gptGuide=new ScenePanel{Host=this,Location=new Point(38,160),Size=new Size(902,516),Margin=new Padding(0),Name="gptTrainingGuide"};
             page.Controls.Add(cosyGuide);page.Controls.Add(gptGuide);
             var cosyIntro=WebCard(cosyGuide,0,21,902,114);
             cosyIntro.Controls.Add(WebText("从一段干净的参考录音开始。",15F,FontStyle.Bold,16,12,740,30,ContentAlignment.MiddleLeft));
             cosyIntro.Controls.Add(WebText("先完成参考克隆，再决定是否需要训练权重。",9.5F,FontStyle.Regular,16,46,740,22,ContentAlignment.MiddleLeft));
-            cosyIntro.Controls.Add(WebText("这里只准备和检查素材，不会自动启动显卡训练。",8.5F,FontStyle.Regular,16,78,740,22,ContentAlignment.MiddleLeft));
+            cosyIntro.Controls.Add(WebText("仅使用有权训练与克隆的素材；发布和商用另核查授权。",8.5F,FontStyle.Regular,16,78,740,22,ContentAlignment.MiddleLeft));
             var cosyArt=WebCard(cosyIntro,770,16,112,78);
             cosyArt.Controls.Add(WebText("MIC",16F,FontStyle.Bold,0,0,112,78,ContentAlignment.MiddleCenter));
             var cosySteps=WebCard(cosyGuide,0,151,902,312);
-            TrainingStep(cosySteps,0,"准备声音","录音清楚、无背景音乐；台词与录音一致。","检查素材",()=>{var ignored=Guard(async()=>await CheckTraining(false),"检查训练素材");},590,110,"生成清单",()=>{var ignored=Guard(async()=>await CheckTraining(true),"生成训练清单");},706,110);
+            TrainingStep(cosySteps,0,"准备声音","先确认录音、台词、声音使用授权，再检查素材。","检查素材",()=>{var ignored=Guard(async()=>await CheckTraining(false),"检查训练素材");},590,110,"生成清单",()=>{var ignored=Guard(async()=>await CheckTraining(true),"生成训练清单");},706,110);
             TrainingStep(cosySteps,1,"选择训练路线","参考克隆用录音与台词；硬件较好时按高级指南。","从零开始",()=>ServiceClient.Open(Store.Resolve("音色训练从零开始.md")),560,110,"AI 训练约定",()=>ServiceClient.Open(Store.Resolve("AI训练操作约定.md")),678,150);
             TrainingStep(cosySteps,2,"本地试听并验证","确认引擎、模型与台词一致，再用长短句验证。","选择训练模型",SelectTrainedModel,550,155,"管理可选模块",()=>ShowPage("modules"),713,125);
             TrainingStep(cosySteps,3,"导出训练结果","按内容选择轻量、完整、训练增量或训练完整包。","高级训练",()=>ShowPage("advancedTraining"),540,105,"检查脚本",()=>{var ignored=Guard(InspectTrainingScript,"检查训练脚本");},653,105);
@@ -38,7 +39,7 @@ namespace AgentVoice {
             gptIntro.Controls.Add(WebText("GPT-SoVITS 训练与声音准备",15F,FontStyle.Bold,16,12,740,30,ContentAlignment.MiddleLeft));
             gptVariantNote=WebText("",8.5F,FontStyle.Regular,16,46,740,40,ContentAlignment.TopLeft);
             gptIntro.Controls.Add(gptVariantNote);
-            gptIntro.Controls.Add(WebText("GPT 与 CosyVoice 的训练清单和权重不能互换。",8.5F,FontStyle.Regular,16,90,740,20,ContentAlignment.MiddleLeft));
+            gptIntro.Controls.Add(WebText("素材须获相应用途授权；代码 MIT 不代表全部权重可商用。",8.5F,FontStyle.Regular,16,90,740,20,ContentAlignment.MiddleLeft));
             var gptArt=WebCard(gptIntro,770,16,112,78);
             gptArt.Controls.Add(WebText("GPT",16F,FontStyle.Bold,0,0,112,78,ContentAlignment.MiddleCenter));
             var gptSteps=WebCard(gptGuide,0,151,902,312);

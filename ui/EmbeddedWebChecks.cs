@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -57,7 +57,7 @@ namespace AgentVoice {
                     var check=Json.Object(audit);if(((System.Collections.ICollection)check["outside"]).Count>0||Convert.ToBoolean(check["bodyScroll"])||Convert.ToInt32(check["art"])==0)errors.Add("Page clipped or artwork missing: "+step+" / "+size);
                     if(!await Script(form,@"(()=>{const img=document.querySelector('.hero-object').getBoundingClientRect();return [...document.querySelectorAll('.art-label,.scene-tags,.signal-route,.dependency-grid')].every(el=>{if(getComputedStyle(el).display==='none')return true;const r=el.getBoundingClientRect();return r.bottom<=img.top||r.top>=img.bottom||r.right<=img.left||r.left>=img.right})})()"))errors.Add("Artwork overlaps a caption: "+step+" / "+size);
                     layouts.Add(new{size=size.ToString(),step=step,audit=check});
-                    if(size==preferred&&(step==0||step==1||step==2||step==4||step==8||step==9)){await Task.Delay(1300);using(var stream=File.Create(Path.Combine(directory,"web-step-"+step+".png")))await form.Browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);}
+                    if(size==preferred&&(step==0||step==1||step==2||step==4||step==5||step==6||step==7||step==8||step==9)){await Task.Delay(1300);using(var stream=File.Create(Path.Combine(directory,"web-step-"+step+".png")))await form.Browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);}
                 }
             }
             await Wait(()=>Task.FromResult(!form.Controller.Busy));
@@ -76,10 +76,13 @@ namespace AgentVoice {
             if(!await Script(form,"document.querySelector('#localEngine').open"))errors.Add("Download failure did not expose local alternative");
             await Wait(()=>Task.FromResult(!form.Controller.Busy));
             await form.Controller.Execute("go",new Dictionary<string,object>{{"step",5}});form.Browser.CoreWebView2.Reload();
-            await Wait(()=>Script(form,"document.querySelector('[data-action=\"reference\"]')!==null"));
-            await form.Browser.ExecuteScriptAsync("document.querySelector('[data-action=\"reference\"]').click();document.querySelector('#referencePath').value='missing.wav';document.querySelector('#referenceText').value='';document.querySelector('[data-action=\"save-reference\"]').click()");
-            await Wait(()=>Script(form,"document.querySelector('#drawerError')?.textContent.length>0"));
-            await form.Browser.ExecuteScriptAsync("document.querySelector('#drawer').close()");
+            await Wait(()=>Script(form,"document.querySelector('[data-action=\"legal-read\"]')!==null"));
+            if(!await Script(form,"document.querySelector('.body').textContent.includes('授权') && !document.querySelector('[data-action=\"reference\"], [data-action=\"profiles\"]')"))errors.Add("Legal page retained voice selection or omitted rights notice");
+            await form.Browser.ExecuteScriptAsync("document.querySelector('[data-action=\"legal-read\"]').click()");
+            await Wait(()=>Task.FromResult(!form.Controller.Busy));
+            await form.Controller.Execute("go",new Dictionary<string,object>{{"step",6}});form.Browser.CoreWebView2.Reload();
+            await Wait(()=>Script(form,"document.querySelector('.body')?.textContent.includes('Apache-2.0')===true"));
+            if(!await Script(form,"document.querySelector('.body').textContent.includes('MIT') && !document.querySelector('[data-action=\"preview\"], [data-action=\"confirm\"]')"))errors.Add("License page retained audition or omitted source license");
             // Sample a foreground window region while resizing; exclude other topmost apps.
             form.TopMost=true;form.Activate();form.WindowState=FormWindowState.Normal;form.ClientSize=new Size(1180,780);form.Location=new Point(30,30);await Task.Delay(200);
             var fractions=new List<double>();int excluded=0,stop=0;Rectangle region=Rectangle.Empty;object gate=new object();IntPtr root=form.Handle;

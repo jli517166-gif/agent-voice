@@ -7,3 +7,9 @@
 - `WebView2.txt`：构建时从实际使用的 Microsoft WebView2 SDK 复制，输出至构建目录的 `docs/licenses`。
 
 TTS 源码、权重、Python、CUDA、FFmpeg 及各子依赖需按各自模块包和锁定版本继续整理，不能用本目录覆盖所有第三方资源的许可。
+
+## TTS 源码许可
+
+- `CosyVoice-Apache-2.0.txt`：CosyVoice 官方源码许可。
+- `GPT-SoVITS-MIT.txt`：GPT-SoVITS 官方源码许可。
+- 获取来源、日期与 SHA-256 见 `TTS-sources.json`；权重与附属依赖不得推定沿用源码许可。适用范围见 `../使用须知与TTS许可.md`。

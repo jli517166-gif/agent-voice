@@ -87,7 +87,7 @@ namespace AgentVoice {
             page.Controls.Add(WebButton("连接帮助","查看识别依据、重载方法和真实验证标准。",()=>ShowPage("connectionGuide"),784,46,110,39));
             var intro=WebCard(page,38,126,902,274);
             WebCardTitle(intro,"自动接入");
-            intro.Controls.Add(WebText("正式支持范围只保留已完成真机端到端测试的 Codex 与 DeepSeek Harness。选择安装目录或用户配置目录后，程序会自动识别、安装连接器并验证真实回复和播放。",8F,FontStyle.Regular,16,38,870,46,ContentAlignment.TopLeft));
+            intro.Controls.Add(WebText("正式支持范围只保留已完成真机端到端测试的 Codex 与 DeepSeek Harness。选择目录后推荐安装 MCP，自检路径、启用状态、协议与客户端工具回执，不发验证消息或生成语音。",8F,FontStyle.Regular,16,38,870,46,ContentAlignment.TopLeft));
             intro.Controls.Add(WebAsyncButton("选择目录并自动接入","选择 Codex 或 DeepSeek Harness 的安装目录或用户配置目录，自动识别、安装连接器并做真实回复与播放验证。",BeginAutoHarness,16,92,210,38,true));
             intro.Controls.Add(WebAsyncButton("保存开关","保存 Codex 与 DeepSeek Harness 的启用状态。",async()=>{var next=Json.Copy(Config);foreach(var key in Config.harness.Keys)next.harness[key]=checks[key].Checked;await Persist(next,new {harness=next.harness});await Poll();},234,92,110,38));
             intro.Controls.Add(WebButton("返回",null,()=>ShowPage("connections"),352,92,70,38));
@@ -101,14 +101,14 @@ namespace AgentVoice {
                 intro.Controls.Add(WebHarnessStatus(source,name,326,y+3,540));
                 row++;
             }
-            intro.Controls.Add(WebText("只有“指定 Harness 返回本次随机短句，并完成实际语音播放”才变绿；监听就绪、文件已安装、心跳在线都不算验证通过。",8F,FontStyle.Regular,16,220,870,42,ContentAlignment.TopLeft));
+            intro.Controls.Add(WebText("推荐安装 MCP 控制；配置、启用、协议与客户端工具回执通过后显示绿色。自检不生成语音；自动朗读开关与声音可用性分别配置。",8F,FontStyle.Regular,16,220,870,42,ContentAlignment.TopLeft));
 
             var mcp=WebCard(page,38,408,902,292);
             WebCardTitle(mcp,"聊天栏快捷控制与二次开发");
             mcp.Controls.Add(WebText("DeepSeek 安装后在聊天栏显示“语音”按钮，使用独有的 /agent-voice 命令。Codex 原生入口为技能选择器中的“语音控制”或 $agent-voice-control，不添加自定义面板或浮窗。",8F,FontStyle.Regular,16,38,870,46,ContentAlignment.TopLeft));
             mcp.Controls.Add(WebAsyncButton("安装到 Codex","把聊天栏快捷控制安装到 Codex。",async()=>await InstallHarnessMcp("codex"),16,92,170,38,true));
             mcp.Controls.Add(WebAsyncButton("安装到 DeepSeek","把聊天栏快捷控制安装到 DeepSeek Harness。",async()=>await InstallHarnessMcp("deepseek"),194,92,210,38,true));
-            mcp.Controls.Add(WebAsyncButton("检查 / 修复 MCP","回读安装路径；自动修复已失效的旧目录，不代替 Harness 重载和真实调用验证。",async()=>{lastMcpCheck=DateTime.MinValue;await RefreshMcpConnection(true);},420,92,214,38));
+            mcp.Controls.Add(WebAsyncButton("检查 / 修复 MCP","检查当前路径、启用、协议和客户端工具回执；DeepSeek 旧目录失效时可修复，客户端仍需重载。",async()=>{lastMcpCheck=DateTime.MinValue;await RefreshMcpConnection(true,true);},420,92,214,38));
             mcpConnectionHint=WebText("MCP：尚未检查客户端是否读取工具。",11F,FontStyle.Regular,16,140,870,44);mcpConnectionHint.AutoEllipsis=true;mcp.Controls.Add(mcpConnectionHint);
             mcp.Controls.Add(WebText("未实测的 Harness 请按适配器契约扩展；配置正确不等于工具已进入客户端会话。",8F,FontStyle.Regular,16,192,870,34,ContentAlignment.TopLeft));
             mcp.Controls.Add(WebButton("打开 Harness 二次开发指南","新增识别器、连接器、验证命令和测试。",()=>ServiceClient.Open(Store.Resolve("Harness二次开发指南.md")),16,242,300,38));

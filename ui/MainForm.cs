@@ -147,11 +147,12 @@ namespace AgentVoice {
                 bool enabled=Config.harness.ContainsKey(pair.Key)&&Config.harness[pair.Key];
                 string state=!enabled?"disabled":!online?"offline":item==null?"waiting":Json.Text(item,"state");
                 string text=state=="verified"?"实际朗读验证通过":state=="connected"?"连接器在线":state=="recent_event"?"近期收到回复":state=="monitoring"?"监听就绪":state=="disabled"?"未启用":state=="offline"?"服务关闭":"等待接入";
-                bool green=state=="verified";
+                bool green=mcpPassed.ContainsKey(pair.Key)&&mcpPassed[pair.Key];
+                text=green?"MCP 自检通过 · 自动朗读"+(enabled?"已启用":"关闭"):"MCP 尚未通过自检 · "+text;
                 foreach(var label in pair.Value){label.Text=Convert.ToString(label.Tag)+" · "+text;label.ForeColor=green?(BackColor.GetBrightness()<.4F?Color.LightGreen:Color.FromArgb(25,128,72)):ForeColor;label.AccessibleDescription=text;}
                 if(green)active.Add(Convert.ToString(pair.Value[0].Tag)+"（"+text+"）");
             }
-            if(harnessSummary!=null){harnessSummary.Text=!online?"Harness：服务关闭":active.Count==0?"Harness：等待接入":"已验证接入："+string.Join("、",active);harnessSummary.ForeColor=online&&active.Count>0?(BackColor.GetBrightness()<.4F?Color.LightGreen:Color.FromArgb(25,128,72)):ForeColor;}
+            if(harnessSummary!=null){harnessSummary.Text=active.Count==0?"Harness：等待接入":"已验证接入："+string.Join("、",active);harnessSummary.ForeColor=active.Count>0?(BackColor.GetBrightness()<.4F?Color.LightGreen:Color.FromArgb(25,128,72)):ForeColor;}
             SyncAutoRead();
         }
         TextBox Input(bool multiline=false){return new TextBox{BorderStyle=BorderStyle.FixedSingle,Multiline=multiline,Height=multiline?78:30,MinimumSize=new Size(100,multiline?78:28),ScrollBars=multiline?ScrollBars.Vertical:ScrollBars.None};}

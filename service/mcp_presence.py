@@ -60,7 +60,7 @@ def connected_clients(root, host, client_name):
                 continue
             value = json.loads(path.read_text(encoding='utf-8'))
             if (Path(value['root']).resolve() == root and value['host'] == host
-                    and value['clientName'] == client_name and value['processStamp']
+                    and (value['clientName'] == client_name if client_name else value['clientName'] != 'agent-voice-selfcheck') and value['processStamp']
                     and process_stamp(int(value['pid'])) == value['processStamp']):
                 result.append(value)
         except (OSError, ValueError, KeyError, TypeError):

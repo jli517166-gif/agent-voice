@@ -69,6 +69,11 @@ class McpConfigurationTests(unittest.TestCase):
         self.assertFalse(result['harnessToolsVerified'])
         self.assertIn({'name': 'unrelated', 'config': {'preserve': True}}, config.read_patch(self.profile / 'cordis.patch.yml'))
 
+    def test_disabled_entry_does_not_pass_configuration_check(self):
+        entry=json.loads(json.dumps(self.entry));entry['disabled']=True;self.save(entry)
+        with self.assertRaisesRegex(ValueError,'禁用'):
+            config.validate_patch(self.profile/'cordis.patch.yml',self.store,Path(sys.executable),self.server)
+
     def test_plugin_add_failure_restores_profiles_wrappers_and_registry(self):
         before = self.snapshot()
         def run(command, **kwargs):

@@ -1,5 +1,8 @@
 # MCP 控制插件开发说明
 
+> **当前接入标准（2026-10-22）**：推荐安装 MCP 控制。选择 Codex／DeepSeek Harness 目录后安装，客户端重载后点击 MCP 自检。自检核对路径、插件、启用状态、initialize、8 个工具和只读状态调用，并要求宿主存活进程的工具读取回执。独立探针不冒充宿主；不发送聊天消息、不生成验证语音，不要求 TTS 或音色已就绪。自动朗读与 AIRI 另行配置。首次配置中的参考声音与试听步骤已移除，替换为使用须知及 TTS 许可。
+
+
 ## 功能边界
 
 当前 MCP 控制插件只为 **Codex** 和 **DeepSeek Harness** 提供自动安装。它控制桌面语音服务，不负责捕获 Harness 的回复。自动朗读仍依赖各自经过验证的回复连接器。
@@ -135,3 +138,11 @@ Codex 保留原生技能与 MCP，不提供自定义按钮、悬浮窗或面板�
 正式选择为 CosyVoice、GPT-SoVITS v5 Turbo 和 ProPlus。声音方案同时保存 `engine`、`gptVariant`、`gptModel` 与参考条件。MCP 状态和方案列表返回引擎、版本；服务仍只有一个，原有停止、队列与自动朗读操作共用。配置版本为 4，完整使用范围见《[TTS 使用手册](TTS使用手册.md)》。
 
 稳定性、自检、恢复和声音方案固定参考规则见《[稳定性与故障排查](稳定性与故障排查.md)》；扩展引擎见《[TTS 适配开发说明](TTS适配开发说明.md)》。
+
+## 不生成语音的接入自检（当前实现）
+
+执行 `python tools/install_mcp.py --source codex --root <安装目录> --self-test`，DeepSeek 将 source 改为 deepseek。`--check` 仅回读配置及存活客户端工具回执。`--self-test` 另启动短生命期 stdio 探针，initialize → notifications/initialized → tools/list → voice_service_status。不会调用 read_text/start_voice_service，不向 LLM 发送消息。
+
+字段 `installed/enabled/protocolPassed/clientLoaded/passed` 分别描述阶段；只有客户端存活进程读到 8 个工具且协议探针成功，`passed` 才为 true。自检探针的 clientName 固定为 agent-voice-selfcheck，禁止计入宿主回执。配置正确但客户端未重载返回 awaiting-client；声音与 AIRI 可用性另验。
+
+范围限制：客户端工具读取回执证明发现工具，不能证明所有工具已进入模型上下文或被模型正确选用。真实语言命令调用仍受宿主权限及工具可见性影响，不把 MCP 自检称为完整语音链路验收。

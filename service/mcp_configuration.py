@@ -115,6 +115,8 @@ def validate_patch(path, store, python, server):
         raise ValueError('MCP 配置缺失或重复，需要恰好一个 agent-voice-mcp 条目')
     actual = entries[0]
     config, target = actual.get('config', {}), expected['config']
+    if actual.get('disabled') or actual.get('enabled') is False or config.get('enabled') is False:
+        raise ValueError('DeepSeek MCP 条目已禁用，请重新安装或在客户端启用插件')
     if actual.get('name') != expected['name']:
         raise ValueError('MCP 客户端插件名称错误')
     for key in ('serverName', 'transport', 'command', 'args', 'cwd', 'failOnStartupError'):
@@ -235,5 +237,5 @@ def _check_connection(store, profile, python, server, repair):
     return {'ok': True, 'state': 'tools-read' if listed else 'awaiting-client', 'repaired': changed,
             'toolCount': 8 if listed else 0, 'harnessRegistrationVerified': False,
             'message': ('已修复 MCP 启动配置；请重启 Harness。' if changed else '') +
-                       ('客户端已读取 8 个工具；实际调用与播放仍需验证。' if listed else
+                       ('客户端已读取 8 个工具；连接自检不测试语音生成或播放。' if listed else
                         '配置正确，尚未确认客户端读取工具；请重启 Harness 后检查。')}

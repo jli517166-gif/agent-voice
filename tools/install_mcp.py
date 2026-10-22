@@ -63,6 +63,8 @@ def install_codex(store,python,server):
         subprocess.run([str(codex),"plugin","marketplace","remove","agent-voice-local"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=getattr(subprocess,"CREATE_NO_WINDOW",0))
         market=json.loads(run([codex,"plugin","marketplace","add",store.root,"--json"]))
         plugin=json.loads(run([codex,"plugin","add","agent-voice-control@"+market["marketplaceName"],"--json"]))
+        from mcp_selfcheck import codex_configuration
+        codex_configuration(store,python,server,codex,run)
     except Exception:
         if (backup/"config.toml").is_file():shutil.copy2(backup/"config.toml",config)
         raise
@@ -116,7 +118,7 @@ def install_deepseek(store,python,server):
             except Exception as rollback_error:
                 raise ValueError(str(error)+"；"+str(rollback_error)) from error
             raise ValueError("MCP 安装失败，生效配置和连接器已回滚。备份："+str(transaction.backup)+"。原因："+str(error)) from error
-    return {"ok":True,"source":"deepseek","message":"DeepSeek MCP 路径、配置与聊天栏文件已回读校验。请重启 Harness，再核对 8 个工具及实际调用；安装不等于已加载。",
+    return {"ok":True,"source":"deepseek","message":"DeepSeek MCP 路径、配置与聊天栏文件已回读校验。请重启 Harness 后运行 MCP 自检；不需要生成验证语音，安装不等于已加载。",
             "requiresHarnessReload":True,"harnessToolsVerified":False,"profile":str(profile),"backup":str(transaction.backup),
             "clientSha256":hashlib.sha256(client.read_bytes()).hexdigest(),"connector":connector}
 
@@ -137,9 +139,39 @@ def install(source,root):
     if not server.is_file():raise ValueError("MCP 服务文件缺失："+str(server))
     return install_codex(store,python,server) if source=="codex" else install_deepseek(store,python,server)
 
+
+def inspect(source,root,repair=False,self_test=False):
+    from mcp_selfcheck import probe,codex_configuration
+    from mcp_presence import connected_clients
+    store=Store(root);cfg=store.get()
+    python=store.resolve(cfg['engines']['pythonService']);server=store.root/'integrations/agent_voice_mcp.py'
+    if source=='deepseek':
+        result=inspect_deepseek(root,repair)
+        if not result.get('ok') or result.get('state') not in ('tools-read','awaiting-client'):
+            result['passed']=False
+            return result
+        _,profile=find_deepseek(store)
+        package=profile/'node_modules/@deepseek-ai/dsh-mcp-client'
+        metadata=json.loads((package/'package.json').read_text(encoding='utf-8-sig')) if (package/'package.json').is_file() else {}
+        if metadata.get('name')!='@deepseek-ai/dsh-mcp-client' or not (package/'lib/index.js').is_file():
+            return {'ok':False,'passed':False,'state':'missing-plugin','message':'MCP 客户端插件文件缺失，请重新安装 MCP。'}
+        loaded=result['state']=='tools-read'
+    else:
+        codex_configuration(store,python,server,find_codex(),run)
+        loaded=any(c.get('toolCount')==8 for c in connected_clients(store.root,'codex',None))
+        result={'ok':True,'state':'tools-read' if loaded else 'awaiting-client'}
+    result.update(source=source,installed=True,enabled=True,clientLoaded=loaded,passed=False,audioTested=False)
+    if self_test:
+        result.update(probe(store,source,python,server))
+        result['passed']=loaded
+    result['message']=('MCP 配置已安装并启用；客户端已读取 8 个工具。' if loaded else
+                       'MCP 配置已安装并启用，但尚无客户端读取工具回执。请重载插件或重启 Harness，然后点击 MCP 自检。')
+    if self_test:result['message']+=' 协议握手、8 个工具和只读状态调用通过；未生成语音。'
+    return result
+
 if __name__=="__main__":
-    parser=argparse.ArgumentParser();parser.add_argument("--source",required=True,choices=("codex","deepseek"));parser.add_argument("--root",required=True);actions=parser.add_mutually_exclusive_group();actions.add_argument("--check",action="store_true");actions.add_argument("--repair",action="store_true");args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument("--source",required=True,choices=("codex","deepseek"));parser.add_argument("--root",required=True);actions=parser.add_mutually_exclusive_group();actions.add_argument("--check",action="store_true");actions.add_argument("--repair",action="store_true");actions.add_argument("--self-test",action="store_true");args=parser.parse_args()
     try:
-        result=inspect_deepseek(args.root,args.repair) if args.check or args.repair else install(args.source,args.root)
+        result=inspect(args.source,args.root,args.repair,args.self_test) if args.check or args.repair or args.self_test else install(args.source,args.root)
         print(json.dumps(result,ensure_ascii=False))
-    except (ValueError,OSError,subprocess.SubprocessError) as error:print("MCP 安装失败："+str(error),file=sys.stderr);raise SystemExit(1)
+    except (ValueError,OSError,subprocess.SubprocessError) as error:print(("MCP 自检失败：" if args.check or args.repair or args.self_test else "MCP 安装失败：")+str(error),file=sys.stderr);raise SystemExit(1)

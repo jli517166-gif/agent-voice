@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -14,8 +14,7 @@ namespace AgentVoice {
         internal static async Task Unit(string directory){
             var type=typeof(Program).Assembly.GetType("AgentVoice.EmbeddedSetupController");
             if(type==null)throw new InvalidOperationException("Embedded setup controller has not been implemented");
-            await CancelColdPreview(directory);
-            await CleanupFailedPreview(directory);
+            await CheckRemovedVoiceActions(directory);
             CheckPreferenceWrites(directory);
             await CheckMultiEngine(directory);
             await CheckLocalEngines(directory);
@@ -25,6 +24,10 @@ namespace AgentVoice {
             dynamic controller=Activator.CreateInstance(type,System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic,null,new object[]{store},null);
             string state=Json.Encode(controller.Snapshot());
             if(state.Contains(c.token))throw new Exception("Setup state exposed service credentials");
+            await controller.Execute("next",new Dictionary<string,object>());
+            if(controller.Flow.State.Read().onboardingStep!=5)throw new Exception("First-run bypasses legal notice before installation");
+            await controller.Execute("next",new Dictionary<string,object>());
+            if(controller.Flow.State.Read().onboardingStep!=6)throw new Exception("TTS license page absent before download");
             await controller.Execute("go",new Dictionary<string,object>{{"step",2}});
             await controller.Execute("next",new Dictionary<string,object>{{"engine",1}});
             if(store.Read().voice.engine!="gpt-sovits"||store.Read().voice.gptVariant!="v5turbo")throw new Exception("Next did not save selected engine");
@@ -86,37 +89,19 @@ namespace AgentVoice {
             }
             if(!rejected||File.ReadAllText(state.FilePath)!=original)throw new Exception("Locked preferences were overwritten or reported saved");
         }
-        static async Task CancelColdPreview(string directory){
-            var store=new SettingsStore(Path.Combine(directory,"cancel-"+Guid.NewGuid().ToString("N")));
+        static async Task CheckRemovedVoiceActions(string directory){
+            var store=new SettingsStore(Path.Combine(directory,"no-setup-speech-"+Guid.NewGuid().ToString("N")));
             using(var server=new SetupProbeServer()){
-                var config=store.Read();config.port=server.Port;store.Write(config);
-                var controller=new EmbeddedSetupController(store);var loading=new TaskCompletionSource<bool>();
-                controller.Progress=text=>loading.TrySetResult(true);
-                var preview=controller.Execute("preview",new Dictionary<string,object>());
-                if(await Task.WhenAny(loading.Task,Task.Delay(5000))!=loading.Task)throw new Exception("Cold preview never reached loading");
-                await controller.Execute("stop-preview",new Dictionary<string,object>());
-                bool cancelled=false;try{await preview;}catch(OperationCanceledException){cancelled=true;}
-                if(!cancelled||server.Speaks!=0||controller.Busy)throw new Exception("Cold preview still submitted speech after Stop");
-                if(controller.Flow.State.Read().heardVoice)throw new Exception("Cancelled preview reported confirmation");
-            }
-        }
-        static async Task CleanupFailedPreview(string directory){
-            foreach(int failStops in new[]{0,1}){
-            var store=new SettingsStore(Path.Combine(directory,"failed-preview-"+Guid.NewGuid().ToString("N")));
-            using(var server=new SetupProbeServer()){
-                server.ReadyModel=true;server.FailJobs=true;server.FailStops=failStops;var c=store.Read();c.port=server.Port;store.Write(c);
-                var controller=new EmbeddedSetupController(store);bool failed=false;
-                try{await controller.Execute("preview",new Dictionary<string,object>());}catch(InvalidOperationException){failed=true;}
-                if(!failed||server.Speaks!=1||server.Stops!=1||controller.Flow.PreviewMayBePending!=(failStops==1))throw new Exception("Failed polling did not preserve cleanup state");
-                if(failStops==1){
-                    bool blocked=false;try{await controller.Execute("defer",new Dictionary<string,object>());}catch(InvalidOperationException){blocked=true;}
-                    if(!blocked||controller.Finished)throw new Exception("Unstopped preview allowed setup to exit");
-                    await controller.Flow.StopPreview(); // Same retry used by window closing.
-                    if(controller.Flow.PreviewMayBePending)throw new Exception("Close retry left a pending preview");
+                var c=store.Read();c.port=server.Port;c.voice.reference="private.wav";c.voice.referenceText="private transcript";store.Write(c);string before=File.ReadAllText(store.FilePath);
+                var controller=new EmbeddedSetupController(store);
+                foreach(string action in new[]{"preview","confirm","save-reference","apply-profile","stop-preview"}){
+                    bool rejected=false;try{await controller.Execute(action,new Dictionary<string,object>());}catch(InvalidOperationException){rejected=true;}
+                    if(!rejected)throw new Exception("Removed setup voice action accepted: "+action);
                 }
-                await controller.Execute("stop-preview",new Dictionary<string,object>());
-                if(server.Stops!=1+failStops)throw new Exception("Idle Stop affected an unrelated queue");
-            }
+                if(server.Speaks!=0||server.Stops!=0||File.ReadAllText(store.FilePath)!=before)throw new Exception("Legal setup altered voice or submitted audio");
+                string snapshot=Json.Encode(controller.Snapshot());if(snapshot.Contains("private.wav")||snapshot.Contains("private transcript"))throw new Exception("Legal setup exposed reference assets");
+                await controller.Execute("legal-read",new Dictionary<string,object>());
+                if(controller.Flow.State.Read().setupStates["legalNotice"]!="2026-10-22-read")throw new Exception("Notice reading not persisted");
             }
         }
         internal static int Run(SettingsStore store,string[] args){
