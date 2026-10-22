@@ -13,6 +13,7 @@ namespace AgentVoice {
         public object Verify(string directory){
             Directory.CreateDirectory(directory);var errors=new List<string>();int before=CountControls(this);string draft=body.Text;var original=ReadVoice();
             string[] expected=EngineChoices;if(!engineChoice.Items.Cast<string>().SequenceEqual(expected))errors.Add("TTS engine choices incorrect");
+            if(navigationButtons["home"].Text!="控制台"||PageName("home")!="控制台")errors.Add("Console labels inconsistent");
             foreach(string engine in expected){ShowPage("voiceEditor");engineChoice.SelectedItem=engine;Application.DoEvents();if(cosyOnlyControls.Any(c=>c.Visible!=(SelectedEngine()=="cosyvoice"))||gptOnlyControls.Any(c=>c.Visible!=(SelectedEngine()=="gpt-sovits")))errors.Add("Engine controls overlap: "+engine);if(!new[]{"v5turbo","proplus"}.Contains(ReadVoice().gptVariant))errors.Add("CosyVoice selection corrupts the GPT variant field");}
             for(int n=0;n<30;n++){engineChoice.SelectedIndex=n%expected.Length;var selected=ReadVoice();if(!new[]{"v5turbo","proplus"}.Contains(selected.gptVariant))errors.Add("Repeated engine switch corrupts saved settings");}
             ShowPage("training");var trainingSelect=Controls.Find("trainingEngineChoice",true).FirstOrDefault() as ComboBox;

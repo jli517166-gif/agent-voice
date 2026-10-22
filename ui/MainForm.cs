@@ -1,4 +1,4 @@
-﻿using Button = AgentVoice.AnimeButton;
+using Button = AgentVoice.AnimeButton;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -65,7 +65,7 @@ namespace AgentVoice {
             var sideLayout=new BufferedTable{Dock=DockStyle.Fill,ColumnCount=1,RowCount=3,Name="sidebarSurface",BackColor=BackColor};sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,UiPx(88)));sideLayout.RowStyles.Add(new RowStyle(SizeType.Percent,100));sideLayout.RowStyles.Add(new RowStyle(SizeType.Absolute,UiPx(138)));sidebar.Controls.Add(sideLayout);
             var brand=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,BackColor=Color.Transparent,Padding=new Padding(5,8,0,0)};brand.Controls.Add(new Label{Text="AGENT VOICE",Font=new Font("Segoe UI",11F,FontStyle.Bold),AutoSize=true,Margin=new Padding(0,0,0,3)});brand.Controls.Add(new Label{Text="本地语音工作台",Font=new Font(Font.FontFamily,10.5F),AutoSize=true,Margin=new Padding(0)});sideLayout.Controls.Add(brand,0,0);
             var navigation=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoScroll=true,BackColor=Color.Transparent,Padding=new Padding(0,4,0,4)};sideLayout.Controls.Add(navigation,0,1);
-            AddNav(navigation,"朗读","home","输入文字、常用句与播放控制。",true);
+            AddNav(navigation,"控制台","home","语音服务、引擎切换、输入文字与播放控制。",true);
             
             AddNav(navigation,"音色包","configuration","导入或导出声音模型。",true);
             AddNav(navigation,"声音方案","voices","保存和切换整套声音设置。",true);
@@ -100,7 +100,7 @@ namespace AgentVoice {
             interfaceSounds.Stop();
             if(busyOverlay!=null){busyOverlay.SetMessage(text);return;}
             var snapshot=new Bitmap(Math.Max(1,shell.ClientSize.Width),Math.Max(1,shell.ClientSize.Height));shell.DrawToBitmap(snapshot,new Rectangle(Point.Empty,snapshot.Size));
-            string animation=Store.Resolve(Config.appearance.loadingAnimation);if(!File.Exists(animation))animation=DefaultMascotPath();busyOverlay=new BusyOverlay(text,snapshot,animation);shell.Controls.Add(busyOverlay);busyOverlay.BringToFront();busyOverlay.Focus();
+            string animation=Store.Resolve(Config.appearance.loadingAnimation);busyOverlay=new BusyOverlay(text,snapshot,animation,Accent,new WelcomeState(Store).Read().reduceMotion);shell.Controls.Add(busyOverlay);busyOverlay.BringToFront();busyOverlay.Focus();
         }
         void HideBusy(){if(busyOverlay==null)return;var overlay=busyOverlay;busyOverlay=null;overlay.Dispose();shell.Invalidate(true);}
         async Task Guard(Func<Task> action,string label){if(operation)return;operation=true;Cursor=Cursors.AppStarting;ShowBusy(label+"…");try{await action();}catch(Exception exc){StatusError(exc.Message);}finally{HideBusy();operation=false;Cursor=Cursors.Default;}}
@@ -124,7 +124,7 @@ namespace AgentVoice {
 
         }
         void PlayInterfaceSound(int step){bool listening=true;try{listening=System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners().Any(p=>p.Port==Config.port);}catch(System.Net.NetworkInformation.NetworkInformationException){}if(InterfaceSounds.Allowed(SetupPreference().interfaceSounds,testingMode,listening))interfaceSounds.Play(Store.Root,step);}
-        string PageName(string id){var names=new Dictionary<string,string>{{"home","文字，有了声音。"},{"voiceEditor","声音设置"},{"voices","声音方案"},{"configuration","音色包"},{"training","基础训练"},{"advancedTraining","高级训练"},{"settings","设置"},{"appearance","外观"},{"engine","本地引擎"},{"connections","连接设备"},{"harness","Harness"},{"airi","AIRI 桌宠"},{"connectionGuide","连接帮助"},{"advanced","声音细调"},{"cleanup","音频清理"},{"cosyReference","参考声音"}};return names.ContainsKey(id)?names[id]:"agent语音";}
+        string PageName(string id){var names=new Dictionary<string,string>{{"home","控制台"},{"voiceEditor","声音设置"},{"voices","声音方案"},{"configuration","音色包"},{"training","基础训练"},{"advancedTraining","高级训练"},{"settings","设置"},{"appearance","外观"},{"engine","本地引擎"},{"connections","连接设备"},{"harness","Harness"},{"airi","AIRI 桌宠"},{"connectionGuide","连接帮助"},{"advanced","声音细调"},{"cleanup","音频清理"},{"cosyReference","参考声音"}};return names.ContainsKey(id)?names[id]:"agent语音";}
         ScenePanel NewPage(string id){var p=new ScenePanel{Host=this,Dock=DockStyle.Fill,AutoScroll=true,Padding=new Padding(0,8,0,12),Visible=false};pages.Add(id,p);content.Controls.Add(p);return p;}
         FlowLayoutPanel Stack(ScenePanel p){var stack=new BufferedFlow{Dock=DockStyle.Top,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,BackColor=Color.Transparent,Padding=new Padding(0,0,16,10)};p.Controls.Add(stack);p.SizeChanged+=(s,e)=>{foreach(Control c in stack.Controls){int width=Math.Max(300,p.ClientSize.Width-22);c.MinimumSize=new Size(width,0);c.Width=width;}};return stack;}
         ScenePanel Card(FlowLayoutPanel stack,string title){int width=Math.Max(300,content.Width-22);var card=new ScenePanel{Host=this,Card=true,Padding=new Padding(20,16,20,18),Width=width,MinimumSize=new Size(width,0),AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,Margin=new Padding(0,0,0,14)};stack.Controls.Add(card);var table=new BufferedTable{Dock=DockStyle.Top,ColumnCount=1,AutoSize=true,BackColor=Color.Transparent};table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));card.Controls.Add(table);var label=new Label{Text=title,AutoSize=true,Font=new Font(Font.FontFamily,13F,FontStyle.Bold),Margin=new Padding(0,0,0,12)};table.Controls.Add(label);return card;}
@@ -176,7 +176,7 @@ namespace AgentVoice {
         ComboBox quickEngine;
         void BuildHomeWeb(){
             var home=NewPage("home");home.AutoScroll=true;
-            var title=new Label{Text="文字，有了声音。",Font=new Font(Font.FontFamily,26F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent,ForeColor=ForeColor};title.SetBounds(38,12,620,64);home.Controls.Add(title);
+            var title=new Label{Text="控制台",Font=new Font(Font.FontFamily,26F,FontStyle.Bold),AutoSize=false,BackColor=Color.Transparent,ForeColor=ForeColor};title.SetBounds(38,12,620,64);home.Controls.Add(title);
             var lead=Hint("手动朗读与自动朗读，在这里统一控制。");lead.AutoSize=false;lead.BackColor=Color.Transparent;lead.SetBounds(40,80,720,30);home.Controls.Add(lead);title.BringToFront();lead.BringToFront();
             serviceToggle=Primary(AsyncBtn("开启服务",async()=>{if(await Service.Running()){await Service.Stop();Status("服务已关闭。");}else{await SaveDraft();await Service.Start();Status("服务已启动。");}await Poll();}));serviceToggle.AutoSize=false;serviceToggle.MinimumSize=Size.Empty;serviceToggle.SetBounds(808,46,132,38);home.Controls.Add(serviceToggle);serviceToggle.BringToFront();
             var voice=new ScenePanel{Host=this,Card=true,Location=new Point(38,120),Size=new Size(658,156),Padding=new Padding(16,10,16,10)};home.Controls.Add(voice);

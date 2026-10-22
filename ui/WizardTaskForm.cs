@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Threading.Tasks;
@@ -14,7 +14,7 @@ namespace AgentVoice {
         readonly bool reduced;
         readonly Label status;
         readonly Button close;
-        readonly ProgressBar progress;
+        readonly ActivityTrack progress;
         readonly Timer timer=new Timer{Interval=900};
         readonly TaskMark mark;
         int index;
@@ -29,7 +29,7 @@ namespace AgentVoice {
             root.Controls.Add(new Label{Text=title,Dock=DockStyle.Fill,Font=new Font("Microsoft YaHei UI",20,FontStyle.Bold),TextAlign=ContentAlignment.MiddleLeft,AutoEllipsis=true},0,0);
             var list=new FlowLayoutPanel{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,BackColor=BackColor,AutoScroll=false};root.Controls.Add(list,0,1);
             for(int i=0;i<steps.Length;i++)list.Controls.Add(new Label{Text="○  "+steps[i],Tag=i,AutoSize=true,Margin=new Padding(0,2,0,2),ForeColor=Color.FromArgb(120,122,140),Font=new Font("Microsoft YaHei UI",10)});
-            progress=new ProgressBar{Dock=DockStyle.Fill,Style=ProgressBarStyle.Marquee,Height=4,Visible=true};root.Controls.Add(progress,0,2);
+            progress=new ActivityTrack{Dock=DockStyle.Fill,ReducedMotion=reduced,Height=4,Visible=true};root.Controls.Add(progress,0,2);
             var body=new Panel{Dock=DockStyle.Fill,BackColor=BackColor};root.Controls.Add(body,0,3);
             mark=new TaskMark{Dock=DockStyle.Right,Width=180,Visible=false};body.Controls.Add(mark);
             status=new Label{Dock=DockStyle.Fill,Text="正在准备…",TextAlign=ContentAlignment.TopLeft,ForeColor=Color.FromArgb(170,174,193),AutoEllipsis=false,Padding=new Padding(0,12,190,8),Font=new Font("Microsoft YaHei UI",10)};body.Controls.Add(status);status.BringToFront();

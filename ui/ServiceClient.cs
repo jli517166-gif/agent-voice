@@ -76,7 +76,16 @@ namespace AgentVoice {
             }
             quoted.Append('\\',slashes*2);quoted.Append('"');return quoted.ToString();
         }
-        public static void Open(string path) {Process.Start(new ProcessStartInfo(path){UseShellExecute=true});}
+        public static void Open(string path) {
+            if(string.IsNullOrWhiteSpace(path))throw new InvalidOperationException("尚未设置要打开的位置。");
+            Uri address;if(Uri.TryCreate(path,UriKind.Absolute,out address)&&(address.Scheme=="https"||address.Scheme=="http")){Process.Start(new ProcessStartInfo(address.AbsoluteUri){UseShellExecute=true});return;}
+            string full=Path.GetFullPath(path);
+            if(Directory.Exists(full)){Process.Start(new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows),"explorer.exe"),Quote(full)){UseShellExecute=false});return;}
+            if(!File.Exists(full))throw new InvalidOperationException("找不到文件或目录："+full+"。请检查安装是否完整，或重新选择已有位置。");
+            if(TextDocumentForm.Supported(full)){TextDocumentForm.Open(full);return;}
+            try{Process.Start(new ProcessStartInfo(full){UseShellExecute=true});}
+            catch(System.ComponentModel.Win32Exception error){throw new InvalidOperationException("无法打开文件："+full+"。请为该文件类型设置默认应用。",error);}
+        }
         public Task<string> RunTool(string tool,string arguments) {
             return Task.Run(()=> {
                 var cfg=Store.Read();string python=Store.Resolve(cfg.engines.pythonService);

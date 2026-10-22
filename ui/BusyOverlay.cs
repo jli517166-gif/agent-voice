@@ -1,46 +1,70 @@
-using System;
+﻿using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace AgentVoice {
     public sealed class BusyOverlay:Control {
-        readonly Timer timer=new Timer{Interval=45};
+        readonly Timer timer=new Timer{Interval=40};
+        readonly Stopwatch elapsed=Stopwatch.StartNew();
         readonly Bitmap snapshot;
         readonly Image custom;
         readonly MemoryStream imageStream;
-        readonly int customFrames=1;
+        readonly Color accent;
+        readonly bool reduced;
+        readonly int[] frameDelays;
         string message;
-        int frame;
         Button stopButton;
         public void SetStopAction(Action action){
             if(stopButton!=null)return;
-            stopButton=new Button{Text="停止朗读",AccessibleName="停止朗读",Width=124,Height=36,BackColor=Color.FromArgb(11,159,216),ForeColor=Color.White,FlatStyle=FlatStyle.Flat};
+            stopButton=new Button{Text="停止朗读",AccessibleName="停止朗读",BackColor=Color.FromArgb(46,43,60),ForeColor=Color.White,FlatStyle=FlatStyle.Flat};
             stopButton.FlatAppearance.BorderSize=0;stopButton.Click+=(s,e)=>action();Controls.Add(stopButton);Invalidate();
         }
-        public BusyOverlay(string text,Bitmap background,string imagePath){
-            message=text;snapshot=background;Dock=DockStyle.Fill;TabStop=true;
+        public BusyOverlay(string text,Bitmap background,string imagePath,Color? highlight=null,bool reduceMotion=false){
+            message=text;snapshot=background;accent=highlight??Color.FromArgb(180,154,255);reduced=reduceMotion;Dock=DockStyle.Fill;TabStop=true;BackColor=Color.FromArgb(16,17,22);
             SetStyle(ControlStyles.UserPaint|ControlStyles.OptimizedDoubleBuffer|ControlStyles.AllPaintingInWmPaint|ControlStyles.ResizeRedraw,true);
-            if(!string.IsNullOrWhiteSpace(imagePath)&&File.Exists(imagePath))try{imageStream=new MemoryStream(File.ReadAllBytes(imagePath),false);custom=Image.FromStream(imageStream);customFrames=Math.Max(1,custom.GetFrameCount(FrameDimension.Time));}catch{if(imageStream!=null)imageStream.Dispose();imageStream=null;}
-            timer.Tick+=(s,e)=>{frame++;Invalidate();};timer.Start();
+            if(!string.IsNullOrWhiteSpace(imagePath)&&File.Exists(imagePath)){
+                try{
+                    imageStream=new MemoryStream(File.ReadAllBytes(imagePath),false);custom=Image.FromStream(imageStream);
+                    if(custom.FrameDimensionsList.Contains(FrameDimension.Time.Guid)){
+                        int frames=custom.GetFrameCount(FrameDimension.Time);frameDelays=new int[frames];byte[] delays=null;
+                        try{delays=custom.GetPropertyItem(0x5100).Value;}catch(ArgumentException){}
+                        for(int i=0;i<frames;i++)frameDelays[i]=delays!=null&&delays.Length>i*4+3?Math.Max(20,BitConverter.ToInt32(delays,i*4)*10):100;
+                    }
+                }catch{if(custom!=null)custom.Dispose();custom=null;if(imageStream!=null)imageStream.Dispose();imageStream=null;}
+            }
+            timer.Tick+=(s,e)=>Invalidate();VisibleChanged+=(s,e)=>{if(Visible&&!reduced)timer.Start();else timer.Stop();};if(!reduced)timer.Start();
         }
         public void SetMessage(string value){message=value;Invalidate();}
-        protected override void OnPaintBackground(PaintEventArgs e){if(snapshot!=null)e.Graphics.DrawImage(snapshot,ClientRectangle);else base.OnPaintBackground(e);}
+        protected override void OnPaintBackground(PaintEventArgs e){if(snapshot!=null)e.Graphics.DrawImage(snapshot,ClientRectangle);else e.Graphics.Clear(BackColor);}
         protected override void OnPaint(PaintEventArgs e){
-            base.OnPaint(e);e.Graphics.SmoothingMode=SmoothingMode.AntiAlias;
-            using(var shade=new SolidBrush(Color.FromArgb(112,3,18,30)))e.Graphics.FillRectangle(shade,ClientRectangle);
-            int width=Math.Min(480,Math.Max(280,Width-48)),height=stopButton==null?230:282;var box=new Rectangle((Width-width)/2,(Height-height)/2,width,height);
-            if(stopButton!=null)stopButton.Location=new Point(box.X+(width-stopButton.Width)/2,box.Bottom-50);
-            using(var path=Shapes.Rounded(box,18))using(var fill=new SolidBrush(Color.FromArgb(245,7,25,42)))using(var border=new Pen(Color.FromArgb(220,11,159,216),2)){e.Graphics.FillPath(fill,path);e.Graphics.DrawPath(border,path);}
-            var visual=new Rectangle(box.X+width/2-58,box.Y+26,116,116);
-            if(custom!=null){if(customFrames>1)custom.SelectActiveFrame(FrameDimension.Time,frame%customFrames);e.Graphics.DrawImage(custom,visual);}
-            else{
-                for(int i=0;i<10;i++){double angle=(i+frame*.24)*Math.PI*2/10;float alpha=(i+frame)%10/9f;int x=(int)(visual.X+visual.Width/2+Math.Cos(angle)*38),y=(int)(visual.Y+visual.Height/2+Math.Sin(angle)*38);using(var brush=new SolidBrush(Color.FromArgb(70+(int)(185*alpha),11,159,216)))e.Graphics.FillEllipse(brush,x-7,y-7,14,14);}
-                using(var pen=new Pen(Color.FromArgb(235,206,246,255),4)){for(int i=0;i<6;i++){float x=visual.X+24+i*14;float wave=(float)Math.Sin((frame+i)*.55);float h=18+Math.Abs(wave)*42;e.Graphics.DrawLine(pen,x,visual.Y+58-h/2,x,visual.Y+58+h/2);}}
+            base.OnPaint(e);var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;float scale=g.DpiX/96F;
+            using(var shade=new SolidBrush(Color.FromArgb(185,9,10,15)))g.FillRectangle(shade,ClientRectangle);
+            int width=Math.Min((int)(520*scale),Math.Max(1,Width-(int)(48*scale))),height=Math.Min((int)((stopButton==null?270:322)*scale),Math.Max(1,Height-(int)(32*scale)));
+            var box=new Rectangle((Width-width)/2,(Height-height)/2,width,height);
+            using(var shadow=Shapes.Rounded(new Rectangle(box.X,box.Y+(int)(8*scale),box.Width,box.Height),18))using(var brush=new SolidBrush(Color.FromArgb(40,0,0,0)))g.FillPath(brush,shadow);
+            using(var path=Shapes.Rounded(box,18))using(var fill=new SolidBrush(Color.FromArgb(27,28,36)))g.FillPath(fill,path);
+            if(stopButton!=null){stopButton.Size=new Size((int)(132*scale),(int)(36*scale));stopButton.Location=new Point(box.X+(width-stopButton.Width)/2,box.Bottom-(int)(54*scale));}
+            var visual=new Rectangle(box.X+(int)(32*scale),box.Y+(int)(30*scale),box.Width-(int)(64*scale),(int)(92*scale));
+            if(custom!=null){
+                if(!reduced&&frameDelays!=null&&frameDelays.Length>1){long t=elapsed.ElapsedMilliseconds%frameDelays.Sum();int index=0;while(t>=frameDelays[index]&&index<frameDelays.Length-1)t-=frameDelays[index++];custom.SelectActiveFrame(FrameDimension.Time,index);}
+                float ratio=Math.Min((float)visual.Width/custom.Width,(float)visual.Height/custom.Height);float w=custom.Width*ratio,h=custom.Height*ratio;g.DrawImage(custom,visual.X+(visual.Width-w)/2,visual.Y+(visual.Height-h)/2,w,h);
+            }else{
+                float gap=14*scale,bar=5*scale,mid=visual.X+visual.Width/2F;
+                for(int i=0;i<11;i++){
+                    double phase=reduced?i*.55:elapsed.Elapsed.TotalSeconds*3.8-i*.48;float h=(float)(18+Math.Pow((Math.Sin(phase)+1)/2,1.3)*46)*scale;
+                    var rect=new RectangleF(mid+(i-5)*gap-bar/2,visual.Y+(visual.Height-h)/2,bar,h);
+                    using(var shape=Shapes.Rounded(rect,bar/2))using(var fill=new SolidBrush(Color.FromArgb(140+(int)(100*(1-Math.Abs(i-5)/6F)),accent)))g.FillPath(fill,shape);
+                }
             }
-            var textBox=new Rectangle(box.X+20,box.Y+164,box.Width-40,44);using(var textFont=new Font(Font.FontFamily,11F,FontStyle.Bold))TextRenderer.DrawText(e.Graphics,message??"正在处理…",textFont,textBox,Color.White,TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter|TextFormatFlags.EndEllipsis);
+            using(var titleFont=new Font("Microsoft YaHei UI",13F,FontStyle.Bold))
+                TextRenderer.DrawText(g,"正在处理",titleFont,new Rectangle(box.X+(int)(24*scale),box.Y+(int)(140*scale),box.Width-(int)(48*scale),(int)(28*scale)),Color.FromArgb(242,242,248),TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter);
+            using(var textFont=new Font("Microsoft YaHei UI",10.5F))
+                TextRenderer.DrawText(g,message??"请稍候，完成后会自动返回。",textFont,new Rectangle(box.X+(int)(28*scale),box.Y+(int)(180*scale),box.Width-(int)(56*scale),(int)(62*scale)),Color.FromArgb(189,190,207),TextFormatFlags.HorizontalCenter|TextFormatFlags.WordBreak|TextFormatFlags.EndEllipsis);
         }
         protected override void Dispose(bool disposing){if(disposing){timer.Stop();timer.Dispose();if(custom!=null)custom.Dispose();if(imageStream!=null)imageStream.Dispose();if(snapshot!=null)snapshot.Dispose();}base.Dispose(disposing);}
     }
