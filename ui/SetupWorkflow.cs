@@ -17,6 +17,12 @@ namespace AgentVoice {
         internal Action<string> Report=delegate{};
         // Stable page IDs preserve older saved progress; legal pages precede downloads.
         internal static readonly int[] PageOrder={0,5,6,1,2,3,4,7,8,9};
+        internal const string LegalNoticeVersion="2026-10-22-v2-read";
+        internal bool LegalAccepted {get{string value;return State.Read().setupStates.TryGetValue("legalNotice",out value)&&value==LegalNoticeVersion;}}
+        internal void AcceptLegal(){Mark("legalNotice",LegalNoticeVersion);}
+        internal void RequireLegal(){if(!LegalAccepted)throw new InvalidOperationException("请先在使用须知页点击“我已阅读须知”，再继续配置。");}
+        internal int ResumeStep {get{int step=Math.Max(0,Math.Min(9,State.Read().onboardingStep));return step==0||LegalAccepted?step:5;}}
+        internal static string StepLabel(int step){int index=Array.IndexOf(PageOrder,step);return step==0?"准备开始 · 共 9 步":"第 "+index+" 步 / 共 9 步 · "+new[]{"","电脑检查","TTS 引擎","引擎文件","运行环境","使用须知","TTS 许可","Harness MCP","AIRI 联动","配置回顾"}[step];}
         internal static int Adjacent(int step,int direction){return PageOrder[Math.Max(0,Math.Min(PageOrder.Length-1,Array.IndexOf(PageOrder,step)+direction))];}
         internal bool PreviewMayBePending;
         internal async Task StopPreview(){if(PreviewMayBePending){await Service.Request("/stop",new{});PreviewMayBePending=false;}InvalidateVoice();}

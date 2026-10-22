@@ -9,9 +9,8 @@
   const resources=()=>`<div class="status-note" data-resources>${esc(state.resources)}</div>`;
   const engineNames=['CosyVoice','GPT-SoVITS · v5 Turbo','GPT-SoVITS · ProPlus'];
   const selectedNames=()=>(state.installEngines??[state.engine]).map(i=>engineNames[i]).join('、')||'尚未选择';
-  const pageOrder=[0,5,6,1,2,3,4,7,8,9];
   const pages=[
-    {title:'让对话，在耳边发生。',lead:'给 Harness 选一种你喜欢的声音。引擎、音色与陪伴的方式，都由你慢慢定。',art:'headphone.webp',label:'声音的模样，由你定义',body:()=>`<p class="muted">从熟悉的音色开始，也可以从一张白纸开始。软件、引擎、音色与环境各自独立；每一步都能跳过，随时回来续上。使用前请阅读法律须知与引擎许可。</p><div class="chips"><span>本地运行</span><span>模块安装</span><span>自由选择</span></div>${actions([doc('模块安装与配置指南.md','了解模块安装'),doc('docs/使用须知与TTS许可.md','使用须知与许可')])}`},
+    {title:'让对话，在耳边发生。',lead:'给 Harness 选一种你喜欢的声音。引擎、音色与陪伴的方式，都由你慢慢定。',art:'headphone.webp',label:'声音的模样，由你定义',body:()=>`<p class="muted">从熟悉的音色开始，也可以从一张白纸开始。软件、引擎、音色与环境各自独立；使用须知确认后，其他配置可跳过，随时回来续上。使用前请阅读法律须知与引擎许可。</p><div class="chips"><span>本地运行</span><span>模块安装</span><span>自由选择</span></div>${actions([doc('模块安装与配置指南.md','了解模块安装'),doc('docs/使用须知与TTS许可.md','使用须知与许可')])}`},
     {title:'声音，从这台电脑启程。',lead:'先看看这台电脑能托起怎样的声音。检查显卡、驱动与空间，再为喜欢的引擎安个家。',art:'computer.webp',label:'为声音，找到落脚处',body:()=>`<p class="muted">这里只查看电脑条件，不安装驱动。硬件检查不代表声音可用；Harness 接入另通过 MCP 自检，不会在配置流程自动朗读。</p>${actions([btn('computer','检查这台电脑',true),btn('recover','恢复未完成安装')])}`},
     {title:'声音的笔触，由你挑选。',lead:'引擎把文字写成声音。选一种，也可以多留几种，让同一段对话有不同的表达。',art:'puzzle.webp',label:'多留几种可能',body:()=>`<div class="tile-list">${engineNames.map((name,i)=>`<button class="tile ${selection.includes(i)?'selected':''}" data-engine="${i}" role="checkbox" aria-checked="${selection.includes(i)}"><strong>${selection.includes(i)?'✓ ':''}${name}</strong><small>${i===0?'用参考录音或训练模型，延续喜欢的音色':'共用基础环境，各自使用对应版本的权重'}</small></button>`).join('')}</div><p class="muted">可以多选。下载前请核对许可：CosyVoice 源码为 Apache-2.0，GPT-SoVITS 源码为 MIT，权重与依赖另审。下一步会记下安装清单，当前声音保持原样。还没想好，就先不选，以后再添。</p>`},
     {title:'把声音的来处，安放好。',lead:'把选好的引擎带到这台电脑。在线下载，或导入手边的引擎包，走你方便的那条路。',art:'folder.webp',label:'引擎文件',body:()=>`<p class="muted">安装清单：${esc(selectedNames())}</p>${resources()}${actions([btn('download-engine','下载所选引擎',true),btn('resources','检查已有文件'),btn('stop-service','停止服务以安装')])}<p class="muted">源码与基础模型会依次下载，已有的就留下；GPT 两个版本的共用文件只准备一次。下载可能需要数 GB，运行依赖留到下一步。失败项可以重试，已完成的会保留。</p><details id="localEngine" ${state.offline?'open':''}><summary>手边已有引擎包，或下载遇到了阻碍？</summary><p class="muted">把已有的引擎包带进来就好。可以逐个导入，彼此共存，也可以直接找到已经安装的引擎。</p>${actions([btn('install-engine','导入本地引擎包'),btn('paths','定位已安装引擎')])}</details>${actions([doc('TTS使用手册.md','下载与安装说明')])}`},
@@ -34,8 +33,8 @@
     const changed=shownStep!==next.step;state=next;
     $('#motion').checked=state.reduceMotion;$('#sound').checked=state.sound;
     document.body.classList.toggle('reduced',state.reduceMotion);
-    $('#position').textContent=state.step===0?'首次配置':state.step===9?'配置回顾':`${pageOrder.indexOf(state.step)} / 9`;
-    $('#back').hidden=state.step===0;$('#skip').hidden=state.step===0||state.step===9;
+    $('#position').textContent=state.stepLabel;
+    $('#back').hidden=state.step===0;$('#skip').hidden=state.step===0||state.step===5||state.step===9;
     $('#next').textContent=state.step===0?'开始配置':state.step===9?'进入工作台':'下一步';
     if(changed){
       selection=[...(state.installEngines??[state.engine])];shownStep=state.step;const page=pages[state.step];
@@ -54,6 +53,8 @@
       const exempt=['showLog','closeDrawer'].includes(item.id);
       item.disabled=busy&&!exempt;
     });
+    $('#next').disabled=busy||(state?.step===5&&!state.legalAccepted);
+    const legal=document.querySelector('[data-action="legal-read"]');if(legal){legal.textContent=state.legalAccepted?'已阅读须知 ✓':'我已阅读须知';legal.disabled=busy||state.legalAccepted;}
   }
   function append(message){logs.push(String(message));if(logs.length>200)logs.shift();$('#result').textContent=String(message);if($('#drawer').open&&$('#drawer').dataset.mode==='log')$('#drawerBody pre').textContent=logs.join('\n\n');}
   function feedback(title,message,error=false){$('#feedback').hidden=false;$('#feedback').classList.toggle('error',error);$('#taskTitle').textContent=title;append(message);}

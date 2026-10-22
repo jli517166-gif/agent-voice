@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -31,6 +31,9 @@ namespace AgentVoice {
                     wizard.ShowInTaskbar=false;wizard.StartPosition=FormStartPosition.Manual;wizard.Location=new Point(-32000,-32000);wizard.Show();Application.DoEvents();
                     if(Application.OpenForms.Cast<Form>().Any(f=>f is MainForm))errors.Add("Workspace constructed before onboarding finished");
                     if(wizard.PageCount!=10||wizard.Controls.Find("nav_home",true).Length>0)errors.Add("First-boot workflow mixed with workspace navigation");
+                    wizard.Go(5,false);if(wizard.Next.Enabled||wizard.Skip.Visible)errors.Add("Native legal step can continue before reading");
+                    All(wizard).OfType<AnimeButton>().First(b=>b.Text=="我已阅读须知").PerformClick();
+                    if(!wizard.Flow.LegalAccepted||!wizard.Next.Enabled)errors.Add("Native legal acknowledgement did not unlock next");
                     foreach(var size in new[]{new Size(1120,780),new Size(900,640),new Size(1440,900)}){
                         wizard.ClientSize=size;
                         for(int step=0;step<10;step++){

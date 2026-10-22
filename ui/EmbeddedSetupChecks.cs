@@ -16,6 +16,7 @@ namespace AgentVoice {
             if(type==null)throw new InvalidOperationException("Embedded setup controller has not been implemented");
             await CheckRemovedVoiceActions(directory);
             CheckPreferenceWrites(directory);
+            for(int i=1;i<SetupWorkflow.PageOrder.Length;i++)if(!SetupWorkflow.StepLabel(SetupWorkflow.PageOrder[i]).StartsWith("第 "+i+" 步 / 共 9 步"))throw new Exception("Incorrect displayed step number");
             await CheckMultiEngine(directory);
             await CheckLocalEngines(directory);
             string python=Environment.GetEnvironmentVariable("AGENT_VOICE_TEST_PYTHON");if(!string.IsNullOrEmpty(python))await CheckBatchPreparation(directory,python);
@@ -26,6 +27,11 @@ namespace AgentVoice {
             if(state.Contains(c.token))throw new Exception("Setup state exposed service credentials");
             await controller.Execute("next",new Dictionary<string,object>());
             if(controller.Flow.State.Read().onboardingStep!=5)throw new Exception("First-run bypasses legal notice before installation");
+            foreach(string blocked in new[]{"next","skip","go"}){
+                bool stopped=false;try{await controller.Execute(blocked,new Dictionary<string,object>{{"step",2}});}catch(InvalidOperationException){stopped=true;}
+                if(!stopped||controller.Flow.State.Read().onboardingStep!=5)throw new Exception("Legal gate bypassed via "+blocked);
+            }
+            await controller.Execute("legal-read",new Dictionary<string,object>());
             await controller.Execute("next",new Dictionary<string,object>());
             if(controller.Flow.State.Read().onboardingStep!=6)throw new Exception("TTS license page absent before download");
             await controller.Execute("go",new Dictionary<string,object>{{"step",2}});
@@ -45,7 +51,7 @@ namespace AgentVoice {
         }
         static async Task CheckMultiEngine(string directory){
             var store=new SettingsStore(Path.Combine(directory,"multi-"+Guid.NewGuid().ToString("N")));var c=store.Read();c.port=1;c.voice.referenceText="cosy reference";c.voice.baseModel="cosy-trained";store.Write(c);
-            var controller=new EmbeddedSetupController(store);
+            var controller=new EmbeddedSetupController(store);controller.Flow.AcceptLegal();
             await controller.Execute("go",new Dictionary<string,object>{{"step",2}});
             await controller.Execute("next",new Dictionary<string,object>{{"engines",new object[]{0,1,2}}});
             if(!controller.Flow.InstallEngines().SequenceEqual(new[]{0,1,2})||store.Read().voice.engine!="cosyvoice")throw new Exception("Multi-selection changed active voice or lost targets");
@@ -100,8 +106,9 @@ namespace AgentVoice {
                 }
                 if(server.Speaks!=0||server.Stops!=0||File.ReadAllText(store.FilePath)!=before)throw new Exception("Legal setup altered voice or submitted audio");
                 string snapshot=Json.Encode(controller.Snapshot());if(snapshot.Contains("private.wav")||snapshot.Contains("private transcript"))throw new Exception("Legal setup exposed reference assets");
+                await controller.Execute("go",new Dictionary<string,object>{{"step",5}});
                 await controller.Execute("legal-read",new Dictionary<string,object>());
-                if(controller.Flow.State.Read().setupStates["legalNotice"]!="2026-10-22-read")throw new Exception("Notice reading not persisted");
+                if(controller.Flow.State.Read().setupStates["legalNotice"]!=SetupWorkflow.LegalNoticeVersion)throw new Exception("Notice reading not persisted");
             }
         }
         internal static int Run(SettingsStore store,string[] args){

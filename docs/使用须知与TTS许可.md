@@ -4,8 +4,6 @@
 
 ## 先把声音的边界，说清楚
 
-Agent Voice 连接 Harness 与本地 TTS，让文字通过你配置的引擎发声。软件本体不附带默认音色、参考录音或训练音色包。首次配置不提供参考声音选择或试听确认；需要声音资源时，请在控制台使用有权使用的材料。音色包导入导出仅由独立可选模块提供。
-
 1. **声音授权与材料授权分别确认。** 使用自己录制且有权使用的材料，或取得覆盖相应用途的有效授权。录音公开可下载、购买了游戏、只在本机使用、声音由机器合成，都不能单独证明拥有克隆、训练或分发权利。自然人声音保护、作品、表演及录音制品权利应分别核对。
 2. **训练、生成、公开发布、商业使用与权重再分发不是同一授权。** 在授权范围、期限及地域内使用，保存来源与许可证明；不假冒他人、不用于诈骗、误导或侵犯隐私。项目名称与兼容图标不代表上游官方背书。
 3. **公开发布前检查标识及服务义务。** 将生成音频上传平台时按适用规则主动声明 AI 生成；向公众提供在线生成服务时，另行审查深度合成、个人信息保护、标识及其他服务义务。程序尚未通过音频显式／文件内隐式标识的完整合规验收；首次配置或 MCP 自检通过不代表获得发布许可。
@@ -31,9 +29,3 @@ Agent Voice 连接 Harness 与本地 TTS，让文字通过你配置的引擎发�
 离线许可原文：`docs/licenses/CosyVoice-Apache-2.0.txt`、`docs/licenses/GPT-SoVITS-MIT.txt`。这些原文不覆盖全部第三方依赖。项目自身的许可证仍需所有者确认；第三方许可不能授权整个 Agent Voice 项目。
 
 上游：[CosyVoice LICENSE](https://github.com/FunAudioLLM/CosyVoice/blob/main/LICENSE)、[指定基础模型卡](https://huggingface.co/FunAudioLLM/Fun-CosyVoice3-0.5B-2512)、[GPT-SoVITS LICENSE](https://github.com/RVC-Boss/GPT-SoVITS/blob/main/LICENSE)、[GPT 基础模型仓库](https://huggingface.co/lj1995/GPT-SoVITS)、[FFmpeg 合规说明](https://ffmpeg.org/legal.html)。上述在线声明核查于 2026-10-22，离线许可原文的来源和 SHA-256 见 `docs/licenses/TTS-sources.json`。
-
-## MCP 自检的含义
-
-推荐安装 MCP 控制，目前实测宿主仅 Codex 与 DeepSeek Harness。选择目录后配置连接，再安装 MCP。自检检查当前软件路径、插件文件、启用状态、initialize、8 个工具和只读状态调用；收到对应宿主当前存活进程的工具读取回执后，才庆祝 MCP 接入成功。独立探针通过但客户端未重载时，显示“等待客户端”，不显示完整接入通过。
-
-自检不发送聊天消息，不调用模型生成回复，不启动 TTS 或播放。它证明的是 MCP 控制通路；不证明声音资源合法、语音可用或自动朗读功能已启用。自动朗读在设置中单独控制；AIRI 是另一个可选桥接，继续单独验证，不属于 MCP 自检。

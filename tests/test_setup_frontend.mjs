@@ -22,7 +22,7 @@ test('frontend ships local CSP, ten steps, bounded illustrations and reduced mot
   assert.match(html,/Content-Security-Policy/);assert.doesNotMatch(html,/https:\/\/cdn/);
   assert.match(css,/prefers-reduced-motion/);assert.match(css,/object-fit:\s*contain/);
   assert.match(js,/使用须知/);assert.match(js,/Apache-2.0/);assert.match(js,/MIT/);assert.match(js,/connect-airi/);
-  assert.match(js,/pageOrder=\[0,5,6,1,2,3,4,7,8,9\]/);
+  assert.match(js,/state.stepLabel/);assert.match(js,/state.legalAccepted/);
   assert.match(js,/check-mcp/);assert.match(js,/不发聊天消息、不生成语音/);
   assert.doesNotMatch(js,/save-reference|openReference|openProfiles|btn\('preview'|btn\('confirm'|copy-challenge/);
   assert.doesNotMatch(js,/import-voice|导入音色包|\.ttsmodel/);
