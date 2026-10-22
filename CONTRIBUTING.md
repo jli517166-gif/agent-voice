@@ -79,3 +79,15 @@ node --test tests/test_setup_frontend.mjs
 资源准备与运行依赖分别使用 `resources` 和 `repair --prepare-only --dependencies-only`，文件完整不代表真实推理。保持 Windows 路径归一化、下载器不改外部 Python、源码替换后重查 Matcha，以及 GPT 特征提取配置完整性的回归。
 
 模块回归必须包含独立 Python 子进程（不能看到可选源码）的本地模型／声音方案测试、无 Python 安装功能模块、安装／复用／损坏拒绝／移除、真实包往返和移除后真实 TTS。不要在全局给 Python 加可选目录，再用通过结果证明本体独立。
+
+## 法律与许可复核
+
+维护者审查入口：[法律风险全面复评](docs/法律风险全面复评-20261022.md)及其风险登记册。更换引擎、权重、运行环境、UI 素材、数据流或分发方式时重新审查；不得把一次通过的功能测试当成清权证明。
+
+只读盘点实际发行目录（需要目录中的 `发行清单.json`；输出不是完整 SBOM 或法律通过结论）：
+
+```powershell
+python tools/legal_inventory.py --release "实际发行目录" --output "acceptance/legal-review"
+```
+
+默认只重新计算小于 150 MB 归档的 SHA-256，分别计算包内 FFmpeg 哈希，并明确标记大包哈希未验证。需要完整重算时加 `--hash-all`。输出仅用于证据；许可名称、哈希、已安装状态均不证明声音授权。发布前还需核查实际许可正文、必要对应源码、权利链、图片与历史内容；不要把合同原件、令牌或用户配置加入公开审查材料。
