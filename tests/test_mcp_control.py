@@ -61,6 +61,7 @@ class McpControlTests(unittest.TestCase):
             base=Path(temporary).resolve();root=base/'voice';store=Store(root);home=base/'home';location=base/'harness';location.mkdir()
             profile=home/'.dsh/profiles/desktop';profile.mkdir(parents=True);(profile/'cordis.patch.yml').write_text('[]',encoding='utf-8')
             source=root/'integrations/deepseek-control-client.js';source.parent.mkdir();source.write_text('// dsh-agent-voice-public\nconst version=1;\n',encoding='utf-8')
+            (base/'python.exe').write_bytes(b'fixture');(root/'integrations/agent_voice_mcp.py').write_text('# fixture',encoding='utf-8')
             (root/'data/harness-installations.json').write_text(json.dumps({'deepseek':{'directory':str(location),'deepseekProfiles':[str(profile)]}}),encoding='utf-8')
             with patch.object(install_mcp,'find_deepseek',return_value=(location/'dsh.cmd',profile)),patch.object(install_mcp,'run',return_value='0.2.0-rc.2'),patch.object(Path,'home',return_value=home):
                 install_mcp.install_deepseek(store,base/'python.exe',root/'integrations/agent_voice_mcp.py')

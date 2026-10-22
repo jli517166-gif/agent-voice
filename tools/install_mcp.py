@@ -81,31 +81,55 @@ def find_deepseek(store):
     return cli,desktop
 
 def install_deepseek(store,python,server):
-    import yaml
-    cli,profile=find_deepseek(store);version=run([cli,"--version"]).splitlines()[-1].strip()
-    # The composer UI lives in a separate browser bundle. Installing only the
-    # MCP transport leaves the old client.js active even after a full restart.
+    from mcp_configuration import (expected_entry,read_patch,replace_entry,write_patch,
+        validate_patch,ConnectionTransaction,managed_files,profile_lock)
     from harness_setup import configure
-    registry=json.loads((store.root/"data/harness-installations.json").read_text(encoding="utf-8-sig"))
-    connector=configure("deepseek",store.root,registry["deepseek"]["directory"])
-    package="@deepseek-ai/dsh-mcp-client@"+version
-    # Pin the first-party MCP client to the same version as the Harness runtime.
-    run([cli,"plugin","--profile","desktop","add",package],timeout=300)
-    patch=profile/"cordis.patch.yml";entries=yaml.safe_load(patch.read_text(encoding="utf-8-sig")) if patch.exists() else []
-    if entries is None:entries=[]
-    if not isinstance(entries,list):raise ValueError("DeepSeek cordis.patch.yml 不是受支持的列表格式")
-    backup=store.root/"data/connection-backups"/("mcp-"+uuid.uuid4().hex);backup.mkdir(parents=True)
-    if patch.exists():shutil.copy2(patch,backup/"cordis.patch.yml")
-    for entry in entries:
-        if isinstance(entry,dict) and isinstance(entry.get("insert"),list):entry["insert"]=[item for item in entry["insert"] if item.get("id")!="agent-voice-mcp"]
-    entries=[entry for entry in entries if not (isinstance(entry,dict) and set(entry)=={"insert"} and not entry["insert"])]
-    entries.append({"insert":[{"id":"agent-voice-mcp","name":"@deepseek-ai/dsh-mcp-client","config":{"serverName":SERVER_NAME,"transport":"stdio","command":str(python),"args":["-I","-X","utf8",str(server),"--root",str(store.root),"--host","deepseek"],"cwd":str(store.root),"failOnStartupError":False}}]})
-    temp=patch.with_name(patch.name+".agent-voice.tmp");temp.write_text(yaml.safe_dump(entries,allow_unicode=True,sort_keys=False),encoding="utf-8");os.replace(temp,patch)
     import hashlib
-    client=profile/"node_modules/dsh-agent-voice-public/client.js"
-    expected=store.root/"integrations/deepseek-control-client.js"
-    if not client.is_file() or client.read_text(encoding="utf-8-sig")!=expected.read_text(encoding="utf-8-sig"):raise ValueError("聊天栏前端更新校验失败，请重新安装快捷控制")
-    return {"ok":True,"source":"deepseek","message":"DeepSeek Harness MCP 与聊天栏界面已更新并校验，请重启 Harness。","profile":str(profile),"backup":str(backup),"clientSha256":hashlib.sha256(client.read_bytes()).hexdigest(),"connector":connector}
+    entry=expected_entry(store,python,server)
+    cli,profile=find_deepseek(store)
+    version=run([cli,"--version"]).splitlines()[-1].strip()
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?",version):
+        raise ValueError("无法识别 DeepSeek CLI 版本，未修改配置："+version)
+    # Back up BEFORE configure/plugin add; both commands can modify profiles.
+    with profile_lock(profile):
+        transaction=ConnectionTransaction(store,managed_files(store,profile))
+        try:
+            registry=json.loads((store.root/"data/harness-installations.json").read_text(encoding="utf-8-sig"))
+            connector=configure("deepseek",store.root,registry["deepseek"]["directory"],user_home=profile.parents[2])
+            package=profile/"node_modules/@deepseek-ai/dsh-mcp-client"
+            try:
+                metadata=json.loads((package/"package.json").read_text(encoding="utf-8-sig"))
+                installed=(metadata.get("name")=="@deepseek-ai/dsh-mcp-client" and metadata.get("version")==version and (package/"lib/index.js").is_file())
+            except (OSError,ValueError):installed=False
+            if not installed:
+                run([cli,"plugin","--profile","desktop","add","@deepseek-ai/dsh-mcp-client@"+version],timeout=300)
+            patch=profile/"cordis.patch.yml"
+            write_patch(patch,replace_entry(read_patch(patch),entry))
+            validate_patch(patch,store,python,server)
+            client=profile/"node_modules/dsh-agent-voice-public/client.js"
+            expected=store.root/"integrations/deepseek-control-client.js"
+            if not client.is_file() or client.read_text(encoding="utf-8-sig")!=expected.read_text(encoding="utf-8-sig"):
+                raise ValueError("聊天栏前端更新校验失败，请重新安装快捷控制")
+            transaction.commit()
+        except Exception as error:
+            try:transaction.rollback()
+            except Exception as rollback_error:
+                raise ValueError(str(error)+"；"+str(rollback_error)) from error
+            raise ValueError("MCP 安装失败，生效配置和连接器已回滚。备份："+str(transaction.backup)+"。原因："+str(error)) from error
+    return {"ok":True,"source":"deepseek","message":"DeepSeek MCP 路径、配置与聊天栏文件已回读校验。请重启 Harness，再核对 8 个工具及实际调用；安装不等于已加载。",
+            "requiresHarnessReload":True,"harnessToolsVerified":False,"profile":str(profile),"backup":str(transaction.backup),
+            "clientSha256":hashlib.sha256(client.read_bytes()).hexdigest(),"connector":connector}
+
+
+def inspect_deepseek(root,repair=False):
+    from mcp_configuration import check_connection
+    store=Store(root);cfg=store.get()
+    try:_,profile=find_deepseek(store)
+    except ValueError as error:
+        return {"ok":False,"state":"not-configured","message":str(error)}
+    return check_connection(store,profile,store.resolve(cfg["engines"]["pythonService"]),
+                            store.root/"integrations/agent_voice_mcp.py",repair)
+
 
 def install(source,root):
     store=Store(root);cfg=store.get();python=store.resolve(cfg["engines"]["pythonService"]);server=store.root/"integrations/agent_voice_mcp.py"
@@ -114,6 +138,8 @@ def install(source,root):
     return install_codex(store,python,server) if source=="codex" else install_deepseek(store,python,server)
 
 if __name__=="__main__":
-    parser=argparse.ArgumentParser();parser.add_argument("--source",required=True,choices=("codex","deepseek"));parser.add_argument("--root",required=True);args=parser.parse_args()
-    try:print(json.dumps(install(args.source,args.root),ensure_ascii=False))
+    parser=argparse.ArgumentParser();parser.add_argument("--source",required=True,choices=("codex","deepseek"));parser.add_argument("--root",required=True);actions=parser.add_mutually_exclusive_group();actions.add_argument("--check",action="store_true");actions.add_argument("--repair",action="store_true");args=parser.parse_args()
+    try:
+        result=inspect_deepseek(args.root,args.repair) if args.check or args.repair else install(args.source,args.root)
+        print(json.dumps(result,ensure_ascii=False))
     except (ValueError,OSError,subprocess.SubprocessError) as error:print("MCP 安装失败："+str(error),file=sys.stderr);raise SystemExit(1)

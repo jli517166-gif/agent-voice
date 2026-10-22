@@ -185,24 +185,36 @@ def main():
     if hasattr(sys.stdout,"reconfigure"):sys.stdout.reconfigure(encoding="utf-8",errors="strict",newline="\n")
     parser=argparse.ArgumentParser();parser.add_argument("--root",required=True);parser.add_argument("--host",required=True,choices=("codex","deepseek"));args=parser.parse_args()
     voice=AgentVoice(args.root,args.host)
-    for line in sys.stdin:
-        ident=None;method=None
-        try:
-            message=json.loads(line);ident=message.get("id");method=message.get("method")
-            if ident is None:continue
-            if method=="initialize":
-                requested=message.get("params",{}).get("protocolVersion","2025-06-18")
-                response(ident,{"protocolVersion":requested,"capabilities":{"tools":{"listChanged":False}},"serverInfo":{"name":"agent-voice-control","version":"1.5.0"},"instructions":"通过语言命令控制本机 Agent Voice。执行用户明确要求的朗读、停止、服务启停和声音切换。朗读提交成功只代表进入队列，不代表播放完成。Codex 不提供自定义面板或浮窗，也没有接管内置朗读按钮。"})
-            elif method=="ping":response(ident,{})
-            elif method=="tools/list":response(ident,{"tools":TOOLS})
-            elif method=="tools/call":
-                params=message.get("params",{});result=voice.call(params.get("name"),params.get("arguments",{}))
-                response(ident,{"content":[{"type":"text","text":json.dumps(result,ensure_ascii=False)}],"structuredContent":result,"isError":False})
-            else:response(ident,error="不支持的 MCP 方法："+str(method))
-        except Exception as error:
-            if 'ident' in locals() and ident is not None:
-                if method=="tools/call":response(ident,{"content":[{"type":"text","text":str(error)}],"isError":True})
-                else:response(ident,error=str(error))
-            else:print("agent-voice MCP: "+str(error),file=sys.stderr,flush=True)
+    sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'service'))
+    from mcp_presence import McpPresence
+    presence=McpPresence(voice.root,args.host)
+    def note(method,params=None):
+        try:presence.note(method,params,len(TOOLS))
+        except Exception as error:print('MCP 状态记录失败：'+str(error),file=sys.stderr,flush=True)
+    try:
+        for line in sys.stdin:
+            ident=None;method=None
+            try:
+                message=json.loads(line);ident=message.get("id");method=message.get("method")
+                if ident is None:continue
+                if method=="initialize":
+                    requested=message.get("params",{}).get("protocolVersion","2025-06-18")
+                    response(ident,{"protocolVersion":requested,"capabilities":{"tools":{"listChanged":False}},"serverInfo":{"name":"agent-voice-control","version":"1.5.0"},"instructions":"通过语言命令控制本机 Agent Voice。执行用户明确要求的朗读、停止、服务启停和声音切换。朗读提交成功只代表进入队列，不代表播放完成。Codex 不提供自定义面板或浮窗，也没有接管内置朗读按钮。"})
+                    note(method,message.get("params",{}))
+                elif method=="ping":response(ident,{})
+                elif method=="tools/list":
+                    response(ident,{"tools":TOOLS});note(method)
+                elif method=="tools/call":
+                    params=message.get("params",{});result=voice.call(params.get("name"),params.get("arguments",{}))
+                    response(ident,{"content":[{"type":"text","text":json.dumps(result,ensure_ascii=False)}],"structuredContent":result,"isError":False})
+                else:response(ident,error="不支持的 MCP 方法："+str(method))
+            except Exception as error:
+                if 'ident' in locals() and ident is not None:
+                    if method=="tools/call":response(ident,{"content":[{"type":"text","text":str(error)}],"isError":True})
+                    else:response(ident,error=str(error))
+                else:print("agent-voice MCP: "+str(error),file=sys.stderr,flush=True)
+    finally:
+        try:presence.close()
+        except OSError:pass
 
 if __name__=="__main__":main()

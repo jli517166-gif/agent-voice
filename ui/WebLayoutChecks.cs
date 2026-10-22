@@ -12,7 +12,7 @@ namespace AgentVoice {
     // must show their whole label, wrapped copy must fit its label, cards and
     // interactive controls must not overlap, and nothing may leave its parent.
     public sealed partial class MainForm {
-        internal static readonly string[] WebSubpages={"voiceEditor","harness","airi","connectionGuide","advancedTraining"};
+        internal static readonly string[] WebSubpages={"voiceEditor","connections","harness","airi","connectionGuide","advancedTraining"};
         internal List<string> AuditWebSubpages(string directory,out int controls){
             Directory.CreateDirectory(directory);
             var layout=new List<object>();

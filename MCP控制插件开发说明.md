@@ -6,6 +6,22 @@
 
 本地 MCP 服务器位于 `integrations/agent_voice_mcp.py`。它使用 stdio JSON-RPC，标准输出只写协议消息，诊断写标准错误。本地连接密钥从 Agent Voice 的 `data/settings.json` 读取，不写入 Codex 或 DeepSeek 配置。
 
+## DeepSeek 路径迁移和失败恢复
+
+程序目录由当前 EXE 决定，没有固定安装盘符。历史验收报告里的 `E:\App\Agent 测试` 等路径只记录当时环境，不是当前安装要求。
+
+“安装到 DeepSeek”先检查主服务 Python、MCP 脚本，再备份 desktop/headless 的生效配置、受本程序管理的连接器文件与本地安装记录。安装后回读 `cordis.patch.yml`，核对 `command`、脚本参数、`--root` 和 `cwd` 与当前安装相符且文件存在。已安装且版本匹配的 MCP 客户端直接复用；失败会恢复生效配置和连接器，明确报告备份位置。包管理器下载的依赖缓存保留，不代表插件已激活。
+
+主程序启动时检查已经安装的 DeepSeek MCP：旧目录已不存在时自动修复；指向另一套仍存在的程序时只提示冲突，由用户点击“安装到 DeepSeek”明确切换，不自动接管。配置语法损坏不自动覆盖。也可在“连接”或“Harness 设置”点击“检查 MCP”。启动错误设置为 `failOnStartupError: true`，不再静默跳过；修复后需重载插件或重启 Harness。
+
+状态必须分别解释：
+
+- **配置正确，尚未确认客户端读取工具**：仅通过文件与路径校验，不能认定工具已加载。
+- **客户端已读取 8 个工具**：实际 `dsh-mcp-client` 完成 `initialize` 和 `tools/list`。回执限定当前程序目录及仍存活的进程；普通协议探针不算 Harness 回执。它仍不证明模型注册或实际播放成功。
+- **功能验证**：在重载后的 Harness 会话调用 `mcp__agent_voice__voice_service_status`、`read_text`，确认任务完成并听到声音。聊天栏“语音”按钮有独立控制通道，按钮可用不能代替 MCP 工具验证。
+
+回执位于 `data/mcp-clients/`，只记录客户端名、目录、进程身份和协议读取阶段，不记录连接密钥或朗读内容。正常退出删除本进程回执，异常退出的旧记录因进程身份不符而失效。自动检查不会自动朗读、改变音色或替用户重启 Harness。MCP 仅安装到 desktop；headless 保留原自动朗读连接器，需要工具的开发者应按适配器契约另行配置。
+
 ## 已提供工具
 
 | MCP 工具 | 作用 |

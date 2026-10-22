@@ -103,14 +103,16 @@ namespace AgentVoice {
             }
             intro.Controls.Add(WebText("只有“指定 Harness 返回本次随机短句，并完成实际语音播放”才变绿；监听就绪、文件已安装、心跳在线都不算验证通过。",8F,FontStyle.Regular,16,220,870,42,ContentAlignment.TopLeft));
 
-            var mcp=WebCard(page,38,408,902,234);
+            var mcp=WebCard(page,38,408,902,292);
             WebCardTitle(mcp,"聊天栏快捷控制与二次开发");
             mcp.Controls.Add(WebText("DeepSeek 安装后在聊天栏显示“语音”按钮，使用独有的 /agent-voice 命令。Codex 原生入口为技能选择器中的“语音控制”或 $agent-voice-control，不添加自定义面板或浮窗。",8F,FontStyle.Regular,16,38,870,46,ContentAlignment.TopLeft));
             mcp.Controls.Add(WebAsyncButton("安装到 Codex","把聊天栏快捷控制安装到 Codex。",async()=>await InstallHarnessMcp("codex"),16,92,170,38,true));
             mcp.Controls.Add(WebAsyncButton("安装到 DeepSeek","把聊天栏快捷控制安装到 DeepSeek Harness。",async()=>await InstallHarnessMcp("deepseek"),194,92,210,38,true));
-            mcp.Controls.Add(WebText("未真机验证的 Harness 不进入正式支持列表。开发者可以按适配器契约接入最终回复，并复用相同的随机挑战、播放回执和 MCP 工具。",8F,FontStyle.Regular,16,136,870,42,ContentAlignment.TopLeft));
-            mcp.Controls.Add(WebButton("打开 Harness 二次开发指南","新增识别器、连接器、验证命令和测试。",()=>ServiceClient.Open(Store.Resolve("Harness二次开发指南.md")),16,184,300,38));
-            mcp.Controls.Add(WebButton("打开 MCP 开发说明","复用或扩展本地 MCP 控制服务。",()=>ServiceClient.Open(Store.Resolve("MCP控制插件开发说明.md")),324,184,210,38));
+            mcp.Controls.Add(WebAsyncButton("检查 / 修复 MCP","回读安装路径；自动修复已失效的旧目录，不代替 Harness 重载和真实调用验证。",async()=>{lastMcpCheck=DateTime.MinValue;await RefreshMcpConnection(true);},420,92,214,38));
+            mcpConnectionHint=WebText("MCP：尚未检查客户端是否读取工具。",11F,FontStyle.Regular,16,140,870,44);mcpConnectionHint.AutoEllipsis=true;mcp.Controls.Add(mcpConnectionHint);
+            mcp.Controls.Add(WebText("未实测的 Harness 请按适配器契约扩展；配置正确不等于工具已进入客户端会话。",8F,FontStyle.Regular,16,192,870,34,ContentAlignment.TopLeft));
+            mcp.Controls.Add(WebButton("打开 Harness 二次开发指南","新增识别器、连接器、验证命令和测试。",()=>ServiceClient.Open(Store.Resolve("Harness二次开发指南.md")),16,242,300,38));
+            mcp.Controls.Add(WebButton("打开 MCP 开发说明","复用或扩展本地 MCP 控制服务。",()=>ServiceClient.Open(Store.Resolve("MCP控制插件开发说明.md")),324,242,210,38));
             BuildConnectionGuide();
         }
         void BuildAiri(){

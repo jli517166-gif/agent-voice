@@ -12,10 +12,11 @@ namespace AgentVoice {
     public sealed partial class MainForm {
         readonly Dictionary<string,string> verificationIds=new Dictionary<string,string>();
         readonly Dictionary<string,string> connectionHints=new Dictionary<string,string>();
-        Label verificationHint,airiIndicator,airiConnectionsStatus;
+        Label verificationHint,airiIndicator,airiConnectionsStatus,mcpConnectionHint,mcpHubHint;
         CheckBox autoReadToggle;
         bool autoReadSyncing;
         bool pendingAiriVerification;
+        bool mcpChecking;DateTime lastMcpCheck=DateTime.MinValue;
         [DllImport("user32.dll")]static extern bool SetForegroundWindow(IntPtr window);
         [DllImport("user32.dll",EntryPoint="ShowWindow")]static extern bool ShowAiriWindow(IntPtr window,int command);
 
@@ -51,7 +52,19 @@ namespace AgentVoice {
         async Task InstallHarnessMcp(string source){
             BusyStatus("正在为 "+(source=="codex"?"Codex":"DeepSeek Harness")+" 安装聊天栏快捷控制……");
             var result=Json.Object(await Service.RunTool("install_mcp.py","--source "+source+" --root "+ServiceClient.Quote(Store.Root)));
-            string message=Json.Text(result,"message"),usage=source=="codex"?"在聊天栏技能选择器选择“语音控制”，或输入 $agent-voice-control；安装完成不表示客户端支持常驻自定义按钮。":"重启 DeepSeek Harness 后，点击聊天栏里的“语音”按钮；也可输入 /agent-voice。";Status(message);MessageBox.Show(this,message+"\r\n\r\n"+usage+"\r\n底层工具名为 agent_voice。","聊天控制安装完成",MessageBoxButtons.OK,MessageBoxIcon.Information);
+            if(source=="deepseek"){lastMcpCheck=DateTime.MinValue;await RefreshMcpConnection(false);}
+            string message=Json.Text(result,"message"),usage=source=="codex"?"在聊天栏技能选择器选择“语音控制”，或输入 $agent-voice-control；安装完成不表示客户端支持常驻自定义按钮。":"重启 DeepSeek Harness 后，检查 8 个 mcp__agent_voice__ 工具，再调用状态和朗读工具。聊天栏“语音”按钮与 MCP 工具是两条独立通道。";Status(message);MessageBox.Show(this,message+"\r\n\r\n"+usage+"\r\n底层工具名为 agent_voice。","聊天控制安装完成",MessageBoxButtons.OK,MessageBoxIcon.Information);
+        }
+        async Task RefreshMcpConnection(bool repair){
+            if(mcpChecking||(!repair&&(DateTime.UtcNow-lastMcpCheck).TotalSeconds<10))return;
+            mcpChecking=true;lastMcpCheck=DateTime.UtcNow;
+            string message;bool read=false;
+            try{
+                if(!File.Exists(Store.Resolve(Config.engines.pythonService))){message="MCP：请先补齐主服务 Python 环境。";}
+                else{var result=Json.Object(await Service.RunTool("install_mcp.py","--source deepseek --root "+ServiceClient.Quote(Store.Root)+(repair?" --repair":" --check")));message="DeepSeek MCP："+Json.Text(result,"message");read=Json.Text(result,"state")=="tools-read";if(result.ContainsKey("repaired")&&Convert.ToBoolean(result["repaired"]))Status(message);}
+            }catch(Exception error){message="DeepSeek MCP 检查失败："+error.Message;}
+            finally{mcpChecking=false;}
+            foreach(var label in new[]{mcpConnectionHint,mcpHubHint})if(label!=null&&!label.IsDisposed){label.Text=message;label.ForeColor=read?ForeColor:Color.Gold;tips.SetToolTip(label,message);}
         }
         async Task WaitForHarnessVerification(string source,string challenge){
             for(int i=0;i<240;i++){
@@ -189,11 +202,11 @@ namespace AgentVoice {
             WebDivider(clients,16,234,870);
 
             ClientIcon(clients,234,"AI");
-            clients.Controls.Add(WebText("AIRI",13F,FontStyle.Bold,70,252,600,26,ContentAlignment.MiddleLeft));
-            clients.Controls.Add(WebText("使用你已经登录的原 AIRI，不另建副本。",9F,FontStyle.Regular,70,281,560,20,ContentAlignment.MiddleLeft));
+            clients.Controls.Add(WebText("AIRI",13F,FontStyle.Bold,70,252,520,26,ContentAlignment.MiddleLeft));
+            clients.Controls.Add(WebText("使用你已经登录的原 AIRI，不另建副本。",9F,FontStyle.Regular,70,281,520,20,ContentAlignment.MiddleLeft));
             airiConnectionsStatus=WebText("AIRI · 未启用",9F,FontStyle.Regular,70,307,540,20,ContentAlignment.MiddleLeft);
             clients.Controls.Add(airiConnectionsStatus);
-            var airiToggle=new CheckBox{Text="启用联动",AutoSize=false,Bounds=new Rectangle(620,277,130,26),BackColor=Color.Transparent};
+            var airiToggle=WebCheck("启用联动",636,275,120,32,Config.airi.enabled);airiToggle.Name="airiLinkToggle";airiToggle.AccessibleName="启用 AIRI 联动";
             airiToggle.Checked=Config.airi.enabled;
             airiToggle.CheckedChanged+=async(s,e)=>{
                 try{
@@ -205,7 +218,10 @@ namespace AgentVoice {
             clients.Controls.Add(airiToggle);
             clients.Controls.Add(WebButton("AIRI 设置","打开 AIRI 页面，选择目录并做真实播放验证。",()=>ShowPage("airi"),768,273,126,39));
 
-            var auto=WebCard(page,38,476,902,80);
+            var mcp=WebCard(page,38,484,902,96);WebCardTitle(mcp,"DeepSeek MCP 控制状态");
+            mcpHubHint=WebText("尚未检查 MCP。安装、工具读取和播放验证是不同阶段。",11F,FontStyle.Regular,16,42,660,42);mcpHubHint.AutoEllipsis=true;mcp.Controls.Add(mcpHubHint);
+            mcp.Controls.Add(WebAsyncButton("检查 MCP","检查当前程序路径和客户端读取工具的回执。",async()=>{lastMcpCheck=DateTime.MinValue;await RefreshMcpConnection(true);},742,40,144,38));
+            var auto=WebCard(page,38,588,902,80);
             auto.Controls.Add(WebText("自动朗读",10F,FontStyle.Bold,16,12,300,24,ContentAlignment.MiddleLeft));
             auto.Controls.Add(WebText("任务执行过程中的正文与最终回复都可朗读；完整句子按顺序播放。",9F,FontStyle.Regular,16,38,620,34,ContentAlignment.TopLeft));
             auto.Controls.Add(WebButton("Harness 设置","分别启用 Codex 或 DeepSeek Harness。",()=>ShowPage("harness"),656,22,144,39));
@@ -224,7 +240,7 @@ namespace AgentVoice {
             };
             auto.Controls.Add(autoReadToggle);
 
-            var footer=WebCard(page,38,566,902,74);
+            var footer=WebCard(page,38,678,902,74);
             footer.Controls.Add(WebButton("开发其他客户端连接器","新增适配器前先阅读 Harness 二次开发指南。",()=>ServiceClient.Open(Store.Resolve("Harness二次开发指南.md")),16,16,236,39));
             footer.Controls.Add(WebText("当前实测支持范围：Codex、DeepSeek Harness。",9F,FontStyle.Regular,270,16,610,20,ContentAlignment.MiddleLeft));
             footer.Controls.Add(WebText("未真机验证的 Harness 不进入正式支持列表。",8.8F,FontStyle.Regular,270,40,610,20,ContentAlignment.MiddleLeft));
