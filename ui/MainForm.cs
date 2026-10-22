@@ -289,7 +289,7 @@ namespace AgentVoice {
         async Task SyncRemoteVoice(Dictionary<string,object> health){
             object revision;if(operation||!health.TryGetValue("voiceRevision",out revision))return;
             int current=Convert.ToInt32(revision);if(current==observedVoiceRevision)return;
-            bool draftChanged=Json.Encode(ReadVoice())!=Json.Encode(Config.voice);
+            bool draftChanged=Json.Canonical(ReadVoice())!=Json.Canonical(Config.voice);
             var state=await Service.Request("/api/state");Config=Json.Decode<Settings>(Json.Encode(state["config"]));observedVoiceRevision=current;
             if(!draftChanged)BindVoice();else UpdateVoiceControls();
         }

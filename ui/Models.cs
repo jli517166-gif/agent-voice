@@ -63,6 +63,14 @@ namespace AgentVoice {
     public static class Json {
         public static readonly JavaScriptSerializer Serializer=new JavaScriptSerializer{MaxJsonLength=8*1024*1024};
         public static string Encode(object value) { return new JavaScriptSerializer{MaxJsonLength=8*1024*1024}.Serialize(value); }
+        // CLR reflection and JSON property order are not an identity contract.
+        // Normalize into dictionaries before sorting, including nested objects.
+        public static string Canonical(object value){return Encode(Ordered(Decode<object>(Encode(value))));}
+        static object Ordered(object value){
+            var map=value as IDictionary<string,object>;
+            if(map!=null){var sorted=new SortedDictionary<string,object>(StringComparer.Ordinal);foreach(var item in map)sorted[item.Key]=Ordered(item.Value);return sorted;}
+            var items=value as object[];return items==null?value:items.Select(Ordered).ToArray();
+        }
         public static T Decode<T>(string text) { return new JavaScriptSerializer{MaxJsonLength=8*1024*1024}.Deserialize<T>(text); }
         public static T Copy<T>(T obj) { return Decode<T>(Encode(obj)); }
         public static Dictionary<string,object> Object(string text) { return Decode<Dictionary<string,object>>(text); }

@@ -17,6 +17,16 @@ namespace AgentVoice {
             try{
                 var fixture=new SettingsStore(Path.Combine(directory,"fixture-"+Guid.NewGuid().ToString("N")));var settings=fixture.Read();var listener=new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback,0);listener.Start();settings.port=((System.Net.IPEndPoint)listener.LocalEndpoint).Port;listener.Stop();fixture.Write(settings);var state=new WelcomeState(fixture);string before=File.ReadAllText(fixture.FilePath);
                 if(!SetupWizard.NeedsSetup(state.Read()))errors.Add("Fresh installation bypasses setup");
+                var evidenceFlow=new SetupWorkflow(fixture);string stableEvidence=evidenceFlow.Evidence();
+                var rawSettings=Json.Object(before);var rawVoice=(Dictionary<string,object>)rawSettings["voice"];
+                for(int order=0;order<24;order++){
+                    IEnumerable<KeyValuePair<string,object>> ordered=rawVoice.OrderBy(p=>p.Key,StringComparer.Ordinal);if(order%2==1)ordered=ordered.Reverse();
+                    rawSettings["voice"]=ordered.ToDictionary(p=>p.Key,p=>p.Value);File.WriteAllText(fixture.FilePath,Json.Encode(rawSettings));
+                    if(evidenceFlow.Evidence()!=stableEvidence)errors.Add("Equivalent reordered settings invalidated playback evidence");
+                }
+                fixture.Write(settings);before=File.ReadAllText(fixture.FilePath);
+                var nestedA=Json.Object("{\"b\":[{\"y\":2,\"x\":1}],\"a\":true}");var nestedB=Json.Object("{\"a\":true,\"b\":[{\"x\":1,\"y\":2}]}");
+                if(Json.Canonical(nestedA)!=Json.Canonical(nestedB)||Json.Canonical(new[]{1,2})==Json.Canonical(new[]{2,1}))errors.Add("Canonical JSON lost semantic identity or array order");
                 using(var wizard=new SetupWizard(fixture,true)){
                     wizard.ShowInTaskbar=false;wizard.StartPosition=FormStartPosition.Manual;wizard.Location=new Point(-32000,-32000);wizard.Show();Application.DoEvents();
                     if(Application.OpenForms.Cast<Form>().Any(f=>f is MainForm))errors.Add("Workspace constructed before onboarding finished");

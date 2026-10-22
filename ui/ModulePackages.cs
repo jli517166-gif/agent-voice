@@ -135,7 +135,7 @@ namespace AgentVoice {
                     var settings=store.Read();bool same=true;
                     foreach(var f in m.files){string path=Inside(store,f.path);if(!File.Exists(path)||HashFile(path)!=HashFile(Inside(store,stage+"/"+f.path))){same=false;break;}}
                     foreach(var entry in m.defaults)if(Convert.ToString(typeof(Engines).GetField(entry.Key).GetValue(settings.engines))!=entry.Value)same=false;
-                    if(m.kind=="feature"&&(!File.Exists(Inside(store,"modules/"+m.id+"/module.json"))||File.ReadAllText(Inside(store,"modules/"+m.id+"/module.json"),Encoding.UTF8)!=Json.Encode(m)))same=false;
+                    if(m.kind=="feature"&&(!File.Exists(Inside(store,"modules/"+m.id+"/module.json"))||Json.Canonical(Json.Object(File.ReadAllText(Inside(store,"modules/"+m.id+"/module.json"),Encoding.UTF8)))!=Json.Canonical(m)))same=false;
                     if(same){Remove(Inside(store,stage));return new{ok=true,reused=true,kind=m.kind,name=m.name,verifiedUsable=false};}
                     cancellation.ThrowIfCancellationRequested();Directory.CreateDirectory(Inside(store,backup));if(journal.hadSettings)File.Copy(store.FilePath,Inside(store,backup+"/settings.json"));
                     Write(Pending(store),journal);committing=true;progress("正在应用模块；此阶段会完成安装或恢复原文件。");
