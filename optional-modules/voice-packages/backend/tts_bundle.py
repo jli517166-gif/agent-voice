@@ -355,6 +355,11 @@ def normalize_manifest(manifest, fallback_name):
 
 @offline_operation
 def import_model(root, source):
+    return _import_model(root, source)
+
+
+def _import_model(root, source):
+    """Import implementation; caller must hold the root's OperationLock."""
     store=Store(root);assert_offline(store);source=package_path(source);fallback_name=package_name(source)
     voice_parent=store.root/'voice-model-packages'/'已导入';voice_parent.mkdir(parents=True,exist_ok=True)
     ident=uuid.uuid4().hex;voice_stage=voice_parent/('.staging-'+ident);voice_final=voice_parent/(storage_name(fallback_name)+'-'+ident[:8])

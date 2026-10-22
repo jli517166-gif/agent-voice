@@ -21,6 +21,9 @@ namespace AgentVoice {
             if(navigationButtons["home"].Text!="控制台"||PageName("home")!="控制台")errors.Add("Console labels inconsistent");
             if(pages.ContainsKey("configuration")||!pages.ContainsKey("modules"))errors.Add("Core retains voice-package page or lacks module manager");
             foreach(string removed in new[]{"导入音色包","导出音色包","选择音色包"})if(FindButton(this,removed)!=null)errors.Add("Core still exposes optional transfer: "+removed);
+            RefreshOptionalModules();
+            foreach(var button in installedModules.Controls.Cast<Control>().SelectMany(c=>c.Controls.Cast<Control>()).OfType<Button>())if(Math.Abs(button.BackColor.GetBrightness()-button.ForeColor.GetBrightness())<.3F)errors.Add("Dynamic module button text has insufficient contrast");
+            var priorSelection=quickVoice.SelectedItem;quickVoice.SelectedIndex=-1;ApplyQuickVoice().GetAwaiter().GetResult();quickVoice.SelectedItem=priorSelection;
             foreach(string engine in expected){ShowPage("voiceEditor");engineChoice.SelectedItem=engine;Application.DoEvents();if(cosyOnlyControls.Any(c=>c.Visible!=(SelectedEngine()=="cosyvoice"))||gptOnlyControls.Any(c=>c.Visible!=(SelectedEngine()=="gpt-sovits")))errors.Add("Engine controls overlap: "+engine);if(!new[]{"v5turbo","proplus"}.Contains(ReadVoice().gptVariant))errors.Add("CosyVoice selection corrupts the GPT variant field");}
             for(int n=0;n<30;n++){engineChoice.SelectedIndex=n%expected.Length;var selected=ReadVoice();if(!new[]{"v5turbo","proplus"}.Contains(selected.gptVariant))errors.Add("Repeated engine switch corrupts saved settings");}
             ShowPage("training");var trainingSelect=Controls.Find("trainingEngineChoice",true).FirstOrDefault() as ComboBox;

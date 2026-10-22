@@ -122,9 +122,10 @@ def feature_package(root,output,ident='voice-packages',name='音色包导入导�
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('kind',choices=['application','engine','environment','feature']);parser.add_argument('--root',required=True);parser.add_argument('--output',required=True)
     parser.add_argument('--engine',choices=ENGINES);parser.add_argument('--engines',nargs='*',choices=ENGINES,default=list(ENGINES));parser.add_argument('--model');parser.add_argument('--include-downloads',action='store_true');parser.add_argument('--profile',default='bundled');parser.add_argument('--minimum-driver',default='')
+    parser.add_argument('--module-version',default='1.0.0')
     args=parser.parse_args()
     if args.kind=='application':result=application_package(args.root,args.output)
-    elif args.kind=='feature':result=feature_package(args.root,args.output)
+    elif args.kind=='feature':result=feature_package(args.root,args.output,version=args.module_version)
     elif args.kind=='engine':result=engine_package(args.root,args.engine,args.output,args.model)
     else:result=environment_package(args.root,args.engines,args.output,args.include_downloads,args.profile,args.minimum_driver)
     print(json.dumps(result,ensure_ascii=False))

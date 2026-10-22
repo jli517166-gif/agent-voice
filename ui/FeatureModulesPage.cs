@@ -23,6 +23,7 @@ namespace AgentVoice {
                 installedModules.Controls.Add(Hint(name));var open=AsyncBtn("打开模块",async()=>await OpenOptionalModule(key));open.Enabled=valid;
                 installedModules.Controls.Add(Row(open,AsyncBtn("移除模块",async()=>{ModulePackages.RemoveFeature(Store,key);RefreshOptionalModules();Status("模块已移除，保留恢复副本；模型和参考录音未删除。");await Task.FromResult(0);})));
             }
+            WalkTheme(installedModules);
         }
         async Task ImportOptionalModule(){
             string file;using(var d=new OpenFileDialog{Title="导入模块",Filter="模块包|*.avmodule;*.ttsengine;*.ttsenvironment",CheckFileExists=true}){if(d.ShowDialog(this)!=DialogResult.OK)return;file=d.FileName;}
@@ -33,7 +34,9 @@ namespace AgentVoice {
             Config=Store.Read();BindVoice();BindSettings();RefreshOptionalModules();Status("模块已安装："+manifest.name+"。功能模块请在列表中打开；引擎与环境仍需真实生成验证。");
         }
         async Task OpenOptionalModule(string id){
-            var manifest=ModulePackages.InstalledFeature(Store,id);await SaveDraft();
+            // Importers must also open on an installation without a voice.
+            // Exports deliberately read the last applied settings, not a draft.
+            var manifest=ModulePackages.InstalledFeature(Store,id);
             var start=new ProcessStartInfo(Store.Resolve(manifest.entrypoint),"--root "+ServiceClient.Quote(Store.Root)){UseShellExecute=false,WorkingDirectory=Store.Root};
             using(var process=Process.Start(start))await Task.Run(()=>process.WaitForExit());
             Config=Store.Read();observedVoiceRevision=-1;BindVoice();BindSettings();RefreshOptionalModules();await Poll();
