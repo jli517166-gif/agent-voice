@@ -205,6 +205,8 @@ def _check_connection(store, profile, python, server, repair):
     owned = owned_entries(entries)
     if not owned:
         return {'ok': True, 'state': 'not-installed', 'message': '未安装 MCP 控制；自动朗读连接与 MCP 分别配置。'}
+    if any(e.get('disabled') or e.get('enabled') is False or e.get('config', {}).get('enabled') is False for e in owned):
+        return {'ok': False, 'state': 'disabled', 'message': 'MCP 已禁用，未自动开启。请在客户端启用，或明确重新安装后自检。'}
     changed = False
     try:
         validate_patch(path, store, python, server)

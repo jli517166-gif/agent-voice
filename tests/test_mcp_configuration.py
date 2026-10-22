@@ -74,6 +74,13 @@ class McpConfigurationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'禁用'):
             config.validate_patch(self.profile/'cordis.patch.yml',self.store,Path(sys.executable),self.server)
 
+    def test_passive_repair_preserves_explicitly_disabled_mcp(self):
+        entry=json.loads(json.dumps(self.entry));entry['disabled']=True;self.save(entry)
+        path=self.profile/'cordis.patch.yml';before=path.read_bytes()
+        result=config.check_connection(self.store,self.profile,Path(sys.executable),self.server,repair=True)
+        self.assertEqual(result['state'],'disabled');self.assertFalse(result['ok'])
+        self.assertEqual(path.read_bytes(),before)
+
     def test_plugin_add_failure_restores_profiles_wrappers_and_registry(self):
         before = self.snapshot()
         def run(command, **kwargs):
