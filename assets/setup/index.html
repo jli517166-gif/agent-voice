@@ -3,10 +3,10 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Agent Voice · 首次配置</title><link rel="stylesheet" href="setup.css"><link rel="stylesheet" href="scenes.css"><script defer src="bridge.js"></script><script defer src="setup.js"></script></head>
 <body><div class="app">
-<header><div class="brand">Agent Voice<span>让声音，成为你的习惯。</span></div><div id="position" aria-live="polite">首次配置</div><div class="preferences"><label><input id="motion" type="checkbox">减少动画</label><label><input id="sound" type="checkbox">音效</label></div></header>
-<main id="viewport"><section id="page" aria-label="当前配置页面"><h1>正在准备配置界面。</h1><p>所有页面资源均从软件目录读取。</p></section></main>
+<header><div class="brand">Agent Voice<span>让对话，带上你的声音。</span></div><div id="position" aria-live="polite">首次配置</div><div class="preferences"><label><input id="motion" type="checkbox">减少动画</label><label><input id="sound" type="checkbox">音效</label></div></header>
+<main id="viewport"><section id="page" aria-label="当前配置页面"><h1>稍候，声音的旅程就要开始。</h1><p>正在打开本机配置向导，让引擎、音色与连接各就其位。</p></section></main>
 <section id="feedback" hidden aria-live="polite"><div class="progress" hidden></div><div class="feedback-row"><strong id="taskTitle"></strong><button id="showLog" class="quiet">查看过程</button></div><pre id="result"></pre></section>
 <footer><div><button id="back" class="secondary">上一步</button><button id="skip" class="quiet">跳过本步</button></div><div><button id="defer" class="quiet">稍后配置</button><button id="next" class="primary">开始配置</button></div></footer>
 </div><dialog id="drawer" aria-labelledby="drawerTitle"><div class="drawer-head"><h2 id="drawerTitle"></h2><button id="closeDrawer" class="quiet" aria-label="关闭面板">关闭</button></div><div id="drawerBody"></div></dialog>
-<div id="toast" role="status" hidden></div><div id="celebration" hidden aria-live="polite"><div class="celebration-lines"></div><h2>恭喜，接入成功。</h2><p>已收到真实回复与播放完成回执。</p><button class="primary" id="closeCelebration">继续配置</button></div>
+<div id="toast" role="status" hidden></div><div id="celebration" hidden aria-live="polite"><div class="celebration-lines"></div><h2>接上了，听见回应。</h2><p>回复已抵达，声音也已播放完成。这一次，接入成功。</p><button class="primary" id="closeCelebration">继续配置</button></div>
 </body></html>
