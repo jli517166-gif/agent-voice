@@ -33,7 +33,7 @@ function Launch-Fixture {
     }
 }
 $first=Launch-Fixture
-if($first.voice.reference -ne '' -or $first.profiles.Count -ne 0 -or $first.airi.enabled -or $first.token.Length -lt 24){throw 'First launch injected a default voice or unsafe connection'}
+if($first.voice.reference -ne '' -or $first.profiles.Count -ne 0 -or $first.airi.enabled -or $first.harness.codex -or $first.harness.deepseek -or $first.token.Length -lt 24){throw 'First launch injected a default voice or unsafe connection'}
 $first.voice.speed=1.1
 $first | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $settingsFile -Encoding UTF8
 Set-Content -LiteralPath (Join-Path $root 'assets/bundled-voice.json') -Value 'invalid' -Encoding UTF8

@@ -20,7 +20,7 @@ namespace AgentVoice {
             var paths=EngineFields.ToDictionary(key=>key,key=>Convert.ToString(typeof(Engines).GetField(key).GetValue(c.engines)));
             return new{step=Math.Max(0,Math.Min(9,p.onboardingStep)),stepLabel=SetupWorkflow.StepLabel(p.onboardingStep),legalAccepted=Flow.LegalAccepted,engine=c.voice.engine=="cosyvoice"?0:c.voice.gptVariant=="proplus"?2:1,
                 installEngines=Flow.InstallEngines(),offline=p.offline,reduceMotion=p.reduceMotion,sound=p.interfaceSounds,resources=Flow.Resources(),paths=paths,
-                airiEnabled=c.airi.enabled,airiDirectory=c.airi.directory,
+                airiEnabled=c.airi.enabled,airiDirectory=c.airi.directory,autoRead=c.harness,
                 states=p.setupStates,finished=Finished,deferred=Deferred};
         }
         static string Text(Dictionary<string,object> args,string key){object value;if(!args.TryGetValue(key,out value))return "";if(!(value is string)||((string)value).Length>8192)throw new InvalidOperationException("输入格式或长度不正确："+key);return (string)value;}
@@ -68,6 +68,10 @@ namespace AgentVoice {
                         foreach(var field in EngineFields){string path=Text(args,field).Trim();if(path.Length==0)throw new InvalidOperationException("路径不能为空："+field);typeof(Engines).GetField(field).SetValue(current.engines,Flow.Store.Portable(path));}
                         Flow.Store.Write(current);Flow.InvalidateVoice();message=Flow.Resources();break;
                     case "legal-read":if(step!=5)throw new InvalidOperationException("请先打开使用须知页。");Flow.AcceptLegal();message="已确认阅读须知，可以继续下一步。";break;
+                    case "save-autoread":
+                        Flow.RequireLegal();var reading=Flow.Config;
+                        foreach(string source in new[]{"codex","deepseek"})reading.harness[source]=Flag(args,source);
+                        await Flow.Save(reading,new{harness=reading.harness});message="自动朗读开关已保存；MCP 安装自检仍不生成语音。";break;
                     case "check-mcp":
                         var check=await new ConnectionSetup(Flow).CheckMcp(Text(args,"source"));
                         return new{message=Json.Text(check,"message"),state=Snapshot(),celebrate=check.ContainsKey("passed")&&Convert.ToBoolean(check["passed"])};

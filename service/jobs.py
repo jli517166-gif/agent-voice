@@ -20,7 +20,7 @@ class Jobs:
         self.thread=threading.Thread(target=self.run,name="voice-serial-worker",daemon=True)
         self.thread.start()
 
-    def submit(self,text,source="manual",play=False,event_id=None,voice=None,existing=None,output=None):
+    def submit(self,text,source="manual",play=False,event_id=None,voice=None,existing=None,output=None,share_original=None):
         if not isinstance(text,str) or len(text)>4000: raise ValueError("正文最长 4000 字")
         text=sanitize(text)
         if not text: return {"ok":True,"skipped":True,"reason":"仅链接或代码，跳过朗读"}
@@ -40,6 +40,10 @@ class Jobs:
                 path=self.output/existing["file"]
                 if not path.is_file():raise ValueError("这条音频已被清理，请重新生成")
                 self.protect(path)
+            if share_original is not None:
+                import re
+                if not re.fullmatch('[a-f0-9]{32}\\.wav',share_original) or not (self.output/share_original).is_file():raise ValueError('原始音频已被清理，请重新生成')
+                job['shareOriginal']=share_original;self.protect(self.output/share_original)
             self.jobs[ident]=job; self.queue.put_nowait(job)
             if event_id:
                 self.seen[event_id]=ident
@@ -80,8 +84,20 @@ class Jobs:
                 from bounded_logs import message
                 message("朗读任务：%s · 来源 %s · %d 字" % (job['id'], job['source'], len(job['text'])))
                 chunks=(generation_chunks(job['text']) if not job['play'] else [piece for sentence in playback_chunks(job['text']) for piece in generation_chunks(sentence)]) if not job['existing'] else [job['text']]
-                progressive=len(chunks)>1
-                result=self.progressive(job,target,chunks) if progressive else (copy.deepcopy(job["existing"]) if job["existing"] else self.pipeline.synthesize(job["text"],job["voice"],target,lambda:self.check(job)))
+                progressive=len(chunks)>1 and not job.get('shareOriginal')
+                if job.get('shareOriginal'):
+                    prefix=self.output/(job['id']+'-notice.wav')
+                    with self.lock:self.protect(prefix)
+                    try:
+                        self.pipeline.synthesize(job['text'],job['voice'],prefix,lambda:self.check(job))
+                        rate,duration=self.pipeline.concatenate([prefix,self.output/job['shareOriginal']],target,lambda:self.check(job))
+                        result={'sampleRate':rate,'duration':duration,'engine':job['voice']['engine']}
+                        result['explicitAiNotice']=True
+                    finally:
+                        prefix.unlink(missing_ok=True)
+                        with self.lock:self.release(prefix)
+                else:
+                    result=self.progressive(job,target,chunks) if progressive else (copy.deepcopy(job["existing"]) if job["existing"] else self.pipeline.synthesize(job["text"],job["voice"],target,lambda:self.check(job)))
                 self.check(job)
                 result.update({"file":target.name,"text":job["text"],"audioUrl":"/audio/"+target.name})
                 job["result"]=result
@@ -97,7 +113,11 @@ class Jobs:
                         if job['output']=='airi':result['outputNotice']='AIRI 未连接，已由本机播放'
                     result["played"]=True
                 self.check(job)
-                if not job["existing"]:atomic_json(target.with_suffix(".json"),result)
+                if not job["existing"]:
+                    saved=copy.deepcopy(result)
+                    if not self.store.get()['privacy']['retainText']:
+                        saved.pop('text',None);saved.pop('recoveredErrors',None)
+                    atomic_json(target.with_suffix(".json"),saved)
                 job["state"]="completed"; self.last_error=None
             except Cancelled as exc:
                 job["state"]="cancelled"; job["error"]=str(exc)
@@ -108,6 +128,7 @@ class Jobs:
                 traceback.print_exc()
             finally:
                 with self.lock:
+                    if job.get('shareOriginal'):self.release(self.output/job['shareOriginal'])
                     self.release(target); self.airi_tasks.pop(job["id"],None); self.current=None
                     job["done"].set()
                 self.queue.task_done()
@@ -154,10 +175,10 @@ class Jobs:
                 check_segment()
                 path=self.output/(uuid.uuid4().hex+".wav")
                 parts.append(path)
+                with self.lock:self.protect(path)
                 metadata=self.pipeline.synthesize(part_text,job["voice"],path,lambda:self.check(job))
                 job['segmentsCompleted']=index+1
                 attempts.append(metadata.get('attempts',1));recovered.extend(metadata.get('recoveredErrors',[]))
-                with self.lock:self.protect(path)
                 if first_ready is None:
                     first_ready=time.monotonic();job["state"]="playing" if job['play'] else 'generating'
                 offer((path,part_text,metadata,index))
@@ -249,6 +270,7 @@ class Jobs:
                 if pending is not None:
                     pending['state']='cancelled';pending['error']='已停止';pending['done'].set()
                     if pending.get('existing'):self.release(self.output/pending['existing']['file'])
+                    if pending.get('shareOriginal'):self.release(self.output/pending['shareOriginal'])
                 self.queue.task_done()
         self.pipeline.stop()
 
@@ -260,7 +282,8 @@ class Jobs:
             retained=set(files[:int(policy["keepLatest"])])
             for path in reversed(files):
                 if path in self.protected: continue
-                if all_files or (path not in retained and (time.time()-path.stat().st_mtime>policy["maxAgeMinutes"]*60 or total>policy["maxTotalMb"]*1024**2)):
+                expired=time.time()-path.stat().st_mtime>policy["maxAgeMinutes"]*60
+                if all_files or (expired and (path not in retained or not policy.get('keepLatestBeyondAge',True))) or (path not in retained and total>policy["maxTotalMb"]*1024**2):
                     total-=path.stat().st_size; path.unlink(); path.with_suffix(".json").unlink(missing_ok=True); removed+=1
             return {"ok":True,"removed":removed,"bytes":total,"directory":str(self.output)}
 
@@ -269,3 +292,4 @@ class Jobs:
         self.queue.put_nowait(None)
         self.thread.join(timeout=5)
         self.pipeline.close()
+        if self.store.get()['privacy']['deleteOnExit']:self.cleanup(all_files=True)

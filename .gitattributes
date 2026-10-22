@@ -1,3 +1,4 @@
 # Preserve upstream license bytes so source hashes also survive Windows checkouts.
 docs/licenses/CosyVoice-Apache-2.0.txt -text
 docs/licenses/GPT-SoVITS-MIT.txt -text
+docs/licenses/Matcha-TTS-MIT.txt -text

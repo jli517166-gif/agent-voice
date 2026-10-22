@@ -26,6 +26,12 @@
 
 本版引擎列表为 CosyVoice、GPT-SoVITS v5 Turbo、GPT-SoVITS ProPlus。二次开发加入其他引擎时须同步补充许可，不沿用本表推定授权。
 
-离线许可原文：`docs/licenses/CosyVoice-Apache-2.0.txt`、`docs/licenses/GPT-SoVITS-MIT.txt`。这些原文不覆盖全部第三方依赖。项目自身的许可证仍需所有者确认；第三方许可不能授权整个 Agent Voice 项目。
+## 本地读取、输出与反馈
+
+新安装的自动朗读默认关闭，开启前明确选择宿主；已有开关保留。可以限制项目或会话范围，控制留存、清理日志并预览脱敏报告，详见《本地数据与隐私.md》。素材来源与用途记录只存本机，不代替真实授权；模块导出的许可摘要不带合同、身份或证明路径。
+
+本地合成音频带文件内标识；控制台提供“导出用于分享”，加上开头 AI 合成提示。该实现和本地软件标识不代表公众服务运营合规已经获批，详见《发布许可检查.md》。权利或安全反馈：`wanzho852@gmail.com`，流程与最少必要材料见《权利与安全反馈.md》；不要在公开 Issue 提交合同、身份证或私密录音。
+
+离线许可原文：`docs/licenses/CosyVoice-Apache-2.0.txt`、`docs/licenses/GPT-SoVITS-MIT.txt`。这些原文不覆盖全部第三方依赖。所有者已确认自有代码采用根 LICENSE 的 MIT；不覆盖第三方组件、声音和素材。第三方材料见根 THIRD_PARTY_NOTICES.md。
 
 上游：[CosyVoice LICENSE](https://github.com/FunAudioLLM/CosyVoice/blob/main/LICENSE)、[指定基础模型卡](https://huggingface.co/FunAudioLLM/Fun-CosyVoice3-0.5B-2512)、[GPT-SoVITS LICENSE](https://github.com/RVC-Boss/GPT-SoVITS/blob/main/LICENSE)、[GPT 基础模型仓库](https://huggingface.co/lj1995/GPT-SoVITS)、[FFmpeg 合规说明](https://ffmpeg.org/legal.html)。上述在线声明核查于 2026-10-22，离线许可原文的来源和 SHA-256 见 `docs/licenses/TTS-sources.json`。

@@ -21,6 +21,7 @@ namespace AgentVoice {
             var store=new SettingsStore(root);
             if(args.Length==2&&args[0]=="--manual"){using(var manual=new TextDocumentForm(args[1]))Application.Run(manual);return 0;}
             if(args.Contains("--desktop-ui-test"))return DesktopPolishChecks.Run(args);
+            if(args.Contains("--privacy-test"))return PrivacyChecks.Run(args);
             if(args.Contains("--quickengine-test"))return QuickEngineChecks.Run(args);
             if(args.Contains("--visual-repair-test"))return VisualRepairChecks.Run(args);
             if(args.Contains("--websetup-unit"))return EmbeddedSetupChecks.Run(store,args);

@@ -18,11 +18,15 @@ foreach ($dependency in @('lib\net462\Microsoft.Web.WebView2.Core.dll','lib\net4
 }
 New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'docs\licenses') -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $webSdk 'LICENSE.txt') -Destination (Join-Path $OutputDirectory 'docs\licenses\WebView2.txt') -Force
+foreach ($legalFile in @('LICENSE','THIRD_PARTY_NOTICES.md')) {
+    Copy-Item -LiteralPath (Join-Path $sourceRoot $legalFile) -Destination (Join-Path $OutputDirectory $legalFile) -Force
+}
+Copy-Item -LiteralPath (Join-Path $sourceRoot 'docs\legal-components.json') -Destination (Join-Path $OutputDirectory 'docs\legal-components.json') -Force
 Get-ChildItem -LiteralPath (Join-Path $sourceRoot 'docs\licenses') -File -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $OutputDirectory 'docs\licenses') -Force }
 foreach ($folder in @('service','integrations','tools')) {
     $target = Join-Path $OutputDirectory $folder
     New-Item -ItemType Directory -Path $target -Force | Out-Null
-    Get-ChildItem -LiteralPath (Join-Path $sourceRoot $folder) -File | Where-Object { $folder -ne 'tools' -or $_.Name -in @('prepare_airi.py','export_connector.py','connect_harness.py','verify_harness.py','install_mcp.py','diagnose.py','voice_profiles.py','provision_core_runtime.py','core-requirements.txt','prepare_training.py','prepare_gpt_resources.py','environment_repair.py','train_cosy_lora.py','prepare_cosy_tokens.py') } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $target $_.Name) -Force }
+    Get-ChildItem -LiteralPath (Join-Path $sourceRoot $folder) -File | Where-Object { $folder -ne 'tools' -or $_.Name -in @('prepare_airi.py','export_connector.py','connect_harness.py','verify_harness.py','install_mcp.py','diagnose.py','voice_profiles.py','provision_core_runtime.py','core-requirements.txt','prepare_training.py','prepare_gpt_resources.py','environment_repair.py','train_cosy_lora.py','prepare_cosy_tokens.py','privacy_tools.py') } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $target $_.Name) -Force }
 }
 $agentAssets = Join-Path $sourceRoot '.agents'
 if (Test-Path -LiteralPath (Join-Path $sourceRoot 'assets')) {

@@ -8,6 +8,7 @@ from pathlib import Path
 
 ENGINES=('cosyvoice','gpt-sovits')
 SKIP={'.git','__pycache__','.cache','.pytest_cache','tests','test'}
+LEGAL_ROOT=Path(__file__).resolve().parents[1]
 
 def digest(path):
     result=hashlib.sha256()
@@ -31,8 +32,8 @@ def inventory(root,relative):
                 if source.is_symlink():raise ValueError('G2PW 内部不能包含链接')
                 if source.is_file():yield key+'/'+source.relative_to(path.resolve()).as_posix(),source
             continue
-        if path.is_dir():pending.extend(p for p in sorted(path.iterdir(),reverse=True) if p.name not in SKIP)
-        elif path.suffix.lower() not in {'.pyc','.pyo','.log','.tmp','.part'}:yield path.relative_to(root).as_posix(),path
+        if path.is_dir():pending.extend(p for p in sorted(path.iterdir(),reverse=True) if p.name not in SKIP and not p.name.endswith('.chunks'))
+        elif path.suffix.lower() not in {'.pyc','.pyo','.log','.tmp','.part','.headers','.range'} and not path.name.endswith('.chunks'):yield path.relative_to(root).as_posix(),path
 
 def write_package(output,kind,engine,components,paths,defaults,profile='bundled',minimum_driver='',feature=None):
     output=Path(output).resolve()
@@ -68,7 +69,14 @@ def engine_package(root,engine,output,model=None):
     if engine=='gpt-sovits':components.append(prefix+'/nltk_data')
     key='cosy' if engine=='cosyvoice' else 'gpt'
     defaults={key+'Repo':prefix+'/source',key+'Model':model}
-    return write_package(output,'engine',engine,components,(entry for c in components for entry in inventory(root,c)),defaults)
+    paths=[entry for c in components for entry in inventory(root,c)]
+    names={n.casefold() for n,p in paths}
+    matcha=prefix+'/source/third_party/Matcha-TTS/LICENSE'
+    if engine=='cosyvoice' and any('/matcha-tts/matcha/' in n for n in names) and matcha.casefold() not in names:
+        paths.append((matcha,LEGAL_ROOT/'docs/licenses/Matcha-TTS-MIT.txt'))
+    paths.extend([(prefix+'/source/AGENTVOICE-THIRD-PARTY-NOTICES.md',LEGAL_ROOT/'THIRD_PARTY_NOTICES.md'),
+                  (prefix+'/source/AGENTVOICE-COMPONENTS.json',LEGAL_ROOT/'docs/legal-components.json')])
+    return write_package(output,'engine',engine,components,paths,defaults)
 
 def environment_package(root,engines,output,include_downloads=False,profile='bundled',minimum_driver=''):
     if not set(engines)<=set(ENGINES):raise ValueError('未适配引擎')
@@ -89,6 +97,7 @@ def application_package(build,output):
     if not (build/'agent语音.exe').is_file():raise ValueError('请先构建软件本体')
     ui_libraries=['Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll']
     roots=['agent语音.exe','service','tools','integrations','docs','.agents']
+    roots.extend(name for name in ('LICENSE',) if (build/name).is_file())
     roots.extend(name for name in ui_libraries if (build/name).is_file())
     paths=[entry for relative in roots for entry in inventory(build,relative)]
     paths.extend((p.name,p) for p in build.glob('*.md'))
@@ -123,11 +132,19 @@ def main():
     parser=argparse.ArgumentParser();parser.add_argument('kind',choices=['application','engine','environment','feature']);parser.add_argument('--root',required=True);parser.add_argument('--output',required=True)
     parser.add_argument('--engine',choices=ENGINES);parser.add_argument('--engines',nargs='*',choices=ENGINES,default=list(ENGINES));parser.add_argument('--model');parser.add_argument('--include-downloads',action='store_true');parser.add_argument('--profile',default='bundled');parser.add_argument('--minimum-driver',default='')
     parser.add_argument('--module-version',default='1.0.0')
+    parser.add_argument('--public',action='store_true',help='要求逐文件公开分发证据通过；失败时只留下未审核候选包与报告')
+    parser.add_argument('--review',type=Path,help='绑定最终归档 SHA-256 的审查记录')
     args=parser.parse_args()
     if args.kind=='application':result=application_package(args.root,args.output)
     elif args.kind=='feature':result=feature_package(args.root,args.output,version=args.module_version)
     elif args.kind=='engine':result=engine_package(args.root,args.engine,args.output,args.model)
     else:result=environment_package(args.root,args.engines,args.output,args.include_downloads,args.profile,args.minimum_driver)
+    from release_compliance import inspect
+    review=json.loads(args.review.read_text(encoding='utf-8-sig')) if args.review else None
+    compliance=inspect(args.output,review=review)
+    report=Path(args.output+'.compliance.json');report.write_text(json.dumps(compliance,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+    result['publicReleaseEligible']=compliance['publicReleaseEligible'];result['complianceReport']=str(report)
     print(json.dumps(result,ensure_ascii=False))
+    if args.public and not compliance['publicReleaseEligible']:raise SystemExit(2)
 
 if __name__=='__main__':main()

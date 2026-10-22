@@ -57,23 +57,34 @@ def normalize(source,event):
     if not isinstance(text,str) or not text.strip(): return None
     if not ident:
         ident=hashlib.sha256(text.encode()).hexdigest()
-    return {"text":text,"source":source,"eventId":source+":"+session+":"+ident}
+    return {"text":text,"source":source,"eventId":source+":"+session+":"+ident,
+            'sessionId':session,'cwd':event.get('cwd',event.get('projectRoot',''))}
 
 class CodexTail:
-    def __init__(self,on_event,enabled,root=None):
+    def __init__(self,on_event,enabled,root=None,allowed=None):
         self.root=Path(root or os.environ.get("CODEX_HOME",str(Path.home()/".codex"))) / "sessions"
         self.on_event=on_event; self.enabled=enabled; self.offsets={}; self.pending={}; self.turns={}; self.progress={}; self.ignored=set(); self.stopped=threading.Event()
-        self.monitor_ready=False
+        self.monitor_ready=False;self.metadata={};self.allowed=allowed or (lambda metadata:True)
         self.thread=threading.Thread(target=self.run,name="codex-visible-messages",daemon=True)
 
     def run(self):
         initialized=False; was_enabled=False
         while not self.stopped.is_set():
             try:
-                files=sorted(self.root.glob("*/*/*/*.jsonl"),key=lambda p:p.stat().st_mtime,reverse=True)[:24]
                 enabled=self.enabled()
+                if not enabled:
+                    was_enabled=False;self.monitor_ready=self.root.is_dir();self.stopped.wait(.5);continue
+                files=sorted(self.root.glob("*/*/*/*.jsonl"),key=lambda p:p.stat().st_mtime,reverse=True)[:24]
                 for path in files:
                     size=path.stat().st_size
+                    if str(path) not in self.metadata:
+                        with path.open('rb') as stream:
+                            try:
+                                record=json.loads(stream.readline())
+                                if record.get('type')=='session_meta':self.consume(path,record)
+                            except ValueError:pass
+                    if not self.allowed(self.metadata.get(str(path),{})):
+                        self.offsets[path]=size;continue
                     if not initialized or not enabled or not was_enabled:
                         with path.open('rb') as stream:
                             try:
@@ -96,7 +107,9 @@ class CodexTail:
                             except ValueError: continue
                             self.consume(path,record)
                     self.offsets[path]=offset
-                if len(self.offsets)>1024:self.offsets={p:o for p,o in self.offsets.items() if p in files}
+                if len(self.offsets)>1024:
+                    self.offsets={p:o for p,o in self.offsets.items() if p in files}
+                    self.metadata={p:o for p,o in self.metadata.items() if Path(p) in files}
                 self.pending={p:t for p,t in self.pending.items() if Path(p) in files}
                 self.turns={p:t for p,t in self.turns.items() if Path(p) in files}
                 self.progress={p:t for p,t in self.progress.items() if Path(p) in files}
@@ -109,6 +122,7 @@ class CodexTail:
     def consume(self,path,record):
         payload=record.get("payload",{}); kind=record.get("type")
         if kind=="session_meta":
+            self.metadata[str(path)]={'session_id':payload.get('id',path.stem),'cwd':payload.get('cwd','')}
             source=payload.get('source')
             if isinstance(source,dict) and 'subagent' in source or isinstance(source,str) and source.startswith('subagent'):
                 self.ignored.add(str(path))
@@ -122,7 +136,7 @@ class CodexTail:
             text=blocks(payload.get("content"))
             if text.strip():
                 self.progress[str(path)]=text
-                self.on_event("codex",{"type":"agent-message-complete","thread-id":path.stem,
+                self.on_event("codex",{**self.metadata.get(str(path),{}),"type":"agent-message-complete","thread-id":path.stem,
                     "turn-id":self.turns.get(str(path),""),"message-id":payload.get("id") or hashlib.sha256(text.encode()).hexdigest(),
                     "last-assistant-message":text})
         if kind=="response_item" and payload.get("role")=="assistant" and payload.get("type")=="message" and payload.get("phase") in ("final_answer","final"):
@@ -131,7 +145,7 @@ class CodexTail:
             final=self.pending.pop(str(path),"")
             text=payload.get("last_agent_message") or final
             if text and (final or text!=self.progress.get(str(path))):
-                self.on_event("codex",{"type":"agent-turn-complete","thread-id":path.stem,
+                self.on_event("codex",{**self.metadata.get(str(path),{}),"type":"agent-turn-complete","thread-id":path.stem,
                     "turn-id":payload.get("turn_id",record.get("timestamp","")),"last-assistant-message":text})
 
     def start(self): self.thread.start()

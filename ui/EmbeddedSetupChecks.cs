@@ -15,6 +15,7 @@ namespace AgentVoice {
             var type=typeof(Program).Assembly.GetType("AgentVoice.EmbeddedSetupController");
             if(type==null)throw new InvalidOperationException("Embedded setup controller has not been implemented");
             await CheckRemovedVoiceActions(directory);
+            await CheckAutomaticReading(directory);
             CheckPreferenceWrites(directory);
             for(int i=1;i<SetupWorkflow.PageOrder.Length;i++)if(!SetupWorkflow.StepLabel(SetupWorkflow.PageOrder[i]).StartsWith("第 "+i+" 步 / 共 9 步"))throw new Exception("Incorrect displayed step number");
             await CheckMultiEngine(directory);
@@ -48,6 +49,15 @@ namespace AgentVoice {
             var p=new WelcomeState(store).Read();if(!p.offline||!p.reduceMotion||p.interfaceSounds)throw new Exception("Preferences not persisted");
             await controller.Execute("defer",new Dictionary<string,object>());
             p=new WelcomeState(store).Read();if(!p.onboardingDeferred||p.onboardingComplete||p.heardVoice)throw new Exception("Defer reported verified configuration");
+        }
+        static async Task CheckAutomaticReading(string directory){
+            var store=new SettingsStore(Path.Combine(directory,"privacy-setup-"+Guid.NewGuid().ToString("N")));var config=store.Read();config.port=1;store.Write(config);var controller=new EmbeddedSetupController(store);
+            if(store.Read().harness.Values.Any(x=>x))throw new Exception("Fresh setup enabled automatic reading");
+            bool blocked=false;try{await controller.Execute("save-autoread",new Dictionary<string,object>{{"codex",true},{"deepseek",false}});}catch(InvalidOperationException){blocked=true;}
+            if(!blocked||store.Read().harness.Values.Any(x=>x))throw new Exception("Automatic reading bypassed legal confirmation");
+            controller.Flow.AcceptLegal();await controller.Execute("save-autoread",new Dictionary<string,object>{{"codex",true},{"deepseek",false}});
+            if(!store.Read().harness["codex"]||store.Read().harness["deepseek"])throw new Exception("Explicit automatic reading choice was not saved");
+            var state=Json.Object(Json.Encode(controller.Snapshot()));if(!state.ContainsKey("autoRead")||state.ContainsKey("token"))throw new Exception("Setup did not expose safe automatic reading state");
         }
         static async Task CheckMultiEngine(string directory){
             var store=new SettingsStore(Path.Combine(directory,"multi-"+Guid.NewGuid().ToString("N")));var c=store.Read();c.port=1;c.voice.referenceText="cosy reference";c.voice.baseModel="cosy-trained";store.Write(c);

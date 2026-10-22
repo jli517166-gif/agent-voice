@@ -1,0 +1,21 @@
+{
+  "format": "agent-voice-component-review",
+  "version": 1,
+  "approvedProductScope": "local-desktop",
+  "ownerDecision": {"date":"2026-10-22","ownCodeLicense":"MIT","newInstallAutomaticReading":false,"hostedPublicService":false},
+  "components": [
+    {"id":"agent-voice","kind":"own-code","license":"MIT","status":"owner-approved","notice":"LICENSE","source":"https://github.com/jli517166-gif/agent-voice","scope":"project-owned code only; third-party assets and dependencies excluded"},
+    {"id":"cosyvoice-source","kind":"source","license":"Apache-2.0","status":"notice-confirmed","revision":"074ca6dc9e80a2f424f1f74b48bdd7d3fea531cc","notice":"docs/licenses/CosyVoice-Apache-2.0.txt","source":"https://github.com/FunAudioLLM/CosyVoice"},
+    {"id":"matcha-source","kind":"source","license":"MIT","status":"notice-confirmed","revision":"bd4d90d93214b37f7a159cf205ae85762c2c10aa","notice":"docs/licenses/Matcha-TTS-MIT.txt","source":"https://github.com/shivammehta25/Matcha-TTS"},
+    {"id":"gpt-sovits-source","kind":"source","license":"MIT","status":"notice-confirmed","revision":"1b47ca07ef43a284e0b8bd7f29d3e1e3ff76082a","notice":"docs/licenses/GPT-SoVITS-MIT.txt","source":"https://github.com/RVC-Boss/GPT-SoVITS"},
+    {"id":"cosyvoice-base","kind":"weights","license":"Apache-2.0","status":"subcomponents-review-pending","revision":"29e01c4e8d000f4bcd70751be16fa94bf3d85a18","source":"https://huggingface.co/FunAudioLLM/Fun-CosyVoice3-0.5B-2512","requiredEvidence":["submodel provenance","actual-file mapping"]},
+    {"id":"gpt-sovits-weights","kind":"weights","license":"NOASSERTION","status":"review-pending","revision":"8f8857563c040d542de108a2c18b0425abd6c9c5","source":"https://huggingface.co/lj1995/GPT-SoVITS","requiredEvidence":["per-weight terms","encoder and vocoder terms","G2PW and dictionaries"]},
+    {"id":"ffmpeg","kind":"binary","license":"LGPL-3.0-or-later","status":"corresponding-source-pending","sha256":"b6a4d917a444790f4c06ada640c1c0c95aecde2f8953ed8d0dfb19352500bfcd","source":"https://ffmpeg.org","requiredEvidence":["exact build source","static dependency terms","build instructions","valid source delivery"]},
+    {"id":"environment","kind":"runtime","license":"NOASSERTION","status":"review-pending","requiredEvidence":["complete package and DLL SBOM","GPL/LGPL obligations","CUDA redistribution conditions","Microsoft redistribution conditions","auxiliary model provenance"]},
+    {"id":"airi-art","kind":"asset","license":"MIT","status":"notice-confirmed","notice":"docs/licenses/AIRI-MIT.txt","source":"https://github.com/moeru-ai/airi"},
+    {"id":"3dicons","kind":"asset","license":"CC0-1.0","status":"notice-confirmed","notice":"docs/licenses/3dicons-CC0.txt","source":"https://github.com/realvjy/3dicons","fileMap":"assets/setup/art/cutouts/sources.json"},
+    {"id":"other-art","kind":"asset","license":"NOASSERTION","status":"file-provenance-review-pending","requiredEvidence":["per-file source and license for other shipped art","screenshots reviewed for private content"]},
+    {"id":"webview2","kind":"binary","license":"LicenseRef-Microsoft-WebView2","status":"redistribution-review-pending","notice":"docs/licenses/WebView2.txt","requiredEvidence":["actual SDK and runtime version","applicable redistribution terms"]}
+  ],
+  "limits": "Notice-confirmed does not clear every derivative, weight, runtime or product scenario. Unknown status is never converted to permission by a checksum or user checkbox. This file is not an SBOM or legal opinion."
+}

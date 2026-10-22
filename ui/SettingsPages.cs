@@ -33,14 +33,14 @@ namespace AgentVoice {
             }
             WebDivider(page,38,160,902);
             for(int i=0;i<4;i++){
-                panels[i]=new ScenePanel{Host=this,Location=new Point(38,181),Size=new Size(902,320),Margin=new Padding(0)};
+                panels[i]=new ScenePanel{Host=this,Location=new Point(38,181),Size=new Size(902,360),Margin=new Padding(0)};
                 page.Controls.Add(panels[i]);
             }
             var engineCard=WebCard(panels[0],0,0,902,320);
             SettingsLine(engineCard,0,"本地 TTS 引擎","CosyVoice、GPT-SoVITS v5 Turbo / ProPlus 分开匹配环境。","管理引擎",()=>ShowPage("engine"));
             SettingsLine(engineCard,1,"检查与补齐环境","联网准备或导入离线环境包，文件保存在软件目录内。","检查环境",()=>ShowPage("environmentRepair"));
             SettingsLine(engineCard,2,"首次配置","重新进入独立向导；已有设置可保留。","重新配置",RunConfiguration);
-            SettingsLine(engineCard,3,"连接设备","连接 Harness 或 AIRI，并做真实播放验证。","连接设备",()=>ShowPage("connections"));
+            SettingsLine(engineCard,3,"连接设备","Harness 通过 MCP 自检；AIRI 单独验证播放。","连接设备",()=>ShowPage("connections"));
             var soundCard=WebCard(panels[1],0,0,902,240);
             SettingsLine(soundCard,0,"声音细调","调整表达指令、句首空白和播放音量。","调整",()=>ShowPage("advanced"));
             SettingsLine(soundCard,1,"可选模块","按需安装和管理功能扩展。","管理模块",()=>ShowPage("modules"));
@@ -49,13 +49,14 @@ namespace AgentVoice {
             SettingsLine(lookCard,0,"外观与图标","设置背景、配色、程序图标和等待动画。","打开外观",()=>ShowPage("appearance"));
             SettingsLine(lookCard,1,"桌面快捷方式","使用当前图标创建桌面快捷方式。","创建",()=>{Icons.Shortcut(Application.ExecutablePath,Config.appearance.icon.Length>0?Store.Resolve(Config.appearance.icon):Application.ExecutablePath);Status("快捷方式已创建。");});
             panels[2].Controls.Add(WebText("背景、配色、图标和等待动画在外观页统一保存。",8.8F,FontStyle.Regular,0,176,902,20,ContentAlignment.MiddleLeft));
-            var storageCard=WebCard(panels[3],0,0,902,240);
+            var storageCard=WebCard(panels[3],0,0,902,320);
             SettingsLine(storageCard,0,"音频清理","设置生成音频的保留时间、数量和空间上限。","打开清理",()=>ShowPage("cleanup"));
             SettingsLine(storageCard,1,"训练模型目录","查看自己训练的本地模型文件。","打开目录",()=>ServiceClient.Open(TrainedModelDirectory()));
             SettingsLine(storageCard,2,"程序数据目录","settings.json、日志和生成音频的位置。","打开数据",()=>ServiceClient.Open(Store.Resolve("data")));
-            panels[3].Controls.Add(WebText("清理会保护生成或播放中的文件；可选功能在模块页单独安装。",8.8F,FontStyle.Regular,0,256,902,20,ContentAlignment.MiddleLeft));
+            SettingsLine(storageCard,3,"隐私与连接","自动朗读范围、数据保留、脱敏报告与撤销连接。","打开隐私",()=>ShowPage("privacy"));
+            panels[3].Controls.Add(WebText("清理会保护生成或播放中的文件；可选功能在模块页单独安装。",8.8F,FontStyle.Regular,0,332,902,20,ContentAlignment.MiddleLeft));
             select(0);
-            BuildAppearance();BuildEngines();BuildEnvironmentRepair();BuildHarness();BuildAiri();BuildConnectionHub();BuildAdvanced();BuildCleanup();BuildModules();BuildTraining();BuildAdvancedTraining();
+            BuildAppearance();BuildEngines();BuildEnvironmentRepair();BuildHarness();BuildAiri();BuildConnectionHub();BuildAdvanced();BuildCleanup();BuildPrivacy();BuildModules();BuildTraining();BuildAdvancedTraining();
         }
         void SettingsLine(ScenePanel card,int index,string title,string detail,string action,Action handler){
             int y=index*80;
@@ -88,14 +89,14 @@ namespace AgentVoice {
             var intro=WebCard(page,38,126,902,274);
             WebCardTitle(intro,"自动接入");
             intro.Controls.Add(WebText("正式支持范围只保留已完成真机端到端测试的 Codex 与 DeepSeek Harness。选择目录后推荐安装 MCP，自检路径、启用状态、协议与客户端工具回执，不发验证消息或生成语音。",8F,FontStyle.Regular,16,38,870,46,ContentAlignment.TopLeft));
-            intro.Controls.Add(WebAsyncButton("选择目录并自动接入","选择 Codex 或 DeepSeek Harness 的安装目录或用户配置目录，自动识别、安装连接器并做真实回复与播放验证。",BeginAutoHarness,16,92,210,38,true));
+            intro.Controls.Add(WebAsyncButton("选择目录并自动接入","选择 Codex 或 DeepSeek Harness 的安装目录或用户配置目录，自动识别、安装 MCP 并核对协议与客户端工具回执。",BeginAutoHarness,16,92,210,38,true));
             intro.Controls.Add(WebAsyncButton("保存开关","保存 Codex 与 DeepSeek Harness 的启用状态。",async()=>{var next=Json.Copy(Config);foreach(var key in Config.harness.Keys)next.harness[key]=checks[key].Checked;await Persist(next,new {harness=next.harness});await Poll();},234,92,110,38));
             intro.Controls.Add(WebButton("返回",null,()=>ShowPage("connections"),352,92,70,38));
             WebDivider(intro,16,140,870);
             int row=0;
             foreach(var item in new[]{new[]{"codex","Codex"},new[]{"deepseek","DeepSeek Harness"}}){
                 string source=item[0],name=item[1];int y=150+row*36;
-                var check=WebCheck("启用",16,y,100,30,Config.harness.ContainsKey(source)&&Config.harness[source]);
+                var check=WebCheck("自动朗读",16,y,100,30,Config.harness.ContainsKey(source)&&Config.harness[source]);
                 checks[source]=check;intro.Controls.Add(check);
                 intro.Controls.Add(WebText(name,9.5F,FontStyle.Bold,120,y+3,200,25,ContentAlignment.MiddleLeft));
                 intro.Controls.Add(WebHarnessStatus(source,name,326,y+3,540));
@@ -151,7 +152,7 @@ namespace AgentVoice {
 
         void BuildCleanup(){var card=SettingsCard("cleanup","音频清理");Add(card,Hint("音频目录："+Store.Resolve("data/output")));Add(card,Row(Btn("打开音频目录",()=>{Directory.CreateDirectory(Store.Resolve("data/output"));ServiceClient.Open(Store.Resolve("data/output"));})));NumberField(card,"maxAgeMinutes","删除超过（分钟）",1,43200,1,0);NumberField(card,"keepLatest","保留最新文件数",0,10000,1,0);NumberField(card,"maxTotalMb","总占用上限（MB）",1,100000,10,0);Add(card,Row(Primary(AsyncBtn("保存并清理",async()=>{var next=Json.Copy(Config);next.cleanup.maxAgeMinutes=(int)numbers["maxAgeMinutes"].Value;next.cleanup.keepLatest=(int)numbers["keepLatest"].Value;next.cleanup.maxTotalMb=(int)numbers["maxTotalMb"].Value;await Persist(next,new {cleanup=next.cleanup});var result=await Service.Request("/api/cleanup",new {});Status("已清理 "+result["removed"]+" 个音频。");})),Danger(AsyncBtn("清空已完成音频",async()=>{var result=await Service.Request("/api/cleanup",new {all=true});Status("已清理 "+result["removed"]+" 个音频，生成或播放中的文件受到保护。");}))));
         }
-        void BindSettings(){foreach(var field in typeof(Engines).GetFields())fields[field.Name].Text=Convert.ToString(field.GetValue(Config.engines));fields["accent"].Text=Config.appearance.accent;fields["backgroundColor"].Text=Config.appearance.backgroundColor;fields["textColor"].Text=Config.appearance.textColor;fields["background"].Text=Config.appearance.background;fields["loadingAnimation"].Text=Config.appearance.loadingAnimation;fields["airiDirectory"].Text=Config.airi.directory;outputChoice.SelectedIndex=Config.airi.output=="airi"?1:0;checks["airiEnabled"].Checked=Config.airi.enabled;foreach(var key in Config.harness.Keys)checks[key].Checked=Config.harness[key];numbers["maxAgeMinutes"].Value=Config.cleanup.maxAgeMinutes;numbers["keepLatest"].Value=Config.cleanup.keepLatest;numbers["maxTotalMb"].Value=Config.cleanup.maxTotalMb;}
+        void BindSettings(){foreach(var field in typeof(Engines).GetFields())fields[field.Name].Text=Convert.ToString(field.GetValue(Config.engines));fields["accent"].Text=Config.appearance.accent;fields["backgroundColor"].Text=Config.appearance.backgroundColor;fields["textColor"].Text=Config.appearance.textColor;fields["background"].Text=Config.appearance.background;fields["loadingAnimation"].Text=Config.appearance.loadingAnimation;fields["airiDirectory"].Text=Config.airi.directory;outputChoice.SelectedIndex=Config.airi.output=="airi"?1:0;checks["airiEnabled"].Checked=Config.airi.enabled;foreach(var key in Config.harness.Keys)checks[key].Checked=Config.harness[key];numbers["maxAgeMinutes"].Value=Config.cleanup.maxAgeMinutes;numbers["keepLatest"].Value=Config.cleanup.keepLatest;numbers["maxTotalMb"].Value=Config.cleanup.maxTotalMb;BindPrivacy();}
 
     }
 }

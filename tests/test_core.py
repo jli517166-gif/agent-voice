@@ -69,7 +69,7 @@ class CoreTests(unittest.TestCase):
             time.sleep(.01)
         self.fail('job did not finish')
     def test_initial_public_config_contains_no_private_voice(self):
-        cfg=defaults();self.assertEqual(cfg['voice']['baseModel'],'');self.assertEqual(cfg['voice']['reference'],'');self.assertEqual(cfg['harness'],{'codex':True,'deepseek':False})
+        cfg=defaults();self.assertEqual(cfg['voice']['baseModel'],'');self.assertEqual(cfg['voice']['reference'],'');self.assertEqual(cfg['harness'],{'codex':False,'deepseek':False})
         self.assertNotIn('synthesisMode',cfg['voice']);self.assertFalse(cfg['voice']['advancedEnabled'])
     def test_playback_status_ignores_synthesis_only_and_cancelled_epoch(self):
         jobs=self.server.jobs
@@ -143,6 +143,8 @@ class CoreTests(unittest.TestCase):
         for source,event in events.items():self.assertEqual(normalize(source,event)['text'],'最终回答')
         with self.assertRaisesRegex(ValueError,'未知 Harness'):normalize('claude',{'hook_event_name':'Stop','last_assistant_message':'错误'})
     def test_harness_enabling_and_deduplication(self):
+        self.assertTrue(self.request('/api/harness/codex',{'type':'agent-turn-complete','last-assistant-message':'尚未开启'})['skipped'])
+        self.store.update({'harness':{'codex':True}})
         event={'type':'agent-turn-complete','thread-id':'a','turn-id':'b','last-assistant-message':'喝水吧'}
         first=self.request('/api/harness/codex',event);second=self.request('/api/harness/codex',event)
         self.assertEqual(first['jobId'],second['jobId']);self.assertTrue(second['duplicate']);self.assertEqual(self.wait(first['jobId'])['state'],'completed')

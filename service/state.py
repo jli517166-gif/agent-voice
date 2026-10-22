@@ -17,13 +17,17 @@ def defaults():
                    "pythonGpt":"tts-engines/gpt-sovits/runtime/Scripts/python.exe","gptRepo":"tts-engines/gpt-sovits/source","gptModel":"tts-engines/gpt-sovits/models/GPT-SoVITS",
                    "ffmpeg":"tools/ffmpeg.exe"},
         "appearance":{"accent":"#19C7F2","backgroundColor":"#05101D","textColor":"#EAF6FF","background":"","icon":"","loadingAnimation":""},
-        "cleanup":{"maxAgeMinutes":30,"keepLatest":3,"maxTotalMb":200,"intervalSeconds":900},
-        "harness":{source:source=="codex" for source in SOURCES},"airi":{"enabled":False,"directory":"","output":"local"},
+        "cleanup":{"maxAgeMinutes":30,"keepLatest":0,"maxTotalMb":200,"intervalSeconds":900,"keepLatestBeyondAge":False},
+        "privacy":{"retainText":False,"deleteOnExit":False,"logRetentionDays":7,"harnessScope":"all","projectRoot":"","sessionId":""},
+        "harness":{source:False for source in SOURCES},"airi":{"enabled":False,"directory":"","output":"local"},
         "phrases":["工作好久啦，起来动一动、喝口水吧～"],"profiles":[]}
 
 def migrate_settings(saved):
     """One-way legacy migration; no removed processing path can be re-enabled."""
     value=copy.deepcopy(saved)
+    cleanup=value.get('cleanup')
+    if isinstance(cleanup,dict) and 'keepLatestBeyondAge' not in cleanup:
+        cleanup['keepLatestBeyondAge']=bool(cleanup.get('keepLatest',0))
     if value.get('version',1) not in (1,2,3,4):return value
     value['version']=4;value.pop('modelRoots',None)
     if isinstance(value.get('profiles'),list):value['profiles']=[p for p in value['profiles'] if not isinstance(p,dict) or not isinstance(p.get('voice'),dict) or p['voice'].get('engine','cosyvoice') in ('cosyvoice','gpt-sovits')]
@@ -87,6 +91,14 @@ def validate(data):
     for key,low,high in (("maxAgeMinutes",1,43200),("keepLatest",0,10000),
                          ("maxTotalMb",1,100000),("intervalSeconds",10,86400)):
         number(data["cleanup"][key],low,high,"清理策略")
+    if not isinstance(data['cleanup']['keepLatestBeyondAge'],bool):raise ValueError('最新文件保留选项无效')
+    privacy=data['privacy']
+    if any(not isinstance(privacy[k],bool) for k in ('retainText','deleteOnExit')):raise ValueError('隐私开关无效')
+    number(privacy['logRetentionDays'],0,365,'日志保留天数')
+    if privacy['harnessScope'] not in ('all','project','session'):raise ValueError('自动朗读范围无效')
+    if any(not isinstance(privacy[k],str) or len(privacy[k])>4000 for k in ('projectRoot','sessionId')):raise ValueError('自动朗读范围输入无效')
+    if privacy['harnessScope']=='project' and not privacy['projectRoot'].strip():raise ValueError('请先选择自动朗读项目目录')
+    if privacy['harnessScope']=='session' and not privacy['sessionId'].strip():raise ValueError('请先填写自动朗读会话 ID')
     if data["airi"]["output"] not in ("local", "airi") or not isinstance(data["airi"]["enabled"],bool) or not isinstance(data["airi"]["directory"],str):
         raise ValueError("桌宠配置无效")
     if not isinstance(data["phrases"],list) or len(data["phrases"])>200 or any(not isinstance(p,str) or len(p)>4000 for p in data["phrases"]):

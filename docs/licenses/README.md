@@ -13,3 +13,5 @@ TTS 源码、权重、Python、CUDA、FFmpeg 及各子依赖需按各自模块�
 - `CosyVoice-Apache-2.0.txt`：CosyVoice 官方源码许可。
 - `GPT-SoVITS-MIT.txt`：GPT-SoVITS 官方源码许可。
 - 获取来源、日期与 SHA-256 见 `TTS-sources.json`；权重与附属依赖不得推定沿用源码许可。适用范围见 `../使用须知与TTS许可.md`。
+
+- `Matcha-TTS-MIT.txt`：Matcha-TTS 根项目 MIT，锁定修订 `bd4d90d93214b37f7a159cf205ae85762c2c10aa`，版权 Shivam Mehta；SHA-256 `874d84104bdc7b301f369b2f2e66b31f07826a67495af909655f3699c857620d`。源码：https://github.com/shivammehta25/Matcha-TTS 。引擎打包会补对应文本，但不据此推定其他依赖已清权。

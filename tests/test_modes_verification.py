@@ -45,6 +45,7 @@ class VerificationApiTests(unittest.TestCase):
         self.assertEqual(self.request('/api/verify/deepseek')['state'],'verified')
 
     def test_unconfigured_challenge_reports_failure_instead_of_waiting_forever(self):
+        self.store.update({'harness':{'codex':True}})
         self.store.update({'voice':{'reference':'missing.wav'}})
         challenge=self.request('/api/verify/codex',{})
         self.request('/api/harness/codex',{'type':'agent-turn-complete','last-assistant-message':challenge['text']})
@@ -52,6 +53,7 @@ class VerificationApiTests(unittest.TestCase):
         self.assertEqual(state['state'],'failed');self.assertIn('参考录音',state['error'])
 
     def test_concurrent_health_and_verification_reads_do_not_deadlock(self):
+        self.store.update({'harness':{'codex':True}})
         from concurrent.futures import ThreadPoolExecutor
         challenge=self.request('/api/verify/codex',{})
         result=self.request('/api/harness/codex',{'type':'agent-turn-complete','last-assistant-message':challenge['text']})

@@ -20,3 +20,12 @@ jobs:
         run: ./build.ps1
       - shell: powershell
         run: ./tests/check_first_run.ps1
+      - shell: powershell
+        run: |
+          $env:AGENT_VOICE_TEST_PYTHON=(Get-Command python).Source
+          $exe=Join-Path $PWD 'dist\agent语音.exe'
+          foreach ($case in @('privacy-test','websetup-unit')) {
+            $output=Join-Path $PWD ('acceptance\'+$case)
+            $check=Start-Process -FilePath $exe -ArgumentList @('--'+$case,$output) -WindowStyle Hidden -PassThru -Wait
+            if($check.ExitCode -ne 0){throw ('Failed '+$case)}
+          }

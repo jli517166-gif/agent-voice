@@ -96,5 +96,10 @@ namespace AgentVoice {
                 using(var process=Process.Start(info)){var output=process.StandardOutput.ReadToEndAsync();var error=process.StandardError.ReadToEndAsync();process.WaitForExit();Task.WaitAll(output,error);if(process.ExitCode!=0)throw new InvalidOperationException(String.IsNullOrWhiteSpace(error.Result)?output.Result:error.Result);return output.Result;}
             });
         }
+        public Task<byte[]> Audio(string path){return Task.Run(()=>{
+            if(!System.Text.RegularExpressions.Regex.IsMatch(path??"",@"^/audio/[a-f0-9]{32}\.wav$"))throw new InvalidOperationException("无效音频地址。");
+            var config=Store.Read();var request=(HttpWebRequest)WebRequest.Create("http://127.0.0.1:"+config.port+path);request.Proxy=null;request.Timeout=30000;request.ReadWriteTimeout=30000;request.Headers[HttpRequestHeader.Authorization]="Bearer "+config.token;
+            using(var response=request.GetResponse())using(var source=response.GetResponseStream())using(var buffer=new MemoryStream()){source.CopyTo(buffer);return buffer.ToArray();}
+        });}
     }
 }

@@ -12,5 +12,12 @@
     "checkedAt": "2026-10-22",
     "sha256": "8a064eada186601fc602e45feef61c6abb62246d5ae9c3764dd1fc92d946c3c6",
     "scope": "upstream source license; not all weights or dependencies"
+  },
+  {
+    "file": "Matcha-TTS-MIT.txt",
+    "url": "https://raw.githubusercontent.com/shivammehta25/Matcha-TTS/bd4d90d93214b37f7a159cf205ae85762c2c10aa/LICENSE",
+    "checkedAt": "2026-10-22",
+    "sha256": "874d84104bdc7b301f369b2f2e66b31f07826a67495af909655f3699c857620d",
+    "scope": "Matcha-TTS source license only; no grant for unrelated weights or dependencies"
   }
 ]

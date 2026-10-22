@@ -15,6 +15,7 @@ def main():
     if Path(__file__).resolve().parent!=installed/'backend' or not (installed/'module.json').is_file():
         raise ValueError('请先从主程序安装音色包模块，再使用其导入导出功能')
     sys.path.insert(0,str(root/'service'))
+    if not (root/'service/voice_rights.py').is_file():raise ValueError('音色包模块 1.1.0 需要已含素材来源记录功能的新版主程序，请先升级本体；音色文件未改动')
     sys.path.insert(0,str(Path(__file__).resolve().parent))
     from tts_bundle import export_model
     from voice_library import import_and_register,register_current,apply_saved

@@ -288,6 +288,11 @@ def export_model(root, target, profile_id=None, package_mode='lightweight', trai
         'compatibility':{'sourcePolicy':'python-ast-v1','runtime':runtime_descriptor(store,engine)},
         'modelFiles':model_records,'voice':{key:voice[key] for key in (*FIELDS,'gptVariant') if key in FIELDS or engine=='gpt-sovits'},'reference':ref_entry,'files':records,
     }
+    from voice_rights import public_summary
+    manifest['licenseSummary']=public_summary(store,reference)
+    manifest['baseModelSource']={'engine':engine,'modelFingerprint':fingerprint,
+        'status':'not-recorded','noticeScope':'实际基础模型来源未单独核验；模型名称或哈希不能替代来源证明。',
+        'notice':'基础模型条款单独适用；源码许可与模型指纹不证明参考录音或训练材料授权。'}
     if advanced:manifest['baseModel']={'modelName':base_directory.name,'modelFingerprint':base_fingerprint,'modelFiles':base_records,'deltaFiles':delta,'removedFiles':removed}
     target.parent.mkdir(parents=True,exist_ok=True); temp=target.with_name(target.name+'.'+uuid.uuid4().hex+'.tmp')
     try:
@@ -402,6 +407,10 @@ def _import_model(root, source):
                 allowed.add(name)
             if set(names)!=allowed or reference not in allowed:raise ValueError('模型包包含未登记资源')
             reference_record=next(i for i in records if i['entry']==reference)
+            if 'licenseSummary' in manifest:
+                from voice_rights import normalize_summary
+                summary=normalize_summary(manifest['licenseSummary'])
+                if summary['materialSha256']!=reference_record['sha256']:raise ValueError('许可摘要与参考文件不一致')
             if reference_record['size']>40*1024**2:raise ValueError('参考录音超过 40 MB，不能导入')
             identity=inventory_fingerprint({'engine':engine['id'],'modelType':engine['modelType'],'model':engine['modelFingerprint'],'voice':voice,'referenceSha256':reference_record['sha256']})
             voice_final=voice_parent/(storage_name(engine['id'])+'-'+identity[:20])
@@ -486,8 +495,13 @@ def _import_model(root, source):
                 old=voice_final/reference
                 if not old.is_file() or digest(old)!=reference_record['sha256']:raise ValueError('已导入的同一音色包参考损坏，请先备份并检查目录：'+str(voice_final))
             else:os.replace(voice_stage,voice_final);created_voice=True
+            if 'licenseSummary' in manifest:
+                from voice_rights import save_imported_summary
+                save_imported_summary(store,store.resolve(proposed['reference']),manifest['licenseSummary'])
             store.update({'voice':proposed})
         result={'ok':True,'name':display_name,'engine':engine['id'],'modelType':engine['modelType'],'packageMode':manifest['packageMode'],'modelFingerprint':engine['modelFingerprint'],'assetCount':len(records),'modelDirectory':str(model_directory),'packageDirectory':str(voice_parent),'referenceReused':reused_voice,'backup':str(backup),'voice':proposed}
+        result['licenseStatus']='导入的授权声明未核验' if 'licenseSummary' in manifest else '授权信息未记录（旧包）'
+        warnings.append(result['licenseStatus'])
         if warnings:result['warnings']=warnings
         return result
     except Exception:

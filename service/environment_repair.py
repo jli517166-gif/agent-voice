@@ -303,7 +303,7 @@ class Repair:
         return {'ok':all(r['ok'] for r in rows),'items':rows,'selected':selected,'systemNotice':'显卡驱动、系统 VC++／.NET 组件不能在软件文件夹里替代安装；最后深度自检会说明系统问题。','progress':str(self.work/'progress.json'),'log':str(self.log)}
     @staticmethod
     def model_patterns(name,patterns):
-        patterns=[p.replace('\\','/') for p in patterns]
+        patterns=[p.replace('\\','/') for p in patterns]+['LICENSE*','NOTICE*','COPYING*','README*','**/LICENSE*','**/NOTICE*','**/README*']
         return sorted(set(x.split('/')[0]+'/*' if x.startswith(('chinese-hubert-base/','chinese-roberta-wwm-ext-large/')) else x for x in patterns)) if name=='gpt-sovits' else patterns
 
     def download_model(self,name,python,model,patterns):
@@ -312,10 +312,20 @@ class Repair:
         self.progress('正在下载 '+name+' 基础模型；只补缺失文件，可能需要数 GB')
         code='from huggingface_hub import snapshot_download;snapshot_download(repo_id='+repr(CATALOG[name]['modelRepo'])+',revision='+repr(CATALOG[name]['modelRevision'])+',local_dir='+repr(str(stage))+',allow_patterns='+repr(patterns)+')'
         self.run([python,'-I','-X','utf8','-c',code],timeout=14400)
+        copied=[]
         for file in stage.rglob('*'):
             if file.is_file() and '.cache' not in file.relative_to(stage).parts:
-                target=inside(self.root,model/file.relative_to(stage));target.parent.mkdir(parents=True,exist_ok=True)
-                if not target.exists():shutil.move(str(file),str(target))
+                relative=file.relative_to(stage)
+                # Keep new legal texts outside the model identity namespace.
+                # A new README must not invalidate an approved voice fingerprint.
+                notice=file.name.upper().startswith(('LICENSE','NOTICE','COPYING','README'))
+                target=inside(self.root,model/('.agent-voice-licenses' if notice else '')/relative);target.parent.mkdir(parents=True,exist_ok=True)
+                if not target.exists():
+                    shutil.move(str(file),str(target));copied.append(relative.as_posix())
+        from state import atomic_json
+        atomic_json(model/'.agent-voice-licenses'/('download-'+uuid.uuid4().hex+'.json'),
+            {'repo':CATALOG[name]['modelRepo'],'revision':CATALOG[name]['modelRevision'],'downloadedFiles':copied,
+             'scope':'Only this download, not provenance or permission for all existing model files'})
         shutil.rmtree(stage)
 
     def prepare_resources(self,engine):
@@ -396,20 +406,13 @@ class Repair:
                 if row['missingModelFiles']:
                     if self.root not in model.resolve().parents:model=home/'models'/('Fun-CosyVoice3-0.5B' if name=='cosyvoice' else 'GPT-SoVITS')
                     inside(self.root,model);self.progress('正在下载缺少的 '+name+' 基础模型（可能需要数 GB）')
-                    patterns=row['missingModelFiles'];stage=inside(self.root,self.work/('model-download-'+uuid.uuid4().hex))
+                    patterns=row['missingModelFiles']
                     if str(model)!=row['model']:
                         if name=='cosyvoice':
                             from model_integrity import REQUIRED
                             patterns=[*REQUIRED,'CosyVoice-BlankEN/*']
                         else:patterns=[str(p.relative_to(model)) for variant in ('proplus','v5turbo') for p in gpt_required({'source':str(source),'model':str(model),'variant':variant})[1:]]
-                    patterns=self.model_patterns(name,patterns)
-                    code='from huggingface_hub import snapshot_download;snapshot_download(repo_id='+repr(CATALOG[name]['modelRepo'])+',revision='+repr(CATALOG[name]['modelRevision'])+',local_dir='+repr(str(stage))+',allow_patterns='+repr(patterns)+')'
-                    self.run([python,'-I','-X','utf8','-c',code],timeout=14400)
-                    for file in stage.rglob('*'):
-                        if file.is_file() and '.cache' not in file.relative_to(stage).parts:
-                            target=inside(self.root,model/file.relative_to(stage));target.parent.mkdir(parents=True,exist_ok=True)
-                            if not target.exists():shutil.move(str(file),str(target))
-                    shutil.rmtree(stage)
+                    self.download_model(name,python,model,patterns)
                 updates.update({data['pythonKey']:self.store.portable(python),data['sourceKey']:self.store.portable(source),data['modelKey']:self.store.portable(model)})
             if updates:self.store.update({'engines':updates})
             result=self.inspect(engine)

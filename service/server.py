@@ -26,7 +26,7 @@ class Server(ThreadingHTTPServer):
         self.verification=Verification(self.jobs)
         self.last_events={}; self.presence=HarnessPresence(); self.api_lock=threading.RLock(); self.stopping=threading.Event()
         self.voice_change_lock=threading.Lock();self.voice_revision=0
-        self.codex=CodexTail(self.ingest,lambda:self.store.get()["harness"]["codex"],root=self.codex_home())
+        self.codex=CodexTail(self.ingest,lambda:self.store.get()["harness"]["codex"],root=self.codex_home(),allowed=self.codex_scope)
         self.codex.start()
         threading.Thread(target=self.cleanup_loop,daemon=True).start()
         if hasattr(self.pipeline,"prepare"):
@@ -89,14 +89,20 @@ class Server(ThreadingHTTPServer):
 
     def reload_codex(self):
         self.codex.close()
-        self.codex=CodexTail(self.ingest,lambda:self.store.get()['harness']['codex'],root=self.codex_home())
+        self.codex=CodexTail(self.ingest,lambda:self.store.get()['harness']['codex'],root=self.codex_home(),allowed=self.codex_scope)
         self.codex.start();self.verification.clear()
+
+    def codex_scope(self,metadata):
+        from privacy import reading_allowed
+        return reading_allowed(self.store.get(),{'sessionId':metadata.get('session_id'),'cwd':metadata.get('cwd')})
 
     def ingest(self,source,event):
         if not self.store.get()["harness"].get(source):
             return {"ok":True,"skipped":True,"reason":"该 Harness 未启用"}
         message=normalize(source,event)
         if not message:return {"ok":True,"skipped":True,"reason":"不是可朗读的助手正文"}
+        from privacy import reading_allowed
+        if not reading_allowed(self.store.get(),message):return {'ok':True,'skipped':True,'reason':'不在用户选择的自动朗读范围内，或宿主未提供范围证据'}
         self.presence.receipt(source)
         try:
             with self.api_lock:result=self.jobs.submit(message["text"],source,True,message["eventId"])
@@ -110,7 +116,10 @@ class Server(ThreadingHTTPServer):
 
     def cleanup_loop(self):
         while not self.stopping.wait(self.store.get()["cleanup"]["intervalSeconds"]):
-            try:self.jobs.cleanup()
+            try:
+                self.jobs.cleanup()
+                from privacy import clean_logs
+                clean_logs(self.store.root,self.store.get()['privacy']['logRetentionDays'])
             except OSError as exc:self.jobs.last_error=str(exc)
 
     def status(self):
@@ -210,7 +219,8 @@ class Handler(BaseHTTPRequestHandler):
                     self.server.jobs.protect(target)
                     try:audio=target.read_bytes()
                     finally:self.server.jobs.release(target)
-                return self.reply(200,audio,"audio/wav")
+                from aigc import label_wav_bytes
+                return self.reply(200,label_wav_bytes(audio),"audio/wav")
             return self.reply(404,{"error":{"message":"接口不存在"}})
         except FileNotFoundError:self.reply(404,{"error":{"message":"音频已被清理"}})
         except (ValueError,KeyError) as exc:self.reply(400,{"error":{"message":str(exc)}})
@@ -237,6 +247,20 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/diagnostics':
                 from diagnostics import inspect_installation
                 return self.reply(200,inspect_installation(self.server.store,data.get('deep') is True))
+            if path.startswith('/api/privacy/'):
+                action=path.rsplit('/',1)[1]
+                if action=='rotate':raise ValueError('请先关闭语音服务，再更换密钥')
+                from privacy import diagnostic_summary,clean_logs,clear_output_records
+                from voice_rights import read_record,save_record
+                with self.server.api_lock:
+                    if action=='diagnostic':result=diagnostic_summary(self.server.store)
+                    elif action=='rights-read':result=read_record(self.server.store,data.get('reference',''))
+                    elif action=='rights-save':result=save_record(self.server.store,data.get('reference',''),data.get('record'))
+                    elif action=='clear-records':
+                        with self.server.jobs.lock:result=clear_output_records(self.server.store)
+                    elif action=='clear-logs':result=clean_logs(self.server.store.root,1/86400)
+                    else:raise ValueError('未知隐私操作')
+                return self.reply(200,result)
             if path=='/api/connections/reload':
                 self.server.reload_codex();return self.reply(200,{'ok':True,'verified':False})
             if path.startswith('/api/verify/'):
@@ -299,6 +323,14 @@ class Handler(BaseHTTPRequestHandler):
                 # current contents or an unrelated subsequently selected model.
                 original=self.server.jobs.jobs[ident]
                 return self.reply(200,self.server.jobs.submit(old["text"],"manual-play",True,voice=original["voice"],existing=old["result"]))
+            if path=='/api/export/share':
+                ident=data.get('jobId')
+                with self.server.jobs.lock:
+                    old=self.server.jobs.get(ident)
+                    if old['state']!='completed':raise ValueError('请先生成完成，再导出用于分享')
+                    original=self.server.jobs.jobs[ident]
+                    result=self.server.jobs.submit('以下音频由人工智能合成。','share-export',False,voice=original['voice'],share_original=old['result']['file'])
+                return self.reply(200,result)
             if path in ("/speak","/v1/audio/speech"):
                 voice=None
                 if path=="/v1/audio/speech":
@@ -322,7 +354,8 @@ class Handler(BaseHTTPRequestHandler):
                         import io,wave
                         buffer=io.BytesIO()
                         with wave.open(buffer,"wb") as wav:wav.setparams((1,2,24000,0,"NONE",""));wav.writeframes(b"\0\0"*2400)
-                        return self.reply(200,buffer.getvalue(),"audio/wav")
+                        from aigc import label_wav_bytes
+                        return self.reply(200,label_wav_bytes(buffer.getvalue()),"audio/wav")
                     job=self.server.jobs.jobs[result["jobId"]]
                     from audio_limits import MAX_JOB_SECONDS
                     if not job["done"].wait(MAX_JOB_SECONDS):raise RuntimeError("语音生成超时")
@@ -340,8 +373,10 @@ class Handler(BaseHTTPRequestHandler):
                         command=[str(ffmpeg),"-hide_banner","-loglevel","error","-i","pipe:0","-f","mp3","pipe:1"]
                         conversion=subprocess.run(command,input=audio,stdout=subprocess.PIPE,stderr=subprocess.PIPE,**hidden_process())
                         if conversion.returncode:raise RuntimeError("MP3 编码失败")
-                        return self.reply(200,conversion.stdout,"audio/mpeg")
-                    return self.reply(200,audio,"audio/wav")
+                        from aigc import label_mp3,read_wav_bytes,metadata
+                        return self.reply(200,label_mp3(conversion.stdout,read_wav_bytes(audio) or metadata()),"audio/mpeg")
+                    from aigc import label_wav_bytes
+                    return self.reply(200,label_wav_bytes(audio),"audio/wav")
                 with self.server.api_lock:result=self.server.jobs.submit(data.get("text"),str(data.get("source","manual")),data.get("play") is True,data.get("eventId"))
                 return self.reply(200,result)
             return self.reply(404,{"error":{"message":"接口不存在"}})

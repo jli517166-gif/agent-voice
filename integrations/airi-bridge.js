@@ -3,6 +3,12 @@ export function installAgentVoiceBridge(host) {
   if (globalThis.__agentVoiceBridge) return;
   const state = { generation: null, current: null, stopped: false, received: 0, completed: 0, failed: 0, maxMouth: 0 };
   globalThis.__agentVoiceBridge = state;
+  if (typeof document !== 'undefined' && document.body && !document.getElementById('agent-voice-ai-notice')) {
+    const notice = document.createElement('span'); notice.id = 'agent-voice-ai-notice';
+    notice.textContent = 'AI 合成语音 · Agent Voice';
+    notice.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:9999;padding:4px 9px;border-radius:8px;background:rgba(20,20,28,.82);color:#eee;font:12px system-ui;pointer-events:none';
+    document.body.appendChild(notice);
+  }
   state.mouthInfo = host.mouthInfo;
   const client = crypto.randomUUID();
   async function request(path, data) {

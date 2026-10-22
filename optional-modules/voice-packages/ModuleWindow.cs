@@ -82,7 +82,7 @@ namespace VoicePackages {
             string file;using(var d=new OpenFileDialog{Title="导入音色包",Filter="TTS 音色包|*.cosyvoice.ttsmodel;*.gpt-sovits.ttsmodel",InitialDirectory=Library(),CheckFileExists=true}){if(d.ShowDialog(this)!=DialogResult.OK)return;file=d.FileName;}
             status.Text="正在校验并导入，请勿关闭窗口……";var result=await Transfer("import",file,null,null);
             string display=CleanName(DisplayName(Json.Text(result,"name")));string parent=Path.Combine(Library(),display);Directory.CreateDirectory(parent);string copy=Path.Combine(parent,Path.GetFileName(file));if(!Path.GetFullPath(copy).Equals(Path.GetFullPath(file),StringComparison.OrdinalIgnoreCase))File.Copy(file,copy,true);
-            RefreshVoice();status.Text="已导入并应用："+display+"。已加入声音方案，返回控制台即可试听。";
+            RefreshVoice();status.Text="已导入并应用："+display+"。"+Json.Text(result,"licenseStatus")+"；请自行核对使用范围。";
             object warnings;if(result.TryGetValue("warnings",out warnings)&&warnings is object[]&&((object[])warnings).Length>0)MessageBox.Show(this,Json.Encode(warnings),"运行环境兼容提醒");
         }
         async Task Export(){
@@ -91,6 +91,7 @@ namespace VoicePackages {
             string suffix=store.Read().voice.engine=="gpt-sovits"?".gpt-sovits.ttsmodel":".cosyvoice.ttsmodel",parent=Path.Combine(Library(),title);Directory.CreateDirectory(parent);
             string file;using(var d=new SaveFileDialog{Title="导出"+Labels[mode.SelectedIndex],Filter="当前引擎音色包|*"+suffix,FileName=title+"-"+Labels[mode.SelectedIndex]+suffix,AddExtension=false,InitialDirectory=parent}){if(d.ShowDialog(this)!=DialogResult.OK)return;file=d.FileName;}
             string known;while((known=new[]{".cosyvoice.ttsmodel",".gpt-sovits.ttsmodel"}.FirstOrDefault(s=>file.EndsWith(s,StringComparison.OrdinalIgnoreCase)))!=null)file=file.Substring(0,file.Length-known.Length);file+=suffix;
+            if(MessageBox.Show(this,"导出可能包含参考录音与模型权重。请分别核对再分发许可；导出包只带可公开的许可摘要，不带证明文件和身份信息。软件不认证授权。是否继续？","确认导出范围",MessageBoxButtons.OKCancel)!=DialogResult.OK)return;
             status.Text="正在校验并导出，请勿关闭窗口……";await Transfer("export",file,kind,trained);status.Text="已导出："+file;
         }
         async Task<Dictionary<string,object>> Transfer(string action,string file,string kind,string trained,string extra=""){

@@ -37,7 +37,13 @@ namespace AgentVoice {
         public string accent="#19C7F2", backgroundColor="#05101D", textColor="#EAF6FF", background="", icon="", loadingAnimation="";
     }
     public sealed class Cleanup {
-        public int maxAgeMinutes=30, keepLatest=3, maxTotalMb=200, intervalSeconds=900;
+        public int maxAgeMinutes=30, keepLatest=0, maxTotalMb=200, intervalSeconds=900;
+        public bool keepLatestBeyondAge=false;
+    }
+    public sealed class PrivacyConfig {
+        public bool retainText=false,deleteOnExit=false;
+        public int logRetentionDays=7;
+        public string harnessScope="all",projectRoot="",sessionId="";
     }
     public sealed class AiriConfig {
         public bool enabled=false;
@@ -55,8 +61,9 @@ namespace AgentVoice {
         public Engines engines=new Engines();
         public Appearance appearance=new Appearance();
         public Cleanup cleanup=new Cleanup();
+        public PrivacyConfig privacy=new PrivacyConfig();
         public AiriConfig airi=new AiriConfig();
-        public Dictionary<string,bool> harness=new Dictionary<string,bool>{{"codex",true},{"deepseek",false}};
+        public Dictionary<string,bool> harness=new Dictionary<string,bool>{{"codex",false},{"deepseek",false}};
         public List<string> phrases=new List<string>{"工作好久啦，起来动一动、喝口水吧～"};
         public List<SavedVoice> profiles=new List<SavedVoice>();
     }
@@ -84,6 +91,8 @@ namespace AgentVoice {
         Settings FirstRunSettings(){return new Settings();}
         public Settings Read() {var settings=File.Exists(FilePath)?Json.Decode<Settings>(File.ReadAllText(FilePath,Encoding.UTF8)):FirstRunSettings();var supported=new Dictionary<string,bool>();supported["codex"]=settings.harness.ContainsKey("codex")&&settings.harness["codex"];supported["deepseek"]=settings.harness.ContainsKey("deepseek")&&settings.harness["deepseek"];settings.harness=supported;
             if(settings.version<4){string backup=Path.Combine(Root,"data","migrations","settings-before-stability.json");Directory.CreateDirectory(Path.GetDirectoryName(backup));if(File.Exists(FilePath)&&!File.Exists(backup))File.Copy(FilePath,backup);var raw=Json.Object(File.ReadAllText(FilePath,Encoding.UTF8));object pathObject;if(raw.TryGetValue("engines",out pathObject)){var paths=pathObject as Dictionary<string,object>;if(paths!=null&&!paths.ContainsKey("pythonService")&&paths.ContainsKey("pythonRvc"))settings.engines.pythonService=Convert.ToString(paths["pythonRvc"]);}settings.version=4;}
+            if(File.Exists(FilePath)){var raw=Json.Object(File.ReadAllText(FilePath,Encoding.UTF8));object cleanupValue;if(raw.TryGetValue("cleanup",out cleanupValue)){var old=cleanupValue as Dictionary<string,object>;if(old!=null&&!old.ContainsKey("keepLatestBeyondAge"))settings.cleanup.keepLatestBeyondAge=settings.cleanup.keepLatest>0;}}
+            if(settings.privacy==null)settings.privacy=new PrivacyConfig();
             if(settings.engines.pythonService.Replace('\\','/').EndsWith("tts-engines/cosyvoice/runtime/tools/python.exe",StringComparison.OrdinalIgnoreCase))settings.engines.pythonService="runtime/core/python.exe";
             settings.profiles.RemoveAll(p=>!new[]{"cosyvoice","gpt-sovits"}.Contains(p.voice.engine));if(!new[]{"cosyvoice","gpt-sovits"}.Contains(settings.voice.engine))settings.voice.engine="cosyvoice";
             return settings;}

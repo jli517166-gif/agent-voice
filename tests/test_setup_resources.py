@@ -5,8 +5,24 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'service'))
 from environment_repair import Repair
 
 class SetupResourcesTests(unittest.TestCase):
+ def test_new_license_download_does_not_change_existing_model_identity(self):
+  from model_integrity import model_sources,inventory_fingerprint
+  import test_tts_bundle as fixtures
+  fixture=fixtures.TtsBundleTests();fixture.setUp()
+  try:
+   before={key:file.read_bytes() for key,file in model_sources(fixture.model).items()};helper=Repair(fixture.root)
+   def download(command,**kw):
+    stage=next(helper.work.glob('model-download-*'));(stage/'README.md').write_text('model card');(stage/'LICENSE').write_text('model terms')
+   # The downloader creates its staging path in the child process.
+   def run(command,**kw):
+    import ast,re
+    source=command[-1];stage=Path(ast.literal_eval(re.search(r'local_dir=(.*?),allow_patterns=',source).group(1)));stage.mkdir(parents=True);download(command)
+   helper.run=run;helper.download_model('cosyvoice',Path(sys.executable),fixture.model,['README.md'])
+   self.assertEqual(before,{key:file.read_bytes() for key,file in model_sources(fixture.model).items()});self.assertTrue((fixture.model/'.agent-voice-licenses/README.md').exists());self.assertFalse((fixture.model/'README.md').exists())
+  finally:fixture.tearDown()
  def test_windows_model_patterns_expand_complete_tokenizer_and_feature_folders(self):
-  self.assertEqual(Repair.model_patterns('gpt-sovits',[r'chinese-hubert-base\config.json',r'chinese-roberta-wwm-ext-large\vocab.txt',r'gsv-v5-pretrained\vocoder.pth']),['chinese-hubert-base/*','chinese-roberta-wwm-ext-large/*','gsv-v5-pretrained/vocoder.pth'])
+  patterns=Repair.model_patterns('gpt-sovits',[r'chinese-hubert-base\config.json',r'chinese-roberta-wwm-ext-large\vocab.txt',r'gsv-v5-pretrained\vocoder.pth'])
+  self.assertTrue({'chinese-hubert-base/*','chinese-roberta-wwm-ext-large/*','gsv-v5-pretrained/vocoder.pth','LICENSE*','**/LICENSE*','NOTICE*','COPYING*','README*'}<=set(patterns))
  def test_environment_step_does_not_silently_download_missing_engines(self):
   with tempfile.TemporaryDirectory() as temp:
    helper=Repair(temp);helper.inspect=Mock(return_value={'items':[{'id':'cosyvoice','sourceMissing':True,'matchaMissing':False,'missingModelFiles':[]}]});helper.pip=Mock();helper.source=Mock()
