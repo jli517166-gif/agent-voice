@@ -10,7 +10,7 @@ Use the `agent_voice` MCP tools for the requested voice operation. Report the re
 - Read status or list profiles directly.
 - When the user explicitly asks to read text, call `read_text` with that exact text. The service can start as needed. Never substitute URLs, code, tool logs, or an unrelated reply.
 - A queued reading request is not completed playback. Report its returned state accurately.
-- Codex uses language commands through MCP. Do not open a custom reading panel, floating window, or promise a permanent composer button; those approaches were retired by the user.
+- Codex uses language commands through MCP. Do not open a custom reading panel, floating window, or promise a permanent composer button; this integration does not implement those interfaces.
 - The client's built-in Read Aloud has no verified local TTS integration. Do not claim to replace or intercept it. For reading, stopping, service control, voices and automatic reading, use the MCP tools directly.
 - For start, stop, speech interruption, profile switching, or automatic-reading changes, perform only the operation the user requested.
 - If a requested profile is named rather than identified, call `list_voice_profiles`, match the exact or closest unambiguous name, then pass its ID to `apply_voice_profile`.
