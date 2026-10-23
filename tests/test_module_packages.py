@@ -12,6 +12,11 @@ class ModulePackageTests(unittest.TestCase):
         path=self.root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(content);return path
     def manifest(self,file):
         with zipfile.ZipFile(file) as archive:return json.loads(archive.read('manifest.json')),archive.namelist()
+    def test_application_ships_stock_art_provenance_with_license_notices(self):
+        for name in ['agent语音.exe','service/server.py','tools/tool.py','integrations/connector.mjs','docs/guide.md','.agents/plugin.json','assets/README.md']:
+            self.put(name)
+        output=self.root/'with-notices.zip';application_package(self.root,output)
+        with zipfile.ZipFile(output) as archive:self.assertIn('Agent语音/assets/README.md',archive.namelist())
     def test_engine_and_environment_have_disjoint_resources_and_no_voice(self):
         for name in ['tts-engines/cosyvoice/source/cosyvoice/cli/cosyvoice.py','tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B/llm.pt','tts-engines/cosyvoice/runtime/tools/python.exe','runtime/core/python.exe','tools/ffmpeg.exe','tools/ffprobe.exe','voices/private.wav','data/settings.json']:self.put(name)
         a=self.root/'cosyvoice.ttsengine';b=self.root/'offline.ttsenvironment';engine_package(self.root,'cosyvoice',a);environment_package(self.root,['cosyvoice'],b)

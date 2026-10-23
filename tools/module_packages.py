@@ -104,7 +104,7 @@ def application_package(build,output):
     forbidden={'service/tts_bundle.py','service/config_bundle.py','tools/tts_bundle.py','tools/config_bundle.py'}
     paths=[(name,path) for name,path in paths if name not in forbidden and '/__pycache__/' not in name]
     # Public stock graphics only; no bundled-voice manifest or user imagery.
-    if (build/'assets').is_dir():paths.extend((n,p) for n,p in inventory(build,'assets') if n.startswith('assets/') and (p.suffix.lower() in {'.png','.ico','.svg'} or re.fullmatch(r'assets/sfx/step-[0-8]\.wav',n) or n=='assets/onboarding/layout.json' or (n.startswith('assets/setup/') and p.suffix.lower() in {'.html','.css','.js','.json','.webp'})))
+    if (build/'assets').is_dir():paths.extend((n,p) for n,p in inventory(build,'assets') if n.startswith('assets/') and (p.suffix.lower() in {'.png','.ico','.svg'} or re.fullmatch(r'assets/sfx/step-[0-8]\.wav',n) or n in ('assets/README.md','assets/onboarding/layout.json') or (n.startswith('assets/setup/') and p.suffix.lower() in {'.html','.css','.js','.json','.webp'})))
     output.parent.mkdir(parents=True,exist_ok=True)
     temporary=output.with_name(output.name+'.partial')
     if temporary.exists():raise ValueError('存在未完成的软件包，请检查后重试')
