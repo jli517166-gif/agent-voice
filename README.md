@@ -16,9 +16,11 @@ Agent Voice 是 Windows 本地语音服务与桌面控制台，连接 Codex、De
 
 ## 安装
 
+**直接下载程序：** [Windows x64 维护预览版](https://github.com/jli517166-gif/agent-voice/releases/tag/v0.1.0-preview.1)。无需自行编译；先阅读 [下载与首次使用](下载与首次使用.md)，准备配套引擎和环境。仓库私有期间，附件仅对有访问权限的账户可见。
+
 需要 Windows 10／11 64 位、.NET Framework 4.8，以及适配的 NVIDIA 显卡和驱动。具体显存、磁盘和依赖要求取决于所选引擎。
 
-**仓库只提供应用源码与适配代码，不包含 CosyVoice、GPT-SoVITS、Python 环境、预训练权重或参考录音。** 引擎和环境需要另行准备。
+**源码仓库及软件本体不包含 CosyVoice、GPT-SoVITS、Python 环境、预训练权重或参考录音。** 引擎和环境需要另行准备。普通使用者下载 Release 中的软件 ZIP；以下命令面向需要从源码构建的开发者。
 
 公开开发基线为 `integration/native-design-20261019`：
 
