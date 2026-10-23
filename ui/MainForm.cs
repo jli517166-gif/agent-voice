@@ -150,9 +150,9 @@ namespace AgentVoice {
                 bool green=mcpPassed.ContainsKey(pair.Key)&&mcpPassed[pair.Key];
                 text=green?"MCP 自检通过 · 自动朗读"+(enabled?"已启用":"关闭"):"MCP 尚未通过自检 · "+text;
                 foreach(var label in pair.Value){label.Text=Convert.ToString(label.Tag)+" · "+text;label.ForeColor=green?(BackColor.GetBrightness()<.4F?Color.LightGreen:Color.FromArgb(25,128,72)):ForeColor;label.AccessibleDescription=text;}
-                if(green)active.Add(Convert.ToString(pair.Value[0].Tag)+"（"+text+"）");
+                if(green)active.Add(Convert.ToString(pair.Value[0].Tag));
             }
-            if(harnessSummary!=null){harnessSummary.Text=active.Count==0?"Harness：等待接入":"已验证接入："+string.Join("、",active);harnessSummary.ForeColor=active.Count>0?(BackColor.GetBrightness()<.4F?Color.LightGreen:Color.FromArgb(25,128,72)):ForeColor;}
+            if(harnessSummary!=null){harnessSummary.Text=active.Count==0?"Harness：等待接入":"已验证接入："+string.Join("、",active);harnessSummary.AccessibleDescription=string.Join("\r\n",harnessIndicators.Values.Where(labels=>labels.Count>0).Select(labels=>labels[0].Text));tips.SetToolTip(harnessSummary,harnessSummary.AccessibleDescription);harnessSummary.ForeColor=active.Count>0?(BackColor.GetBrightness()<.4F?Color.LightGreen:Color.FromArgb(25,128,72)):ForeColor;}
             SyncAutoRead();
         }
         TextBox Input(bool multiline=false){return new TextBox{BorderStyle=BorderStyle.FixedSingle,Multiline=multiline,Height=multiline?78:30,MinimumSize=new Size(100,multiline?78:28),ScrollBars=multiline?ScrollBars.Vertical:ScrollBars.None};}
@@ -177,7 +177,7 @@ namespace AgentVoice {
             quickVoice=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=330,AccessibleName="快速选择已保存的声音方案"};quickVoice.SetBounds(16,40,314,28);voice.Controls.Add(quickVoice);
             var switchVoice=AsyncBtn("切换声音",ApplyQuickVoice);switchVoice.AutoSize=false;switchVoice.MinimumSize=Size.Empty;switchVoice.SetBounds(342,40,132,38);voice.Controls.Add(switchVoice);
             var adjust=EntryBtn("调整声音","选择引擎、模型和语速。",()=>ShowPage("voiceEditor"));adjust.AutoSize=false;adjust.MinimumSize=Size.Empty;adjust.SetBounds(482,40,132,38);voice.Controls.Add(adjust);
-            harnessSummary=Hint("Harness：服务关闭");harnessSummary.AutoSize=false;harnessSummary.Font=new Font(Font.FontFamily,11F);harnessSummary.SetBounds(16,128,620,20);voice.Controls.Add(harnessSummary);
+            harnessSummary=Hint("Harness：服务关闭");harnessSummary.AutoSize=false;harnessSummary.AutoEllipsis=true;harnessSummary.TextAlign=ContentAlignment.MiddleLeft;harnessSummary.Font=new Font(Font.FontFamily,11F);harnessSummary.SetBounds(16,128,620,24);voice.Controls.Add(harnessSummary);
             quickEngine=new ComboBox{Name="quickEngine",DropDownStyle=ComboBoxStyle.DropDownList,AccessibleName="快速选择 TTS 引擎"};quickEngine.Items.AddRange(EngineChoices);quickEngine.SetBounds(16,84,314,28);voice.Controls.Add(quickEngine);
             var changeEngine=AsyncBtn("切换引擎",async()=>await QuickSwitchEngine());changeEngine.Name="quickSwitchEngine";changeEngine.AutoSize=false;changeEngine.MinimumSize=Size.Empty;changeEngine.SetBounds(342,84,132,38);voice.Controls.Add(changeEngine);tips.SetToolTip(changeEngine,"切换并恢复该引擎上次的声音；服务运行时等待新模型就绪。");
             var speech=new ScenePanel{Name="speechEditorCard",Host=this,Card=true,Location=new Point(38,284),Size=new Size(658,176),Padding=new Padding(16,10,16,10)};home.Controls.Add(speech);
