@@ -31,7 +31,8 @@ def prepare(build,output,version):
     text=guide.read_text(encoding='utf-8-sig')
     for local in ('安装手册.md','THIRD_PARTY_NOTICES.md'):
         text=text.replace(']('+local+')','](https://github.com/jli517166-gif/agent-voice/blob/'+version+'/'+quote(local)+')')
-    published=output/'下载与首次使用.md';published.write_text(text,encoding='utf-8')
+    # GitHub normalizes non-ASCII upload basenames to an opaque "default.md".
+    published=output/'DOWNLOADS.md';published.write_text(text,encoding='utf-8')
     files=[package,published]
     sums=output/'SHA256SUMS.txt'
     sums.write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in files),encoding='utf-8')
