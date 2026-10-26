@@ -98,6 +98,18 @@ class SoftwareUpdateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'私用策略'):
             update.stage(self.root,self.package('public'))
 
+    def test_public_api_rate_limit_falls_back_to_official_feed(self):
+        self.current['edition']='public'
+        (self.root / 'app-version.json').write_text(json.dumps(self.current))
+        feed={'format':'agent-voice-release','edition':'public','platform':'windows-x64','version':'v0.1.1-preview.2','sha256':'a'*64,'downloadUrl':'https://github.com/'+update.REPOSITORY+'/releases/download/v0.1.1-preview.2/AgentVoice-Windows-x64-v0.1.1-preview.2.zip'}
+        with patch.object(update,'fetch_json',side_effect=[OSError('403 rate limit exceeded'),feed]):
+            result=update.check(self.root)
+        self.assertEqual(result['state'],'available')
+        self.assertEqual(result['channel'],'official-static-feed')
+        feed['downloadUrl']='https://untrusted.invalid/program.zip'
+        with patch.object(update,'fetch_json',side_effect=[OSError('403 rate limit exceeded'),feed]):
+            self.assertEqual(update.check(self.root)['state'],'unavailable')
+
     def test_unmanifested_payload_and_duplicate_paths_are_rejected(self):
         path = self.package()
         with zipfile.ZipFile(path, 'a') as archive:

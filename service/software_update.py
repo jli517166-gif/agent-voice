@@ -94,7 +94,22 @@ def check(root):
     if current['edition'] == 'private':
         return {'ok': True, 'state': 'local-only', 'current': current['version'], 'message': '私用版仅从本地更新包更新，不连接 GitHub，不接收公开版覆盖。'}
     try:
-        releases = fetch_json('https://api.github.com/repos/' + REPOSITORY + '/releases?per_page=30')
+        channel = 'github-api'
+        try:
+            releases = fetch_json('https://api.github.com/repos/' + REPOSITORY + '/releases?per_page=30')
+        except (OSError, ValueError):
+            # Raw repository content does not consume the REST API quota.
+            feed = fetch_json('https://raw.githubusercontent.com/' + REPOSITORY + '/main/docs/updates/windows-x64.json')
+            if (not isinstance(feed, dict) or feed.get('format') != 'agent-voice-release'
+                    or feed.get('edition') != 'public' or feed.get('platform') != 'windows-x64'
+                    or not re.fullmatch(r'v\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?', feed.get('version', ''))
+                    or not re.fullmatch('[a-f0-9]{64}', feed.get('sha256', ''))):
+                raise ValueError('官方版本清单无效')
+            expected = 'https://github.com/' + REPOSITORY + '/releases/download/' + feed['version'] + '/AgentVoice-Windows-x64-' + feed['version'] + '.zip'
+            if feed.get('downloadUrl') != expected:
+                raise ValueError('官方版本清单中的下载地址不匹配')
+            releases = [{'tag_name': feed['version'], 'assets': [{'name': expected.rsplit('/', 1)[1], 'digest': 'sha256:' + feed['sha256'], 'browser_download_url': expected}]}]
+            channel = 'official-static-feed'
         candidates = [r for r in releases if not r.get('draft') and re.fullmatch(r'v?\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?', r.get('tag_name', ''))]
         if not candidates:
             return {'ok': False, 'state': 'unavailable', 'message': '没有可用的软件发行版；不能据此判断为最新版本。'}
@@ -104,6 +119,7 @@ def check(root):
         asset = assets[0] if len(assets) == 1 else None
         valid = asset and re.fullmatch('sha256:[a-f0-9]{64}', asset.get('digest') or '')
         return {'ok': True, 'state': 'available' if newer and valid else 'manual' if newer else 'current',
+                'channel': channel,
                 'current': current['version'], 'latest': release['tag_name'],
                 'downloadUrl': asset['browser_download_url'] if valid else '', 'sha256': asset['digest'][7:] if valid else '',
                 'message': ('发现新版，可下载并校验。' if valid else '发现新版，但没有可校验的安装附件，请手动查看发布页。') if newer else '当前已是可用的最新版本。',
