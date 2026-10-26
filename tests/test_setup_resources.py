@@ -17,7 +17,7 @@ class SetupResourcesTests(unittest.TestCase):
    def run(command,**kw):
     import ast,re
     source=command[-1];stage=Path(ast.literal_eval(re.search(r'local_dir=(.*?),allow_patterns=',source).group(1)));stage.mkdir(parents=True);download(command)
-   helper.run=run;helper.download_model('cosyvoice',Path(sys.executable),fixture.model,['README.md'])
+   helper.run=run;helper.download=Mock(return_value=helper.root/'fixture-pip.whl');helper.download_model('cosyvoice',Path(sys.executable),fixture.model,['README.md'])
    self.assertEqual(before,{key:file.read_bytes() for key,file in model_sources(fixture.model).items()});self.assertTrue((fixture.model/'.agent-voice-licenses/README.md').exists());self.assertFalse((fixture.model/'README.md').exists())
   finally:fixture.tearDown()
  def test_windows_model_patterns_expand_complete_tokenizer_and_feature_folders(self):

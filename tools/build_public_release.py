@@ -12,6 +12,9 @@ ROOT=Path(__file__).resolve().parents[1]
 def prepare(build,output,version):
     if not re.fullmatch(r'v\d+\.\d+\.\d+(?:-[A-Za-z0-9.]+)?',version):raise ValueError('版本标签无效')
     build=Path(build).resolve();output=Path(output).resolve();output.mkdir(parents=True,exist_ok=True)
+    metadata=json.loads((build/'app-version.json').read_text(encoding='utf-8-sig'))
+    if metadata.get('format')!='agent-voice-app' or metadata.get('edition')!='public' or metadata.get('platform')!='windows-x64' or metadata.get('version')!=version.removeprefix('v'):
+        raise ValueError('公开发行的版本、平台或类型清单不匹配')
     package=output/('AgentVoice-Windows-x64-'+version+'.zip')
     result=application_package(build,package)
     with zipfile.ZipFile(package) as archive:

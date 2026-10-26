@@ -14,23 +14,7 @@ def inside(root,path):
     if path==root or root not in path.parents:raise ValueError('补齐文件必须放在软件目录内部：'+str(path))
     return path
 
-def extract(archive,destination,strip_root=False):
-    destination=Path(destination).resolve();destination.mkdir(parents=True,exist_ok=True)
-    with zipfile.ZipFile(archive) as source:
-        if sum(i.file_size for i in source.infolist())>2*1024**3:raise ValueError('解压后资源过大')
-        entries=[]
-        for item in source.infolist():
-            parts=item.filename.replace('\\','/').split('/')
-            if strip_root:parts=parts[1:]
-            if not parts or not any(parts):continue
-            target=inside(destination,destination.joinpath(*parts))
-            if item.external_attr>>16&0o170000==0o120000:raise ValueError('压缩包含外部链接')
-            entries.append((item,target))
-        for item,target in entries:
-            if item.is_dir():target.mkdir(parents=True,exist_ok=True)
-            else:
-                target.parent.mkdir(parents=True,exist_ok=True)
-                with source.open(item) as incoming,target.open('wb') as output:shutil.copyfileobj(incoming,output)
+from source_archive import extract
 
 class Repair:
     def __init__(self,root,offline=False):
@@ -49,6 +33,7 @@ class Repair:
         (self.work/'tmp').mkdir(exist_ok=True)
         env['PATH']=str(self.root/'tools')+os.pathsep+env.get('PATH','')
         if self.offline:env.update(HF_HUB_OFFLINE='1',TRANSFORMERS_OFFLINE='1',PIP_NO_INDEX='1')
+        env.update(HF_HUB_DISABLE_XET='1',HF_HUB_DOWNLOAD_TIMEOUT='60',HF_HUB_ETAG_TIMEOUT='30')
         return env
     def run(self,command,timeout=1800):
         from pipeline import hidden_process
@@ -128,6 +113,14 @@ class Repair:
     def pip(self,python,requirements,index=None,target=None,find_links=None,no_deps=False,timeout=1800):
         python=inside(self.root,python)
         if not requirements:return
+        # Prefetch large official wheels with visible byte progress and a full
+        # publisher hash. Pip then installs local verified files instead of
+        # waiting silently on a multi-GB response with no recoverable partial.
+        if not self.offline and index and index.startswith('https://download.pytorch.org/whl/cu') and not find_links:
+            try:
+                requirements=self.torch_wheels(python,requirements,index)
+            except (OSError,ValueError) as error:
+                self.progress('独立下载解析未完成，尝试原官方 pip 通道：'+str(error))
         asset=CATALOG['pip'];wheel=self.download(asset['url'],'pip-24.3.1.whl',asset['sha256'])
         # The wheel is run directly, so a broken/missing pip does not block repair.
         code="import sys;sys.path.insert(0,"+repr(str(wheel))+");from pip._internal.cli.main import main;raise SystemExit(main())"
@@ -156,6 +149,20 @@ class Repair:
             except RuntimeError as exc:
                 failure=exc;self.progress('依赖源不可用，尝试下一个：'+str(link or candidate))
         raise RuntimeError('依赖安装失败：'+str(failure))
+    def torch_wheels(self,python,requirements,index):
+        from torch_download import wheel
+        from resource_download import download
+        tag=subprocess.run([str(python),'-I','-c','import sys;print("cp"+str(sys.version_info[0])+str(sys.version_info[1]))'],capture_output=True,text=True,timeout=15,**__import__('pipeline').hidden_process()).stdout.strip()
+        result=[]
+        for requirement in requirements:
+            self.progress('正在匹配 '+requirement+' · '+tag+' · Windows x64')
+            selected=wheel(index,requirement,tag)
+            target=inside(self.root,self.work/'wheels'/selected['filename'])
+            def report(**row):
+                self.progress('正在下载 '+selected['filename']+' · %.1f / %.1f MB · %.2f MB/s'%(row['downloadedBytes']/1e6,row['totalBytes']/1e6,row['bytesPerSecond']/1e6),**row)
+            download(selected['url'],target,selected['sha256'],progress=report)
+            result.append(str(target))
+        return result
     def system(self):
         """Collect actionable host facts without depending on the TTS runtime."""
         result={'windows':sys.platform=='win32','architecture':platform.machine(),'pythonBits':__import__('struct').calcsize('P')*8}
@@ -295,7 +302,7 @@ class Repair:
             source_file=source/('cosyvoice/cli/cosyvoice.py' if name=='cosyvoice' else 'GPT_SoVITS/TTS_infer_pack/TTS.py')
             from model_integrity import REQUIRED
             missing_model=[f for f in REQUIRED if not (model/f).is_file()] if name=='cosyvoice' else [str(p.relative_to(model)) for variant in ('proplus','v5turbo') for p in gpt_required(dict(worker_config(self.store,dict(cfg['voice'],engine=name,gptVariant=variant)),model=str(model),source=str(source)))[1:] if not p.is_file()]
-            if name=='cosyvoice' and (not (model/'CosyVoice-BlankEN/config.json').is_file() or not list((model/'CosyVoice-BlankEN').glob('*.safetensors'))):missing_model.append('CosyVoice-BlankEN/*')
+            if name=='cosyvoice' and (not all((model/'CosyVoice-BlankEN'/f).is_file() for f in ('config.json','tokenizer_config.json','vocab.json','merges.txt','generation_config.json')) or not list((model/'CosyVoice-BlankEN').glob('*.safetensors'))):missing_model.append('CosyVoice-BlankEN/*')
             resource_ok=True
             if name=='gpt-sovits':resource_ok=all((source.parent/'nltk_data'/section/folder).is_dir() for section,folder in [('corpora','cmudict'),('taggers','averaged_perceptron_tagger'),('taggers','averaged_perceptron_tagger_eng')])
             matcha_ok=name!='cosyvoice' or (source/'third_party/Matcha-TTS/matcha/utils/audio.py').is_file()
@@ -304,14 +311,25 @@ class Repair:
     @staticmethod
     def model_patterns(name,patterns):
         patterns=[p.replace('\\','/') for p in patterns]+['LICENSE*','NOTICE*','COPYING*','README*','**/LICENSE*','**/NOTICE*','**/README*']
-        return sorted(set(x.split('/')[0]+'/*' if x.startswith(('chinese-hubert-base/','chinese-roberta-wwm-ext-large/')) else x for x in patterns)) if name=='gpt-sovits' else patterns
+        folders=('chinese-hubert-base/','chinese-roberta-wwm-ext-large/') if name=='gpt-sovits' else ('CosyVoice-BlankEN/',)
+        return sorted(set(x.split('/')[0]+'/*' if x.startswith(folders) else x for x in patterns))
 
     def download_model(self,name,python,model,patterns):
-        inside(self.root,model);stage=inside(self.root,self.work/('model-download-'+uuid.uuid4().hex))
+        inside(self.root,model)
+        identity=json.dumps([name,CATALOG[name]['modelRevision'],str(model)],ensure_ascii=False)
+        stage=inside(self.root,self.work/('model-download-'+hashlib.sha256(identity.encode()).hexdigest()[:24]))
         patterns=self.model_patterns(name,patterns)
         self.progress('正在下载 '+name+' 基础模型；只补缺失文件，可能需要数 GB')
-        code='from huggingface_hub import snapshot_download;snapshot_download(repo_id='+repr(CATALOG[name]['modelRepo'])+',revision='+repr(CATALOG[name]['modelRevision'])+',local_dir='+repr(str(stage))+',allow_patterns='+repr(patterns)+')'
-        self.run([python,'-I','-X','utf8','-c',code],timeout=14400)
+        pip=self.download(CATALOG['pip']['url'],'pip-24.3.1.whl',CATALOG['pip']['sha256'])
+        # Use the Windows trust store in this downloader process only. TLS
+        # verification remains enabled, including for enterprise proxy roots.
+        prefix='import sys;sys.path.insert(0,'+repr(str(pip))+');\nif sys.platform=="win32":\n from pip._vendor import truststore;truststore.inject_into_ssl()\n'
+        code=prefix+'from huggingface_hub import snapshot_download;snapshot_download(repo_id='+repr(CATALOG[name]['modelRepo'])+',revision='+repr(CATALOG[name]['modelRevision'])+',local_dir='+repr(str(stage))+',allow_patterns='+repr(patterns)+',max_workers=3)'
+        for attempt in range(3):
+            try:self.run([python,'-I','-X','utf8','-c',code],timeout=14400);break
+            except RuntimeError:
+                if attempt==2:raise RuntimeError('模型下载连续失败，断点保留。请检查系统证书、网络和日志：'+str(self.log))
+                self.progress('模型下载中断，保留断点重试（%d/3）'%(attempt+2));time.sleep(attempt+1)
         copied=[]
         for file in stage.rglob('*'):
             if file.is_file() and '.cache' not in file.relative_to(stage).parts:
@@ -320,7 +338,7 @@ class Repair:
                 # A new README must not invalidate an approved voice fingerprint.
                 notice=file.name.upper().startswith(('LICENSE','NOTICE','COPYING','README'))
                 target=inside(self.root,model/('.agent-voice-licenses' if notice else '')/relative);target.parent.mkdir(parents=True,exist_ok=True)
-                if not target.exists():
+                if not target.exists() or (target.is_file() and target.stat().st_size==0):
                     shutil.move(str(file),str(target));copied.append(relative.as_posix())
         from state import atomic_json
         atomic_json(model/'.agent-voice-licenses'/('download-'+uuid.uuid4().hex+'.json'),

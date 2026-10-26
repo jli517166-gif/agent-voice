@@ -10,7 +10,7 @@ namespace AgentVoice {
     public sealed partial class MainForm {
         static readonly string[] WindowLayoutPages = {
             "home", "modules", "voices", "connections", "settings", "training",
-            "voiceEditor", "harness", "airi", "connectionGuide", "advancedTraining"
+            "voiceEditor", "harness", "airi", "connectionGuide", "advancedTraining", "updates", "environmentRepair"
         };
 
         static object Geometry(Control control) {

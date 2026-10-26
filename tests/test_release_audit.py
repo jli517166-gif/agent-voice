@@ -1,4 +1,4 @@
-import csv,importlib.util,io,json,os,subprocess,sys,tempfile,unittest,wave
+import csv,importlib.util,io,json,os,subprocess,sys,tempfile,time,unittest,wave
 from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'service'))
@@ -7,6 +7,16 @@ from operation_lock import OperationLock
 from bounded_logs import BoundedLog,pump
 from prepare_training import validate_dataset,prepare,train_repo
 import test_tts_bundle as fixtures
+
+class LogDirectory(tempfile.TemporaryDirectory):
+ def cleanup(self):
+  # Windows scanners can briefly retain a deleted rotating-log directory.
+  # Retry only ERROR_DIR_NOT_EMPTY; other cleanup errors remain failures.
+  for attempt in range(5):
+   try:return super().cleanup()
+   except OSError as error:
+    if getattr(error,'winerror',None)!=145 or attempt==4:raise
+    time.sleep(.1*(attempt+1))
 
 class ImportDedupTests(unittest.TestCase):
  def setUp(self):fixtures.TtsBundleTests.setUp(self)
@@ -56,7 +66,7 @@ class LockAndLogTests(unittest.TestCase):
    with OperationLock(tmp):self.assertNotEqual(subprocess.run(command,capture_output=True).returncode,0)
    self.assertEqual(subprocess.run(command,capture_output=True).returncode,0)
  def test_log_size_and_unicode_pump(self):
-  with tempfile.TemporaryDirectory() as tmp:
+  with LogDirectory() as tmp:
    p=Path(tmp)/'service.log';sink=BoundedLog(p,max_bytes=2048,backups=2)
    for _ in range(100):sink.write('中文日志'*80+'\n')
    sink.close();records=[(f.name,f.stat().st_size) for f in Path(tmp).iterdir()];self.assertLessEqual(len(records),3,records);self.assertLess(sum(size for _,size in records),6144,records)

@@ -33,14 +33,15 @@ namespace AgentVoice {
             }
             WebDivider(page,38,160,902);
             for(int i=0;i<4;i++){
-                panels[i]=new ScenePanel{Host=this,Location=new Point(38,181),Size=new Size(902,360),Margin=new Padding(0)};
+                panels[i]=new ScenePanel{Host=this,Location=new Point(38,181),Size=new Size(902,440),Margin=new Padding(0)};
                 page.Controls.Add(panels[i]);
             }
-            var engineCard=WebCard(panels[0],0,0,902,320);
+            var engineCard=WebCard(panels[0],0,0,902,400);
             SettingsLine(engineCard,0,"本地 TTS 引擎","CosyVoice、GPT-SoVITS v5 Turbo / ProPlus 分开匹配环境。","管理引擎",()=>ShowPage("engine"));
             SettingsLine(engineCard,1,"检查与补齐环境","联网准备或导入离线环境包，文件保存在软件目录内。","检查环境",()=>ShowPage("environmentRepair"));
             SettingsLine(engineCard,2,"首次配置","重新进入独立向导；已有设置可保留。","重新配置",RunConfiguration);
             SettingsLine(engineCard,3,"连接设备","Harness 通过 MCP 自检；AIRI 单独验证播放。","连接设备",()=>ShowPage("connections"));
+            SettingsLine(engineCard,4,"软件更新","检查版本、校验更新包并保留现有设置。","检查更新",()=>ShowPage("updates"));
             var soundCard=WebCard(panels[1],0,0,902,240);
             SettingsLine(soundCard,0,"声音细调","调整表达指令、句首空白和播放音量。","调整",()=>ShowPage("advanced"));
             SettingsLine(soundCard,1,"可选模块","按需安装和管理功能扩展。","管理模块",()=>ShowPage("modules"));
@@ -56,7 +57,7 @@ namespace AgentVoice {
             SettingsLine(storageCard,3,"隐私与连接","自动朗读范围、数据保留、脱敏报告与撤销连接。","打开隐私",()=>ShowPage("privacy"));
             panels[3].Controls.Add(WebText("清理会保护生成或播放中的文件；可选功能在模块页单独安装。",8.8F,FontStyle.Regular,0,332,902,20,ContentAlignment.MiddleLeft));
             select(0);
-            BuildAppearance();BuildEngines();BuildEnvironmentRepair();BuildHarness();BuildAiri();BuildConnectionHub();BuildAdvanced();BuildCleanup();BuildPrivacy();BuildModules();BuildTraining();BuildAdvancedTraining();
+            BuildAppearance();BuildEngines();BuildEnvironmentRepair();BuildUpdates();BuildHarness();BuildAiri();BuildConnectionHub();BuildAdvanced();BuildCleanup();BuildPrivacy();BuildModules();BuildTraining();BuildAdvancedTraining();
         }
         void SettingsLine(ScenePanel card,int index,string title,string detail,string action,Action handler){
             int y=index*80;

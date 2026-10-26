@@ -110,9 +110,15 @@ def application_package(build,output):
     if temporary.exists():raise ValueError('存在未完成的软件包，请检查后重试')
     try:
         with zipfile.ZipFile(temporary,'x',compression=zipfile.ZIP_DEFLATED,compresslevel=1) as archive:
+            written=[]
             for name,path in paths:
                 if path.suffix.lower() in {'.exe','.dll'} and name not in ['agent语音.exe']+ui_libraries:continue
                 archive.write(path,'Agent语音/'+name)
+                written.append({'path':name,'size':path.stat().st_size,'sha256':digest(path)})
+            if (build/'app-version.json').is_file():
+                metadata=json.loads((build/'app-version.json').read_text(encoding='utf-8-sig'))
+                metadata['files']=written
+                archive.writestr('Agent语音/app-version.json',json.dumps(metadata,ensure_ascii=False))
         with zipfile.ZipFile(temporary) as archive:
             if archive.testzip():raise ValueError('软件本体 CRC 校验失败')
         os.replace(temporary,output)

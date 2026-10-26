@@ -39,6 +39,9 @@ namespace AgentVoice {
             if(args.Contains("--setupvoicetest"))return UiChecks.SetupVoice(store,args);
             if(args.Contains("--native-setup-preview")){using(var preview=new SetupWizard(store))Application.Run(preview);return 0;}
             if(args.Contains("--welcome-preview")||args.Contains("--setup-preview")){using(var preview=SetupEntry.Create(store))Application.Run(preview);return 0;}
+            if(File.Exists(store.Resolve("data/updates/installing.json")))try{
+                new ServiceClient(store).RunTool("software_update.py","recover --root "+ServiceClient.Quote(root)).GetAwaiter().GetResult();
+            }catch(Exception error){MessageBox.Show("上次更新未完成，请先关闭语音服务再重启程序，以恢复备份。\r\n"+error.Message,"更新恢复",MessageBoxButtons.OK,MessageBoxIcon.Error);return 1;}
             string key;using(var sha=SHA256.Create())key=BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(root.ToLowerInvariant()))).Replace("-","").Substring(0,24);
             string wakeName="Local\\AgentVoicePublicWake-"+key;
             bool created;using(var mutex=new Mutex(true,"Local\\AgentVoicePublic-"+key,out created)){
