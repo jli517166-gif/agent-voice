@@ -102,8 +102,8 @@ class Pipeline:
                     self.adapter.synthesize(text,attempt_voice,base,check);check()
                     rate,duration=validate_audio(base)
                     os.replace(base,target)
-                    from aigc import label_wav
-                    label_wav(target)
+                    from audio_policy import mark_synthesized_wav
+                    mark_synthesized_wav(target)
                     return {'sampleRate':rate,'duration':duration,'synthesisMode':'base','engine':voice['engine'],'variant':voice['gptVariant'] if voice['engine']=='gpt-sovits' else None,'advancedEnabled':voice.get('advancedEnabled',False),'attempts':attempt+1,'recoveredErrors':recovered}
                 except Exception as exc:
                     check()
@@ -140,8 +140,8 @@ class Pipeline:
                             output.write(block)
             if not frames:raise RuntimeError("渐进语音没有生成有效片段")
             os.replace(temporary,target)
-            from aigc import label_wav,metadata_for_join
-            label_wav(target,metadata_for_join(paths))
+            from audio_policy import mark_joined_wav
+            mark_joined_wav(target,paths)
             return rate,frames/rate
         finally:temporary.unlink(missing_ok=True)
 

@@ -38,7 +38,9 @@ def main():
                 if isinstance(file,(str,Path)) and str(file).replace('\\','/').endswith('/gsv-v5-pretrained/vocoder.pth'):
                     file=home/'gsv-v5-pretrained/vocoder.pth'
                 return original_load(file,*args,**kwargs)
-            with patch.object(torch,'load',selected_load):
+            # Preserve the installed read-only initialization fix in maintained
+            # source: upstream transient defaults must not rewrite package identity.
+            with patch.object(torch,'load',selected_load), patch.object(TTS_Config,'save_configs',lambda *args,**kwargs: None):
                 model=TTS(TTS_Config({'custom':{'device':'cuda','is_half':True,'version':'v5turbo' if variant=='v5turbo' else 'v2ProPlus','t2s_weights_path':str(home/'s1v3.ckpt'),'vits_weights_path':str(home/acoustic),'bert_base_path':str(home/'chinese-roberta-wwm-ext-large'),'cnhuhbert_base_path':str(home/'chinese-hubert-base')}}))
             model.set_ref_audio(cfg['reference'])
         send({'ready':True,'gpu':torch.cuda.get_device_name(0),'engine':cfg['engine'],'variant':variant,'model':str(home.resolve())})

@@ -19,7 +19,7 @@ namespace AgentVoice {
         internal object Snapshot(){
             var c=Flow.Config;var p=Flow.State.Read();
             var paths=EngineFields.ToDictionary(key=>key,key=>Convert.ToString(typeof(Engines).GetField(key).GetValue(c.engines)));
-            return new{step=Math.Max(0,Math.Min(9,p.onboardingStep)),stepLabel=SetupWorkflow.StepLabel(p.onboardingStep),legalAccepted=Flow.LegalAccepted,engine=c.voice.engine=="cosyvoice"?0:c.voice.gptVariant=="proplus"?2:1,
+            return new{step=Flow.ResumeStep,stepLabel=SetupWorkflow.StepLabel(Flow.ResumeStep),engine=c.voice.engine=="cosyvoice"?0:c.voice.gptVariant=="proplus"?2:1,
                 installEngines=Flow.InstallEngines(),offline=p.offline,reduceMotion=p.reduceMotion,sound=p.interfaceSounds,resources=Flow.Resources(),paths=paths,
                 airiEnabled=c.airi.enabled,airiDirectory=c.airi.directory,autoRead=c.harness,
                 states=p.setupStates,finished=Finished,deferred=Deferred};
@@ -27,7 +27,7 @@ namespace AgentVoice {
         static string Text(Dictionary<string,object> args,string key){object value;if(!args.TryGetValue(key,out value))return "";if(!(value is string)||((string)value).Length>8192)throw new InvalidOperationException("输入格式或长度不正确："+key);return (string)value;}
         static int Number(Dictionary<string,object> args,string key,int maximum){object value;if(!args.TryGetValue(key,out value)||!(value is int)||((int)value)<0||((int)value)>maximum)throw new InvalidOperationException("请选择有效项目："+key);return (int)value;}
         static bool Flag(Dictionary<string,object> args,string key){object value;if(!args.TryGetValue(key,out value)||!(value is bool))throw new InvalidOperationException("开关格式不正确："+key);return (bool)value;}
-        void Go(int step){if(step!=0&&step!=5)Flow.RequireLegal();var p=Flow.State.Read();p.onboardingVersion=2;p.onboardingStep=step;Flow.State.Write(p);}
+        void Go(int step){if(Array.IndexOf(SetupWorkflow.PageOrder,step)<0)step=1;var p=Flow.State.Read();p.onboardingVersion=2;p.onboardingStep=step;Flow.State.Write(p);}
         internal async Task<object> Execute(string action,Dictionary<string,object> args){
             if(action=="state")return new{message="",state=Snapshot()};
             if(action=="pause-download"||action=="resume-download"||action=="cancel-download"){
@@ -43,7 +43,7 @@ namespace AgentVoice {
                     case "go":Go(Number(args,"step",9));break;
                     case "back":Go(SetupWorkflow.Adjacent(step,-1));break;
                     case "next":
-                        if(step!=0)Flow.RequireLegal();
+
                         if(step==2){
                             if(args.ContainsKey("engines")){
                                 var values=args["engines"] as System.Collections.IEnumerable;
@@ -52,12 +52,12 @@ namespace AgentVoice {
                             }else await Flow.SelectEngine(Number(args,"engine",2));
                         }
                         if(step>=9){Finish(false);break;}Go(SetupWorkflow.Adjacent(step,1));break;
-                    case "skip":if(step<1||step>8||step==5)throw new InvalidOperationException("当前页面不能跳过；使用须知需点击确认后继续。");Flow.RequireLegal();Flow.Mark("step"+step,"skipped");Go(SetupWorkflow.Adjacent(step,1));break;
+                    case "skip":if(step<1||step>8)throw new InvalidOperationException("当前页面不能跳过。");Flow.Mark("step"+step,"skipped");Go(SetupWorkflow.Adjacent(step,1));break;
                     case "defer":Finish(true);break;
                     case "preferences":
                         var p=Flow.State.Read();p.offline=Flag(args,"offline");p.reduceMotion=Flag(args,"reduceMotion");p.interfaceSounds=Flag(args,"sound");Flow.State.Write(p);break;
                     case "computer":message=await Flow.InspectComputer();break;
-                    case "resources":message=Flow.Resources();break;
+                    case "resources":message=await Flow.InspectResources();break;
                     case "download-engine":message=await Flow.PrepareSelected(false,false);break;
                     case "switch-engine":await Flow.SelectEngine(Number(args,"engine",2));message="当前引擎已保存："+EngineSwitching.Label(EngineSwitching.Index(Flow.Config.voice))+"。声音可用性在控制台单独验证。";break;
                     case "recover":await Task.Run(()=>ModulePackages.Recover(Flow.Store));message="未完成安装已恢复。";break;
@@ -67,15 +67,14 @@ namespace AgentVoice {
                     case "install-engine":case "install-environment":
                         string kind=action=="install-engine"?"engine":"environment",file=Text(args,"file");
                         if(ModulePackages.Inspect(file).kind!=kind)throw new InvalidOperationException("所选模块与当前步骤不匹配。");
-                        await Flow.InstallModule(file,kind,text=>Progress(text));message=Flow.Resources()+"\n文件安装完成；不代表声音或法律授权验证通过。";break;
+                        await Flow.InstallModule(file,kind,text=>Progress(text));message=Flow.Resources()+"\n文件安装完成；可在控制台生成语音。";break;
                     case "save-paths":
                         if(await Flow.Service.Running())throw new InvalidOperationException("请先停止服务，再修改引擎路径。");
                         var current=Flow.Config;
                         foreach(var field in EngineFields){string path=Text(args,field).Trim();if(path.Length==0)throw new InvalidOperationException("路径不能为空："+field);typeof(Engines).GetField(field).SetValue(current.engines,Flow.Store.Portable(path));}
                         Flow.Store.Write(current);Flow.InvalidateVoice();message=Flow.Resources();break;
-                    case "legal-read":if(step!=5)throw new InvalidOperationException("请先打开使用须知页。");Flow.AcceptLegal();message="已确认阅读须知，可以继续下一步。";break;
                     case "save-autoread":
-                        Flow.RequireLegal();var reading=Flow.Config;
+                        var reading=Flow.Config;
                         foreach(string source in new[]{"codex","deepseek"})reading.harness[source]=Flag(args,source);
                         await Flow.Save(reading,new{harness=reading.harness});message="自动朗读开关已保存；MCP 安装自检仍不生成语音。";break;
                     case "check-mcp":

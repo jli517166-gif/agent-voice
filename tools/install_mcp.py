@@ -160,7 +160,7 @@ def inspect(source,root,repair=False,self_test=False):
         codex_configuration(store,python,server,find_codex(),run)
         loaded=any(c.get('toolCount')==8 for c in connected_clients(store.root,'codex',None))
         result={'ok':True,'state':'tools-read' if loaded else 'awaiting-client'}
-    result.update(source=source,installed=True,enabled=True,clientLoaded=loaded,passed=False,audioTested=False)
+    result.update(source=source,installed=True,enabled=True,installationPassed=True,clientLoaded=loaded,passed=False,audioTested=False)
     if self_test:
         result.update(probe(store,source,python,server))
         result['passed']=loaded

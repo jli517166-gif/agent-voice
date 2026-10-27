@@ -54,8 +54,6 @@ def save_profile(store,name,voice,ident=None):
     record={'version':1,'reference':{'sha256':sha,'file':voice['reference']},'engine':voice['engine'],
             'variant':voice.get('gptVariant') if voice['engine']=='gpt-sovits' else 'cosyvoice3',
             'modelFingerprint':fp,'modelFiles':records,'scope':voice['assetScope']}
-    from voice_rights import public_summary
-    record['licenseSummary']=public_summary(store,ref)
     prior=path.read_bytes() if path.exists() else None
     atomic_json(path,record)
     try:

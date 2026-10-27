@@ -118,59 +118,63 @@ class ApiPrivacyTests(unittest.TestCase):
         self.assertTrue(self.request('/api/harness/codex',event)['skipped'])
         event.update(cwd=str(self.store.root),**{'turn-id':'allowed'});job=self.request('/api/harness/codex',event);self.assertEqual(self.wait(job['jobId'])['state'],'completed')
         manual=self.request('/speak',{'text':'用户手动请求','source':'mcp-read-aloud'});self.assertEqual(self.wait(manual['jobId'])['state'],'completed')
-    def test_default_no_persisted_text_download_labeled_and_share_preserves_body(self):
-        job=self.request('/speak',{'text':'原始正文','play':False});original=self.wait(job['jobId']);file=self.store.root/'data/output'/original['result']['file']
+    def test_optional_export_preserves_exact_bytes_and_does_not_generate_prefix(self):
+        job=self.request('/speak',{'text':'原始正文','play':False});original=self.wait(job['jobId']);file=self.server.jobs.output/original['result']['file']
         self.assertNotIn('text',json.loads(file.with_suffix('.json').read_text(encoding='utf-8')))
-        with self.opener.open(__import__('urllib.request',fromlist=['']).Request(self.base+original['result']['audioUrl'],headers={'Authorization':'Bearer '+self.store.get()['token']})) as response:self.assertIsNotNone(read_wav_bytes(response.read()))
-        shared=self.request('/api/export/share',{'jobId':job['jobId']});done=self.wait(shared['jobId']);self.assertEqual(done['state'],'completed');self.assertTrue(done['result']['explicitAiNotice'])
-        result=self.store.root/'data/output'/done['result']['file'];self.assertTrue(pcm(result.read_bytes())[1].endswith(pcm(file.read_bytes())[1]));self.assertEqual(self.actor.calls[-1][0],'以下音频由人工智能合成。');self.assertFalse(self.server.jobs.protected)
+        audio,mime=self.request(original['result']['audioUrl'],raw=True)
+        self.assertIsNone(read_wav_bytes(audio));self.assertEqual(audio,file.read_bytes())
+        calls=len(self.actor.calls);shared=self.request('/api/export/share',{'jobId':job['jobId']})
+        self.assertEqual(shared['jobId'],job['jobId']);self.assertTrue(shared['unchangedAudio']);self.assertEqual(len(self.actor.calls),calls)
+        self.assertFalse(self.server.jobs.protected)
+    def test_audio_download_preserves_preexisting_provenance(self):
+        synthesize=self.actor.synthesize
+        def marked(text,voice,path,check):
+            result=synthesize(text,voice,path,check);label_wav(path);return result
+        self.actor.synthesize=marked
+        job=self.wait(self.request('/speak',{'text':'保留既有标识','play':False})['jobId'])
+        audio,_=self.request(job['result']['audioUrl'],raw=True)
+        self.assertIsNotNone(read_wav_bytes(audio));self.assertEqual(audio,(self.server.jobs.output/job['result']['file']).read_bytes())
     def test_clear_records_and_rotate_rejected_while_live(self):
         import urllib.error
         with self.assertRaises(urllib.error.HTTPError) as error:self.request('/api/privacy/rotate',{})
         self.assertEqual(error.exception.code,400);self.assertIn('checks',self.request('/api/privacy/diagnostic',{}))
-    def test_airi_leased_download_contains_container_label_before_ack(self):
+    def test_airi_leased_download_preserves_original_audio_before_ack(self):
         self.store.update({'airi':{'enabled':True,'output':'airi'}});self.request('/api/airi/poll',{'client':'test-airi'})
         job=self.request('/speak',{'text':'桌宠合成提示','play':True});task=None
         for _ in range(80):
             task=self.request('/api/airi/poll',{'client':'test-airi'})['task']
             if task:break
             time.sleep(.02)
-        self.assertIsNotNone(task);audio,mime=self.request(task['audioUrl'],raw=True);self.assertEqual(mime,'audio/wav');self.assertIsNotNone(read_wav_bytes(audio))
+        self.assertIsNotNone(task);audio,mime=self.request(task['audioUrl'],raw=True);self.assertEqual(mime,'audio/wav');self.assertIsNone(read_wav_bytes(audio))
         self.request('/api/airi/ack',{'client':'test-airi','id':task['id']});done=self.wait(job['jobId']);self.assertEqual(done['result']['output'],'airi')
-    def test_api_mp3_has_id3_provenance(self):
+    def test_api_mp3_preserves_unlabelled_generated_audio(self):
         ffmpeg=Path(os.environ.get('AGENT_VOICE_TEST_FFMPEG',r'E:\App\agent 语音服务\Agent语音\tools\ffmpeg.exe'))
         if not ffmpeg.exists():self.skipTest('Real FFmpeg is not installed')
         self.store.update({'engines':{'ffmpeg':str(ffmpeg)}})
         audio,mime=self.request('/v1/audio/speech',{'model':'agent-voice-tts','input':'语音标识测试','response_format':'mp3'},raw=True)
-        self.assertEqual(mime,'audio/mpeg');self.assertTrue(audio.startswith(b'ID3'));self.assertIn(b'AIGC',audio);self.assertIn(b'AgentVoice.local',audio)
+        self.assertEqual(mime,'audio/mpeg');self.assertNotIn(b'AIGC',audio);self.assertNotIn(b'AgentVoice.local',audio)
 
 
 class RightsAndPackageTests(unittest.TestCase):
     setUp=test_tts_bundle.TtsBundleTests.setUp
     tearDown=test_tts_bundle.TtsBundleTests.tearDown
     rewrite=test_tts_bundle.TtsBundleTests.rewrite
-    def test_public_summary_excludes_private_evidence_and_import_remains_unverified(self):
+    def test_optional_export_has_no_rights_prompt_dependency(self):
         from tts_bundle import export_model,import_model
-        declaration={'source':'PRIVATE_SOURCE','holder':'PRIVATE_PERSON','evidenceRef':'C:/PRIVATE_CONTRACT.pdf','notes':'PRIVATE_NOTES','licenseSummary':'Example granted scope','permittedUses':['generation','privateUse']}
-        save_record(self.store,'reference.wav',declaration);self.assertEqual(read_record(self.store,'reference.wav')['record']['source'],'PRIVATE_SOURCE')
-        export_model(self.root,self.package,package_mode='lightweight')
+        with patch('voice_rights.public_summary',side_effect=OSError('unavailable registry')):
+            export_model(self.root,self.package,package_mode='lightweight')
         with zipfile.ZipFile(self.package) as archive:manifest=json.loads(archive.read('manifest.json'))
-        text=json.dumps(manifest);self.assertNotIn('PRIVATE_',text);self.assertEqual(manifest['licenseSummary']['status'],'user-recorded')
-        result=import_model(self.root,self.package);self.assertIn('未核验',result['licenseStatus'])
-        imported=next((self.root/'data/imported-license-summaries').glob('*.json'));self.assertEqual(json.loads(imported.read_text(encoding='utf-8'))['status'],'imported-unverified')
-    def test_legacy_without_rights_allowed_and_summary_write_failure_rolls_back_config(self):
+        self.assertNotIn('licenseSummary',manifest);self.assertNotIn('baseModelSource',manifest)
+        result=import_model(self.root,self.package);self.assertTrue(result['ok']);self.assertNotIn('licenseStatus',result)
+    def test_legacy_package_metadata_does_not_block_import(self):
         from tts_bundle import import_model
-        package=self.rewrite(self.package,lambda m,f:m.pop('licenseSummary'));result=import_model(self.root,package);self.assertIn('旧包',result['licenseStatus'])
-        before=Store(self.root).path.read_bytes()
-        with patch('voice_rights.save_imported_summary',side_effect=OSError('disk full')):
-            with self.assertRaises(OSError):import_model(self.root,self.package)
-        self.assertEqual(Store(self.root).path.read_bytes(),before)
-    def test_scope_not_certificate_and_forged_hash_rejected_before_config(self):
+        package=self.rewrite(self.package,lambda m,f:m.update(licenseSummary={'old':'opaque legacy declaration'}))
+        with patch('voice_rights.save_imported_summary',side_effect=OSError('registry unavailable')):
+            self.assertTrue(import_model(self.root,package)['ok'])
+    def test_optional_import_still_rejects_corrupted_reference(self):
         from tts_bundle import import_model
-        from voice_rights import material_hash
-        with self.assertRaisesRegex(ValueError,'先选择'):material_hash(None)
-        package=self.rewrite(self.package,lambda m,f:m['licenseSummary'].update(materialSha256='a'*64))
-        before=self.store.path.read_bytes()
+        def corrupt(m,f):f[m['reference']]=b'corrupted'
+        package=self.rewrite(self.package,corrupt);before=self.store.path.read_bytes()
         with self.assertRaises(ValueError):import_model(self.root,package)
         self.assertEqual(self.store.path.read_bytes(),before)
 

@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$CoreBuild,[Parameter(Mandatory=$true)][string]$OutputDirectory,[Parameter(Mandatory=$true)][string]$Package,[string]$PythonPath='python')
+﻿param([Parameter(Mandatory=$true)][string]$CoreBuild,[Parameter(Mandatory=$true)][string]$OutputDirectory,[Parameter(Mandatory=$true)][string]$Package,[string]$PythonPath='python')
 $ErrorActionPreference='Stop'
 $repo=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $core=Join-Path (Resolve-Path -LiteralPath $CoreBuild).Path 'agent语音.exe'
@@ -11,5 +11,5 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'backend') -Destination $output 
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'README.md') -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $repo 'LICENSE') -Destination (Join-Path $output 'LICENSE.txt') -Force
 Copy-Item -LiteralPath (Join-Path $repo 'THIRD_PARTY_NOTICES.md') -Destination $output -Force
-& $PythonPath (Join-Path $repo 'tools\module_packages.py') feature --root $OutputDirectory --output $Package --module-version 1.1.0
+& $PythonPath (Join-Path $repo 'tools\module_packages.py') feature --root $OutputDirectory --output $Package --module-version 1.2.0
 if($LASTEXITCODE -ne 0){throw 'Optional module packaging failed'}

@@ -13,7 +13,7 @@ namespace AgentVoice {
                 var package=ModulePackages.Inspect(d.FileName);if(package.kind!=kind)throw new InvalidOperationException("模块类型与当前步骤不匹配。");
                 if(MessageBox.Show(this,package.name+"\r\n平台："+package.platform+"\r\n运行时："+package.profile+"\r\n展开体积："+(package.files.Sum(f=>f.size)/1073741824d).ToString("0.00")+" GB\r\n安装位置："+Flow.Store.Root+"\r\n\r\n模块含可执行代码，请只使用可信来源。已有文件会保留回退副本。","安装所选模块",MessageBoxButtons.OKCancel,MessageBoxIcon.Information)!=DialogResult.OK)return;
                 string[] steps=kind=="engine"?new[]{"确认引擎包类型","展开源码与运行时","校验清单与模型"}:new[]{"确认环境包类型","展开依赖与工具","校验运行时"};
-                await RunTask(kind=="engine"?"准备引擎文件":"补齐运行环境",steps,async p=>{await Flow.InstallModule(d.FileName,kind,p.Report);return Flow.Resources()+"\r\n模块已安装；不代表声音可用或获得法律授权。";},text=>{(kind=="engine"?resourcesReport:environmentReport).Text=text;});
+                await RunTask(kind=="engine"?"准备引擎文件":"补齐运行环境",steps,async p=>{await Flow.InstallModule(d.FileName,kind,p.Report);return Flow.Resources()+"\r\n模块已安装，可在控制台生成语音。";},text=>{(kind=="engine"?resourcesReport:environmentReport).Text=text;});
             }
         }
         async Task StopService(){await Work(async()=>{if(await Flow.Service.Running())await Flow.Service.Stop();environmentReport.Text=Flow.Resources()+"\r\n语音服务已停止，可以安装模块。";});}

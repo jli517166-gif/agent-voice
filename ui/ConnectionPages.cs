@@ -37,7 +37,7 @@ namespace AgentVoice {
             intro.Controls.Add(WebText("MCP 失败会指出路径、插件、启用状态或协议错误。客户端未读取工具请重载后再自检。通过 MCP 自检不等于声音可用或自动朗读开启。备份在 data/connection-backups。",7.5F,FontStyle.Regular,16,340,870,40,ContentAlignment.TopLeft));
 
             var end=WebCard(page,38,526,902,133);
-            verificationHint=WebText("推荐先安装 MCP，再执行自检。配置正确但客户端未重载时仍显示等待；此结果不测试语音或声音授权。",8F,FontStyle.Regular,16,14,870,63,ContentAlignment.TopLeft);
+            verificationHint=WebText("推荐先安装 MCP，再执行自检。配置正确但客户端未重载时仍显示等待；此结果不测试语音。",8F,FontStyle.Regular,16,14,870,63,ContentAlignment.TopLeft);
             end.Controls.Add(verificationHint);
             end.Controls.Add(WebButton("返回",null,()=>ShowPage("connections"),16,83,70,38));
             end.Controls.Add(WebButton("打开 Harness",null,()=>ShowPage("harness"),94,83,170,38));
@@ -52,26 +52,42 @@ namespace AgentVoice {
             string message=Json.Text(result,"message"),usage=source=="codex"?"在聊天栏技能选择器选择“语音控制”，或输入 $agent-voice-control；安装完成不表示客户端支持常驻自定义按钮。":"重启 DeepSeek Harness 后点击 MCP 自检，检查 8 个工具与只读状态调用。不需要朗读验证。聊天栏“语音”按钮与 MCP 工具是两条独立通道。";Status(message);MessageBox.Show(this,message+"\r\n\r\n"+usage+"\r\n底层工具名为 agent_voice。","聊天控制安装完成",MessageBoxButtons.OK,MessageBoxIcon.Information);
         }
         readonly Dictionary<string,bool> mcpPassed=new Dictionary<string,bool>();
+        readonly Dictionary<string,string> mcpMessages=new Dictionary<string,string>();
         async Task RefreshMcpConnection(bool verify,bool celebrate=false){
             if(mcpChecking||(!verify&&(DateTime.UtcNow-lastMcpCheck).TotalSeconds<10))return;
             mcpChecking=true;lastMcpCheck=DateTime.UtcNow;
             var messages=new List<string>();var passedNames=new List<string>();
             try{foreach(string source in new[]{"codex","deepseek"}){
                 try{
-                    if(verify&&source=="deepseek")await Service.RunTool("install_mcp.py","--source deepseek --root "+ServiceClient.Quote(Store.Root)+" --repair");
+                    if(verify&&celebrate&&source=="deepseek")await Service.RunTool("install_mcp.py","--source deepseek --root "+ServiceClient.Quote(Store.Root)+" --repair");
                     var result=Json.Object(await Service.RunTool("install_mcp.py","--source "+source+" --root "+ServiceClient.Quote(Store.Root)+(verify?" --self-test":" --check")));
                     bool loaded=result.ContainsKey("clientLoaded")&&Convert.ToBoolean(result["clientLoaded"]);
+                    // A normal refresh must recover after restart, rather than leave a
+                    // working client labelled failed until the user clicks self-test.
+                    if(!verify&&loaded&&(!mcpPassed.ContainsKey(source)||!mcpPassed[source])){
+                        result=Json.Object(await Service.RunTool("install_mcp.py","--source "+source+" --root "+ServiceClient.Quote(Store.Root)+" --self-test"));
+                        mcpPassed[source]=result.ContainsKey("passed")&&Convert.ToBoolean(result["passed"]);
+                    }
                     if(verify)mcpPassed[source]=result.ContainsKey("passed")&&Convert.ToBoolean(result["passed"]);
                     else if(!loaded)mcpPassed[source]=false;
-                    messages.Add(source+"："+(mcpPassed.ContainsKey(source)&&mcpPassed[source]?"MCP 自检通过":loaded?"客户端已读取工具，待协议自检":"待重载或检查安装"));
+                    mcpMessages[source]=McpStatusText(result,mcpPassed.ContainsKey(source)&&mcpPassed[source]);
+                    messages.Add(source+"："+mcpMessages[source]);
                     if(verify&&mcpPassed[source])passedNames.Add(source);
                     if(verify&&verificationHint!=null)verificationHint.Text=Json.Text(result,"message");
-                }catch(Exception error){mcpPassed[source]=false;messages.Add(source+"："+error.Message);}
+                }catch(Exception error){mcpPassed[source]=false;mcpMessages[source]="检查未完成："+error.Message;messages.Add(source+"："+mcpMessages[source]);}
             }}finally{mcpChecking=false;}
             string message=string.Join("\r\n",messages);
             foreach(var label in new[]{mcpConnectionHint,mcpHubHint})if(label!=null&&!label.IsDisposed){label.Text=message;tips.SetToolTip(label,message);}
             UpdateHarnessIndicators(harnessStates,harnessOnline);
             if(celebrate&&passedNames.Count>0)ShowCelebration(string.Join("、",passedNames)+" MCP");
+        }
+        internal static string McpStatusText(Dictionary<string,object> result,bool passed){
+            if(passed)return "MCP 自检通过 · 8 个工具已加载";
+            string state=Json.Text(result,"state");
+            if(state=="awaiting-client")return "已安装并启用 · 等待客户端加载（重载插件后再检查）";
+            if(state=="tools-read")return "客户端已加载 · 正在核对协议";
+            if(state=="not-installed"||state=="not-configured")return "尚未安装 MCP";
+            return Json.Text(result,"message");
         }
         async Task BeginAutoHarness(){
             using(var dialog=new FolderBrowserDialog{Description="选择 Codex 或 DeepSeek Harness 安装目录／用户配置目录，安装推荐的 MCP 控制",ShowNewFolderButton=false}){

@@ -4,11 +4,11 @@
 
 ## 开始前
 
-以 `integration/native-design-20261019` 为开发基线，创建独立分支。阅读 [架构说明](docs/架构与开发.md)，确认改动所属模块，避免把引擎安装、推理调度和界面逻辑混在一起。
+以 `main` 为开发基线，创建独立分支。阅读 [架构说明](docs/架构与开发.md)，确认改动所属模块，避免把引擎安装、推理调度和界面逻辑混在一起。
 
 ```powershell
 git fetch origin
-git switch -c fix/short-description origin/integration/native-design-20261019
+git switch -c fix/short-description origin/main
 ```
 
 提交问题时提供系统、显卡与驱动、所选引擎及版本、复现步骤、预期行为、实际结果和脱敏日志。不要提交聊天正文、账号凭据、个人文件路径或原始录音。

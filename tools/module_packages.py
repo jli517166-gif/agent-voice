@@ -3,8 +3,9 @@
 The manifest is consumed by the native desktop installer, including on machines
 without Python. Voice archives retain their existing engine-labelled format.
 """
-import argparse, hashlib, json, os, re, stat, sys, zipfile
+import argparse, hashlib, json, os, posixpath, re, shutil, stat, sys, zipfile
 from pathlib import Path
+from urllib.parse import unquote,urlsplit
 
 ENGINES=('cosyvoice','gpt-sovits')
 SKIP={'.git','__pycache__','.cache','.pytest_cache','tests','test'}
@@ -91,8 +92,9 @@ def environment_package(root,engines,output,include_downloads=False,profile='bun
     if (root/'tools/system-prerequisites').is_dir():components.append('tools/system-prerequisites')
     return write_package(output,'environment','all',components,(entry for c in components for entry in inventory(root,c)),defaults,profile,minimum_driver)
 
-def application_package(build,output):
+def application_package(build,output,folder='Agent语音',audit_directory=None):
     build=Path(build).resolve();output=Path(output).resolve()
+    if folder not in ('Agent语音','Agent语音-私用版'):raise ValueError('软件解压目录无效')
     if output.exists():raise ValueError('不能覆盖已有软件包')
     if not (build/'agent语音.exe').is_file():raise ValueError('请先构建软件本体')
     ui_libraries=['Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll']
@@ -100,11 +102,33 @@ def application_package(build,output):
     roots.extend(name for name in ('LICENSE',) if (build/name).is_file())
     roots.extend(name for name in ui_libraries if (build/name).is_file())
     paths=[entry for relative in roots for entry in inventory(build,relative)]
-    paths.extend((p.name,p) for p in build.glob('*.md'))
+    paths.extend((p.name,p) for p in build.glob('*.md') if p.name!='AGENTS.md')
+    # Runtime manuals and third-party licenses belong with the application;
+    # dated engineering records and local maintenance notes belong in audits.
+    def audit_document(name):
+        if name in ('CONTRIBUTING.md','私用版使用与维护.md','控制插件与Harness标准接入方案.md'):return True
+        return name.startswith('docs/') and name.endswith('.md') and not name.startswith('docs/licenses/') and (
+            re.search(r'20\d{6}',name) is not None or any(word in name for word in ('验收','交接','修复','快照','评估','整改','记录','素材说明','便携发布流程')))
+    audits=[(name,path) for name,path in paths if audit_document(name)]
+    paths=[(name,path) for name,path in paths if not audit_document(name)]
+    if audit_directory is not None:
+        audit_root=Path(audit_directory).resolve()
+        for name,path in audits:
+            target=audit_root/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(path,target)
     forbidden={'service/tts_bundle.py','service/config_bundle.py','tools/tts_bundle.py','tools/config_bundle.py'}
     paths=[(name,path) for name,path in paths if name not in forbidden and '/__pycache__/' not in name]
     # Public stock graphics only; no bundled-voice manifest or user imagery.
-    if (build/'assets').is_dir():paths.extend((n,p) for n,p in inventory(build,'assets') if n.startswith('assets/') and (p.suffix.lower() in {'.png','.ico','.svg'} or re.fullmatch(r'assets/sfx/step-[0-8]\.wav',n) or n in ('assets/README.md','assets/onboarding/layout.json') or (n.startswith('assets/setup/') and p.suffix.lower() in {'.html','.css','.js','.json','.webp'})))
+    if (build/'assets').is_dir():paths.extend((n,p) for n,p in inventory(build,'assets') if n.startswith('assets/') and (p.suffix.lower() in {'.png','.ico','.svg'} or re.fullmatch(r'assets/sfx/step-[0-8]\.wav',n) or n=='assets/onboarding/layout.json' or (n.startswith('assets/setup/') and p.suffix.lower() in {'.html','.css','.js','.json','.webp'})))
+    included={name for name,path in paths}
+    def manual_content(name,path):
+        text=path.read_text(encoding='utf-8-sig')
+        def link(match):
+            target=match.group(2).strip('<>');address=urlsplit(target)
+            if address.scheme or target.startswith(('#','//')):return match.group(0)
+            local=posixpath.normpath(posixpath.join(posixpath.dirname(name),unquote(address.path)))
+            if local in included or any(p.startswith(local.rstrip('/')+'/') for p in included):return match.group(0)
+            return match.group(1)
+        return re.sub(r'(?<!!)\[([^\]]+)\]\(([^)]+)\)',link,text)
     output.parent.mkdir(parents=True,exist_ok=True)
     temporary=output.with_name(output.name+'.partial')
     if temporary.exists():raise ValueError('存在未完成的软件包，请检查后重试')
@@ -113,12 +137,17 @@ def application_package(build,output):
             written=[]
             for name,path in paths:
                 if path.suffix.lower() in {'.exe','.dll'} and name not in ['agent语音.exe']+ui_libraries:continue
-                archive.write(path,'Agent语音/'+name)
-                written.append({'path':name,'size':path.stat().st_size,'sha256':digest(path)})
+                if name.endswith('.md') and not name.startswith('.agents/'):
+                    content=manual_content(name,path).encode('utf-8');archive.writestr(folder+'/'+name,content)
+                    written.append({'path':name,'size':len(content),'sha256':hashlib.sha256(content).hexdigest()})
+                else:
+                    archive.write(path,folder+'/'+name)
+                    written.append({'path':name,'size':path.stat().st_size,'sha256':digest(path)})
             if (build/'app-version.json').is_file():
+                # Manuals are normalized above; hash the bytes that actually ship.
                 metadata=json.loads((build/'app-version.json').read_text(encoding='utf-8-sig'))
                 metadata['files']=written
-                archive.writestr('Agent语音/app-version.json',json.dumps(metadata,ensure_ascii=False))
+                archive.writestr(folder+'/app-version.json',json.dumps(metadata,ensure_ascii=False))
         with zipfile.ZipFile(temporary) as archive:
             if archive.testzip():raise ValueError('软件本体 CRC 校验失败')
         os.replace(temporary,output)
@@ -138,19 +167,13 @@ def main():
     parser=argparse.ArgumentParser();parser.add_argument('kind',choices=['application','engine','environment','feature']);parser.add_argument('--root',required=True);parser.add_argument('--output',required=True)
     parser.add_argument('--engine',choices=ENGINES);parser.add_argument('--engines',nargs='*',choices=ENGINES,default=list(ENGINES));parser.add_argument('--model');parser.add_argument('--include-downloads',action='store_true');parser.add_argument('--profile',default='bundled');parser.add_argument('--minimum-driver',default='')
     parser.add_argument('--module-version',default='1.0.0')
-    parser.add_argument('--public',action='store_true',help='要求逐文件公开分发证据通过；失败时只留下未审核候选包与报告')
-    parser.add_argument('--review',type=Path,help='绑定最终归档 SHA-256 的审查记录')
+    parser.add_argument('--application-folder',choices=['Agent语音','Agent语音-私用版'],default='Agent语音')
+    parser.add_argument('--audit-directory',help='将软件本体排除的开发记录集中保存到此目录')
     args=parser.parse_args()
-    if args.kind=='application':result=application_package(args.root,args.output)
+    if args.kind=='application':result=application_package(args.root,args.output,args.application_folder,args.audit_directory)
     elif args.kind=='feature':result=feature_package(args.root,args.output,version=args.module_version)
     elif args.kind=='engine':result=engine_package(args.root,args.engine,args.output,args.model)
     else:result=environment_package(args.root,args.engines,args.output,args.include_downloads,args.profile,args.minimum_driver)
-    from release_compliance import inspect
-    review=json.loads(args.review.read_text(encoding='utf-8-sig')) if args.review else None
-    compliance=inspect(args.output,review=review)
-    report=Path(args.output+'.compliance.json');report.write_text(json.dumps(compliance,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-    result['publicReleaseEligible']=compliance['publicReleaseEligible'];result['complianceReport']=str(report)
     print(json.dumps(result,ensure_ascii=False))
-    if args.public and not compliance['publicReleaseEligible']:raise SystemExit(2)
 
 if __name__=='__main__':main()

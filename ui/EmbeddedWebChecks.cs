@@ -44,15 +44,9 @@ namespace AgentVoice {
             await Wait(()=>Script(form,"document.querySelector('#page').classList.contains('step-0')"));
             if(EmbeddedSetupForm.Trusted("https://evil.example")||EmbeddedSetupForm.Trusted("file:///index.html")||EmbeddedSetupForm.Trusted("https://setup.agent-voice.local.evil.example"))throw new Exception("Remote bridge origin accepted");
             var errors=new List<string>();var layouts=new List<object>();
-            await form.Controller.Execute("go",new Dictionary<string,object>{{"step",5}});form.Browser.CoreWebView2.Reload();
-            await Wait(()=>Script(form,"document.querySelector('[data-action=\"legal-read\"]')!==null"));
-            if(!await Script(form,"document.querySelector('#next').disabled && document.querySelector('#skip').hidden && document.querySelector('#position').textContent==='第 1 步 / 共 9 步 · 使用须知'"))errors.Add("Legal gate or displayed first step is wrong");
-            if(!await Script(form,"(()=>{const hint=document.querySelector('#legalReminder'),button=document.querySelector('[data-action=\"legal-read\"]');return hint?.textContent.includes('请先点击') && hint.getBoundingClientRect().bottom<=button.getBoundingClientRect().top})()"))errors.Add("Required reading instruction missing or overlaps its action");
-            bool legalBlocked=false;try{await form.Controller.Execute("next",new Dictionary<string,object>());}catch(InvalidOperationException){legalBlocked=true;}
-            if(!legalBlocked)errors.Add("Backend next bypassed legal acknowledgement");
-            await form.Browser.ExecuteScriptAsync("document.querySelector('[data-action=\"legal-read\"]').click()");
-            await Wait(()=>Script(form,"document.querySelector('#next').disabled===false"));
-
+            await form.Browser.ExecuteScriptAsync("document.querySelector('#next').click()");
+            await Wait(()=>Script(form,"document.querySelector('#page')?.classList.contains('step-1')===true"));
+            if(!await Script(form,"!document.querySelector('[data-action=\"legal-read\"]') && !document.querySelector('#next').disabled"))errors.Add("Optional setup retains required legal acknowledgement");
             if(Environment.GetEnvironmentVariable("AGENT_VOICE_DOWNLOAD_CHECK_ONLY")=="1"){
                 string python=Environment.GetEnvironmentVariable("AGENT_VOICE_TEST_PYTHON");if(string.IsNullOrEmpty(python))throw new Exception("Pause UI fixture requires a test interpreter");
                 await CheckPauseButtons(form,directory,python);return;
@@ -60,7 +54,7 @@ namespace AgentVoice {
             var preferred=form.ClientSize;
             foreach(var size in new[]{new Size(1180,780),new Size(900,640),new Size(1600,960),preferred}){
                 form.ClientSize=size;await Task.Delay(140);
-                for(int step=0;step<10;step++){
+                foreach(int step in SetupWorkflow.PageOrder){
                     await Wait(()=>Task.FromResult(!form.Controller.Busy));
                     await form.Controller.Execute("go",new Dictionary<string,object>{{"step",step}});
                     form.Browser.CoreWebView2.Reload();
@@ -90,14 +84,6 @@ namespace AgentVoice {
             await Wait(()=>Script(form,"document.querySelector('#feedback').classList.contains('error')"));
             if(!await Script(form,"document.querySelector('#localEngine').open"))errors.Add("Download failure did not expose local alternative");
             await Wait(()=>Task.FromResult(!form.Controller.Busy));
-            await form.Controller.Execute("go",new Dictionary<string,object>{{"step",5}});form.Browser.CoreWebView2.Reload();
-            await Wait(()=>Script(form,"document.querySelector('[data-action=\"legal-read\"]')!==null"));
-            if(!await Script(form,"document.querySelector('.body').textContent.includes('授权') && !document.querySelector('[data-action=\"reference\"], [data-action=\"profiles\"]')"))errors.Add("Legal page retained voice selection or omitted rights notice");
-            await form.Browser.ExecuteScriptAsync("document.querySelector('[data-action=\"legal-read\"]').click()");
-            await Wait(()=>Task.FromResult(!form.Controller.Busy));
-            await form.Controller.Execute("go",new Dictionary<string,object>{{"step",6}});form.Browser.CoreWebView2.Reload();
-            await Wait(()=>Script(form,"document.querySelector('.body')?.textContent.includes('Apache-2.0')===true"));
-            if(!await Script(form,"document.querySelector('.body').textContent.includes('MIT') && !document.querySelector('[data-action=\"preview\"], [data-action=\"confirm\"]')"))errors.Add("License page retained audition or omitted source license");
             string testPython=Environment.GetEnvironmentVariable("AGENT_VOICE_TEST_PYTHON");if(!string.IsNullOrEmpty(testPython))await CheckPauseButtons(form,directory,testPython);
             // Sample a foreground window region while resizing; exclude other topmost apps.
             form.TopMost=true;form.Activate();form.WindowState=FormWindowState.Normal;form.ClientSize=new Size(1180,780);form.Location=new Point(30,30);await Task.Delay(200);
@@ -121,7 +107,7 @@ namespace AgentVoice {
                 if(fallback.Ready||!fallback.Controls.Cast<Control>().SelectMany(Descendants).Any(c=>c.Text=="使用简洁配置"))errors.Add("Missing runtime has no native fallback");
                 fallback.Close();
             }
-            var result=new{ok=errors.Count==0,pages=10,layouts=layouts,frames=fractions.Count,excludedFrames=excluded,maxWhite=fractions.Count==0?0:fractions.Max(),errors=errors};
+            var result=new{ok=errors.Count==0,pages=SetupWorkflow.PageOrder.Length,layouts=layouts,frames=fractions.Count,excludedFrames=excluded,maxWhite=fractions.Count==0?0:fractions.Max(),errors=errors};
             File.WriteAllText(Path.Combine(directory,"web-results.json"),Json.Encode(result));if(errors.Count>0)throw new Exception(string.Join("\n",errors));
         }
         static async Task CheckPauseButtons(EmbeddedSetupForm form,string directory,string python){

@@ -15,14 +15,10 @@ namespace AgentVoice {
         internal readonly ServiceClient Service;
         internal readonly WelcomeState State;
         internal Action<string> Report=delegate{};
-        // Stable page IDs preserve older saved progress; legal pages precede downloads.
-        internal static readonly int[] PageOrder={0,5,6,1,2,3,4,7,8,9};
-        internal const string LegalNoticeVersion="2026-10-22-v2-read";
-        internal bool LegalAccepted {get{string value;return State.Read().setupStates.TryGetValue("legalNotice",out value)&&value==LegalNoticeVersion;}}
-        internal void AcceptLegal(){Mark("legalNotice",LegalNoticeVersion);}
-        internal void RequireLegal(){if(!LegalAccepted)throw new InvalidOperationException("请先在使用须知页点击“我已阅读须知”，再继续配置。");}
-        internal int ResumeStep {get{int step=Math.Max(0,Math.Min(9,State.Read().onboardingStep));return step==0||LegalAccepted?step:5;}}
-        internal static string StepLabel(int step){int index=Array.IndexOf(PageOrder,step);return step==0?"准备开始 · 共 9 步":"第 "+index+" 步 / 共 9 步 · "+new[]{"","电脑检查","TTS 引擎","引擎文件","运行环境","使用须知","TTS 许可","Harness MCP","AIRI 联动","配置回顾"}[step];}
+        // Historical notice page IDs are retained in saved state but skipped by this optional setup.
+        internal static readonly int[] PageOrder={0,1,2,3,4,7,8,9};
+        internal int ResumeStep {get{int step=State.Read().onboardingStep;return Array.IndexOf(PageOrder,step)>=0?step:1;}}
+        internal static string StepLabel(int step){int index=Array.IndexOf(PageOrder,step);int count=PageOrder.Length-1;return step==0?"准备开始 · 共 "+count+" 步":"第 "+index+" 步 / 共 "+count+" 步 · "+new[]{"","电脑检查","TTS 引擎","引擎文件","运行环境","","","Harness MCP","AIRI 联动","配置回顾"}[step];}
         internal static int Adjacent(int step,int direction){return PageOrder[Math.Max(0,Math.Min(PageOrder.Length-1,Array.IndexOf(PageOrder,step)+direction))];}
         internal bool PreviewMayBePending;
         internal async Task StopPreview(){if(PreviewMayBePending){await Service.Request("/stop",new{});PreviewMayBePending=false;}InvalidateVoice();}
@@ -46,7 +42,36 @@ namespace AgentVoice {
             string summary=string.Join("\r\n",results);if(failed)throw new InvalidOperationException(summary+"\r\n已完成的引擎会保留，可修复失败项后重试。");return summary;
             }
         }
-        internal string Resources(){var c=Config;string model=c.voice.engine=="cosyvoice"?(c.voice.baseModel.Length>0?c.voice.baseModel:c.engines.cosyModel):(c.voice.gptModel.Length>0?c.voice.gptModel:c.engines.gptModel);return "主服务："+(File.Exists(Store.Resolve(c.engines.pythonService))?"已找到":"待安装")+"   ·   TTS 环境："+(File.Exists(Store.Resolve(c.voice.engine=="cosyvoice"?c.engines.pythonTts:c.engines.pythonGpt))?"已找到":"待安装")+"\r\n基础模型："+(Directory.Exists(Store.Resolve(model))?"已找到":"待安装")+"（文件检查不代表语音可用）";}
+        internal string Resources(){
+            var c=Config;var lines=new List<string>();lines.Add("主服务运行时："+(File.Exists(Store.Resolve(c.engines.pythonService))?"已找到":"待安装"));
+            foreach(string family in EngineSwitching.Families(InstallEngines())){
+                string model=Store.Resolve(family=="cosyvoice"?c.engines.cosyModel:c.engines.gptModel);
+                string[] required=family=="cosyvoice"?new[]{"cosyvoice3.yaml","llm.pt","flow.pt","hift.pt","campplus.onnx","speech_tokenizer_v3.onnx","CosyVoice-BlankEN/config.json"}:new[]{"s1v3.ckpt","gsv-v5-pretrained/s2Gv5turbo.pth","v2Pro/s2Gv2ProPlus.pth","gsv-v5-pretrained/vocoder.pth"};
+                int missing=required.Count(f=>!File.Exists(Path.Combine(model,f))||new FileInfo(Path.Combine(model,f)).Length==0);
+                lines.Add(family+"："+(missing>0?"基础文件缺 "+missing+" 项":"关键文件已找到，完整性待检查")+"\r\n模型位置："+model);
+            }
+            lines.Add("点击“检查已有文件”查看匹配版本、下载来源与具体缺项。文件存在不代表运行或声音验证通过。");return string.Join("\r\n",lines);
+        }
+        internal async Task<string> InspectResources(string scope=null){
+            if(!File.Exists(Store.Resolve(Config.engines.pythonService)))return Resources()+"\r\n尚无主服务 Python；联网准备会先安装到 runtime/core，或导入离线环境包。";
+            var lines=new List<string>();var reports=new List<object>();
+            string[] families=scope==null?EngineSwitching.Families(InstallEngines()):scope=="all"?new[]{"cosyvoice","gpt-sovits"}:scope=="core"?new string[0]:new[]{scope=="current"?Config.voice.engine:scope};
+            if(families.Length==0)return "本次未选择 TTS 引擎，无需下载基础模型；可选择引擎后重新检查。";
+            foreach(string family in families){
+                var plan=Json.Object(await RunPreparationTool("plan --root "+ServiceClient.Quote(Store.Root)+" --engine "+family));reports.Add(plan);
+                lines.Add(family+" · "+(Convert.ToBoolean(plan["resourcesReady"])?"引擎文件已找到":"有待补齐文件"));
+                foreach(Dictionary<string,object> row in (object[])plan["items"]){
+                    lines.Add("源码来源："+Json.Text(row,"sourceUrl"));lines.Add("源码位置："+Json.Text(row,"source"));
+                    lines.Add("模型来源："+Json.Text(row,"modelUrl"));lines.Add("模型位置："+Json.Text(row,"model"));
+                    if(Convert.ToBoolean(row["customModelSelected"]))lines.Add("当前声音另用训练目录："+Json.Text(row,"activeModel")+"。基础模型补齐不会替换当前声音，也不会下载个人训练文件。");
+                    if(Convert.ToBoolean(row["sourceMissing"]))lines.Add("缺少：引擎源码");if(Convert.ToBoolean(row["matchaMissing"]))lines.Add("缺少：Matcha 组件");
+                    foreach(object missing in (object[])row["missingModelFiles"])lines.Add("缺少："+Convert.ToString(missing));
+                }
+            }
+            string folder=Store.Resolve("data/setup");Directory.CreateDirectory(folder);File.WriteAllText(Path.Combine(folder,"resource-plan.json"),Json.Encode(reports),Encoding.UTF8);
+            lines.Add("仅补匹配固定版本的缺失文件，不覆盖已有非空模型；详细计划："+Path.Combine(folder,"resource-plan.json"));
+            return string.Join("\r\n",lines);
+        }
         internal async Task<string> InspectComputer(){
             string result=await Task.Run(()=>{var b=new StringBuilder();b.AppendLine(Environment.OSVersion+" · "+(Environment.Is64BitOperatingSystem?"64 位":"32 位"));b.AppendLine("可用空间："+(new DriveInfo(Path.GetPathRoot(Store.Root)).AvailableFreeSpace/1073741824d).ToString("0.0")+" GB");string probe=Store.Resolve("data/setup-write-"+Guid.NewGuid().ToString("N")+".tmp");Directory.CreateDirectory(Path.GetDirectoryName(probe));try{File.WriteAllText(probe,"check");b.AppendLine("安装目录可写。");}finally{if(File.Exists(probe))File.Delete(probe);}try{using(var p=Process.Start(new ProcessStartInfo("nvidia-smi","--query-gpu=name,driver_version,memory.total --format=csv,noheader"){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true})){var output=p.StandardOutput.ReadToEndAsync();var error=p.StandardError.ReadToEndAsync();if(!p.WaitForExit(15000)){p.Kill();throw new InvalidOperationException("显卡检测超时");}Task.WaitAll(output,error);b.AppendLine(p.ExitCode==0?output.Result:"未检测到 NVIDIA 驱动。请安装驱动后重试。");}}catch(Exception e){b.AppendLine("显卡检查："+e.Message);}b.AppendLine("文件存在不代表声音可用；Harness 通过 MCP 协议自检，配置流程不自动生成语音。");return b.ToString();});Mark("computer","checked");return result;
         }
@@ -69,7 +94,7 @@ namespace AgentVoice {
             // Keep the detailed diagnostic, including failed paths, available in this step.
             string text=Json.Encode(result);Directory.CreateDirectory(Store.Resolve("data/setup"));File.WriteAllText(Store.Resolve("data/setup/environment-report.json"),text,Encoding.UTF8);
             if(!Convert.ToBoolean(result["ok"]))throw new InvalidOperationException("环境检查未通过："+Json.Text(result,"error")+"\r\n详细报告："+Store.Resolve("data/setup/environment-report.json"));
-            return "运行文件检查通过。请阅读使用须知与 TTS 许可；Harness 可独立执行 MCP 自检。\r\n详细报告："+Store.Resolve("data/setup/environment-report.json");
+            return "运行文件检查通过。Harness 可独立执行 MCP 自检。\r\n详细报告："+Store.Resolve("data/setup/environment-report.json");
         }
         internal async Task<string> PrepareEngine(string engine="current"){
             if(State.Read().offline)throw new InvalidOperationException("严格离线已开启，请展开本地安装，导入引擎包或定位已有引擎。");
@@ -109,7 +134,7 @@ namespace AgentVoice {
                 string saved;bool verified=p.setupStates.TryGetValue("mcp:"+source,out saved)&&saved=="verified";
                 lines.Add(source+"："+(verified&&Json.Text(r,"state")=="tools-read"?"MCP 自检已通过；客户端在线":Json.Text(r,"message")));
             }catch(Exception error){lines.Add(source+"：尚未通过 MCP 自检（"+error.Message+"）");}
-            return Resources()+"\r\n\r\n"+string.Join("\r\n",lines)+"\r\n\r\n配置流程不选择参考声音、不生成试听。声音可用性与 AIRI 联动需单独配置；须知不替代授权或法律审查。";
+            return Resources()+"\r\n\r\n"+string.Join("\r\n",lines)+"\r\n\r\n配置流程不选择参考声音、不生成试听。声音可用性与 AIRI 联动可在工作台继续配置。";
         }
     }
 }

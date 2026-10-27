@@ -219,8 +219,8 @@ class Handler(BaseHTTPRequestHandler):
                     self.server.jobs.protect(target)
                     try:audio=target.read_bytes()
                     finally:self.server.jobs.release(target)
-                from aigc import label_wav_bytes
-                return self.reply(200,label_wav_bytes(audio),"audio/wav")
+                from audio_policy import wav_response
+                return self.reply(200,wav_response(audio),"audio/wav")
             return self.reply(404,{"error":{"message":"接口不存在"}})
         except FileNotFoundError:self.reply(404,{"error":{"message":"音频已被清理"}})
         except (ValueError,KeyError) as exc:self.reply(400,{"error":{"message":str(exc)}})
@@ -327,9 +327,9 @@ class Handler(BaseHTTPRequestHandler):
                 ident=data.get('jobId')
                 with self.server.jobs.lock:
                     old=self.server.jobs.get(ident)
-                    if old['state']!='completed':raise ValueError('请先生成完成，再导出用于分享')
-                    original=self.server.jobs.jobs[ident]
-                    result=self.server.jobs.submit('以下音频由人工智能合成。','share-export',False,voice=original['voice'],share_original=old['result']['file'])
+                    if old['state']!='completed':raise ValueError('请先生成完成，再导出音频')
+                    if not (self.server.jobs.output/old['result']['file']).is_file():raise ValueError('音频已被清理，请重新生成')
+                    result={'ok':True,'jobId':ident,'unchangedAudio':True}
                 return self.reply(200,result)
             if path in ("/speak","/v1/audio/speech"):
                 voice=None
@@ -354,8 +354,8 @@ class Handler(BaseHTTPRequestHandler):
                         import io,wave
                         buffer=io.BytesIO()
                         with wave.open(buffer,"wb") as wav:wav.setparams((1,2,24000,0,"NONE",""));wav.writeframes(b"\0\0"*2400)
-                        from aigc import label_wav_bytes
-                        return self.reply(200,label_wav_bytes(buffer.getvalue()),"audio/wav")
+                        from audio_policy import wav_response
+                        return self.reply(200,wav_response(buffer.getvalue()),"audio/wav")
                     job=self.server.jobs.jobs[result["jobId"]]
                     from audio_limits import MAX_JOB_SECONDS
                     if not job["done"].wait(MAX_JOB_SECONDS):raise RuntimeError("语音生成超时")
@@ -373,10 +373,10 @@ class Handler(BaseHTTPRequestHandler):
                         command=[str(ffmpeg),"-hide_banner","-loglevel","error","-i","pipe:0","-f","mp3","pipe:1"]
                         conversion=subprocess.run(command,input=audio,stdout=subprocess.PIPE,stderr=subprocess.PIPE,**hidden_process())
                         if conversion.returncode:raise RuntimeError("MP3 编码失败")
-                        from aigc import label_mp3,read_wav_bytes,metadata
-                        return self.reply(200,label_mp3(conversion.stdout,read_wav_bytes(audio) or metadata()),"audio/mpeg")
-                    from aigc import label_wav_bytes
-                    return self.reply(200,label_wav_bytes(audio),"audio/wav")
+                        from audio_policy import mp3_response
+                        return self.reply(200,mp3_response(conversion.stdout,audio),"audio/mpeg")
+                    from audio_policy import wav_response
+                    return self.reply(200,wav_response(audio),"audio/wav")
                 with self.server.api_lock:result=self.server.jobs.submit(data.get("text"),str(data.get("source","manual")),data.get("play") is True,data.get("eventId"))
                 return self.reply(200,result)
             return self.reply(404,{"error":{"message":"接口不存在"}})
@@ -393,7 +393,7 @@ def main():
 
 def serve(root):
     store=Store(root);server=Server(store)
-    print("Public voice service listening on 127.0.0.1:"+str(store.get()["port"]),flush=True)
+    print("Agent Voice service listening on 127.0.0.1:"+str(store.get()["port"]),flush=True)
     try:server.serve_forever()
     finally:server.stopping.set();server.codex.close();server.jobs.close();server.server_close()
 

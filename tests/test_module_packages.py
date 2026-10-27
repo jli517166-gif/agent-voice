@@ -12,11 +12,6 @@ class ModulePackageTests(unittest.TestCase):
         path=self.root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(content);return path
     def manifest(self,file):
         with zipfile.ZipFile(file) as archive:return json.loads(archive.read('manifest.json')),archive.namelist()
-    def test_application_ships_stock_art_provenance_with_license_notices(self):
-        for name in ['agent语音.exe','service/server.py','tools/tool.py','integrations/connector.mjs','docs/guide.md','.agents/plugin.json','assets/README.md']:
-            self.put(name)
-        output=self.root/'with-notices.zip';application_package(self.root,output)
-        with zipfile.ZipFile(output) as archive:self.assertIn('Agent语音/assets/README.md',archive.namelist())
     def test_engine_and_environment_have_disjoint_resources_and_no_voice(self):
         for name in ['tts-engines/cosyvoice/source/cosyvoice/cli/cosyvoice.py','tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B/llm.pt','tts-engines/cosyvoice/runtime/tools/python.exe','runtime/core/python.exe','tools/ffmpeg.exe','tools/ffprobe.exe','voices/private.wav','data/settings.json']:self.put(name)
         a=self.root/'cosyvoice.ttsengine';b=self.root/'offline.ttsenvironment';engine_package(self.root,'cosyvoice',a);environment_package(self.root,['cosyvoice'],b)
@@ -62,5 +57,34 @@ class ModulePackageTests(unittest.TestCase):
         self.assertTrue(all(n=='manifest.json' or n.startswith('payload/modules/voice-packages/') for n in names))
         self.put('modules/voice-packages/reference.wav')
         with self.assertRaisesRegex(ValueError,'录音'):feature_package(self.root,self.root/'audio.avmodule')
+
+    def test_private_archive_has_distinct_installation_root_and_no_agent_instructions(self):
+        self.put('agent语音.exe');self.put('AGENTS.md',b'local maintenance only')
+        for folder in ('service','tools','integrations','docs','.agents'):(self.root/folder).mkdir()
+        output=self.root/'private.zip';application_package(self.root,output,'Agent语音-私用版')
+        with zipfile.ZipFile(output) as z:
+            self.assertIn('Agent语音-私用版/agent语音.exe',z.namelist())
+            self.assertFalse(any(n.startswith('Agent语音/') or n.endswith('/AGENTS.md') for n in z.namelist()))
+        with self.assertRaisesRegex(ValueError,'解压目录'):application_package(self.root,self.root/'bad.zip','../outside')
+
+    def test_application_keeps_user_manuals_and_separates_development_audits(self):
+        self.put('agent语音.exe')
+        for folder in ('service','tools','integrations','docs','.agents'):(self.root/folder).mkdir(exist_ok=True)
+        for name in ('安装手册.md','高级CosyVoice训练手册.md','docs/licenses/LICENSE.txt','docs/legal-components.json',
+                     'docs/维护收尾-20261023.md','docs/Codex语言控制验收.md','私用版使用与维护.md'):
+            self.put(name,name.encode('utf-8'))
+        self.put('安装手册.md','安装步骤；[验收记录](docs/维护收尾-20261023.md)；[训练](高级CosyVoice训练手册.md)。'.encode('utf-8'))
+        report=self.root/'audit'
+        output=self.root/'clean.zip';application_package(self.root,output,audit_directory=report)
+        with zipfile.ZipFile(output) as z:
+            names=z.namelist();manual=z.read('Agent语音/安装手册.md').decode('utf-8')
+        self.assertNotIn('](docs/维护收尾-20261023.md)',manual)
+        self.assertIn('验收记录',manual)
+        self.assertIn('](高级CosyVoice训练手册.md)',manual)
+        for name in ('安装手册.md','高级CosyVoice训练手册.md','docs/licenses/LICENSE.txt','docs/legal-components.json'):
+            self.assertIn('Agent语音/'+name,names)
+        for name in ('docs/维护收尾-20261023.md','docs/Codex语言控制验收.md','私用版使用与维护.md'):
+            self.assertNotIn('Agent语音/'+name,names)
+            self.assertEqual((report/name).read_bytes(),(self.root/name).read_bytes())
 
 if __name__=='__main__':unittest.main()

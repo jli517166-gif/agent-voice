@@ -34,6 +34,9 @@ namespace AgentVoice {
             body.Text="草稿保持不变";var ids=pages.Keys.ToArray();for(int i=0;i<120;i++){ShowPage(ids[i%ids.Length]);Application.DoEvents();}if(CountControls(this)!=before||body.Text!="草稿保持不变")errors.Add("Page switching lost controls or draft");
             if(pages.ContainsKey("profiles")||pages.ContainsKey("outputMode"))errors.Add("Removed processing page still exists");
             if(!HarnessNeedsDesktop(new Dictionary<string,object>{{"manualRequired",true}})||HarnessNeedsDesktop(new Dictionary<string,object>{{"ok",true}}))errors.Add("Harness desktop-account verification state is not parsed correctly");
+            ShowPage("settings");var noticesTab=FindButton(this,"须知与许可");
+            if(noticesTab==null)errors.Add("Optional notices tab missing from settings");else{noticesTab.PerformClick();Application.DoEvents();foreach(string label in new[]{"阅读须知","查看许可","训练说明","隐私说明"}){var entry=FindButton(this,label);if(entry==null||!entry.Visible)errors.Add("Optional notice entry missing or hidden: "+label);}}
+            if(FindButton(this,"我已阅读须知")!=null)errors.Add("Workspace retained a mandatory notice acknowledgement");
             int stopClicks=0;ShowBusy("长文生成验收");busyOverlay.SetStopAction(()=>stopClicks++);busyOverlay.SetStopAction(()=>stopClicks++);
             var overlayStops=busyOverlay.Controls.OfType<System.Windows.Forms.Button>().Where(button=>button.Text=="停止朗读").ToArray();
             if(busyOverlay.Controls.OfType<System.Windows.Forms.Button>().Any(button=>button.Text!="停止朗读"&&button.Visible))errors.Add("Idle overlay exposed download controls");

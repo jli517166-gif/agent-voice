@@ -93,6 +93,24 @@ class McpSelfcheckTests(unittest.TestCase):
         self.assertTrue(result['passed'])
         self.assertFalse(result['audioTested'])
 
+    def test_loaded_host_reports_connected_on_normal_refresh(self):
+        with patch.object(install_mcp, 'find_codex', return_value='codex'), patch.object(mcp_selfcheck, 'codex_configuration'), \
+             patch('mcp_presence.connected_clients', return_value=[{'toolCount': 8}]):
+            result = install_mcp.inspect('codex', self.store.root)
+        self.assertEqual(result['state'], 'tools-read')
+        self.assertTrue(result['clientLoaded'])
+        self.assertTrue(result['installationPassed'])
+        self.assertNotIn('protocolPassed', result)
+
+    def test_waiting_for_client_is_pending_not_installation_error(self):
+        with patch.object(install_mcp, 'find_codex', return_value='codex'), patch.object(mcp_selfcheck, 'codex_configuration'), \
+             patch('mcp_presence.connected_clients', return_value=[]):
+            result = install_mcp.inspect('codex', self.store.root)
+        self.assertTrue(result['ok'])
+        self.assertTrue(result['installationPassed'])
+        self.assertEqual(result['state'], 'awaiting-client')
+        self.assertFalse(result['clientLoaded'])
+
 
 if __name__ == '__main__':
     unittest.main()

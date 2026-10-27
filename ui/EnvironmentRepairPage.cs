@@ -42,10 +42,17 @@ namespace AgentVoice {
             var card=SettingsCard("environmentRepair","检查与补齐环境");
             Add(card,Hint("先检查缺少的运行环境、依赖、源码和基础模型，再只补缺项。补齐结束前会实际加载模型并生成验证音频，只有真实合成通过才会显示成功。下载、安装、缓存和报告都保存在软件内；不会向外部 Python 安装库，也不会替换已有音色权重。补齐前请关闭语音服务。"));
             repairScope=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Name="repairScope"};repairScope.Items.AddRange(new object[]{"当前引擎与主服务","仅主服务","CosyVoice 与主服务","GPT 两版与主服务","全部环境"});repairScope.SelectedIndex=0;Add(card,repairScope);
+            Add(card,Row(AsyncBtn("查看匹配资源与下载位置",async()=>{var flow=new SetupWorkflow(Store);repairDetails.Text=await flow.InspectResources(new[]{"current","core","cosyvoice","gpt-sovits","all"}[repairScope.SelectedIndex]);}),AsyncBtn("下载匹配引擎文件",async()=>{
+                string scope=new[]{"current","core","cosyvoice","gpt-sovits","all"}[repairScope.SelectedIndex];
+                if(scope=="core"){repairDetails.Text="仅主服务不需要下载 TTS 基础模型，请选择补齐缺失环境。";return;}
+                var flow=new SetupWorkflow(Store);flow.Report=BusyStatus;
+                if(scope=="all"){await flow.PrepareEngine("cosyvoice");await flow.PrepareEngine("gpt-sovits");}else await flow.PrepareEngine(scope);
+                Config=Store.Read();BindSettings();repairDetails.Text=await flow.InspectResources(scope);
+            })));
             Add(card,Row(Primary(AsyncBtn("检查缺少什么",async()=>await RepairEnvironment(false))),AsyncBtn("补齐缺失环境",async()=>await RepairEnvironment(true)),EntryBtn("打开修复报告","查看下载进度、详细安装日志和设置备份。",()=>{string p=Store.Resolve("data/environment-repair");Directory.CreateDirectory(p);ServiceClient.Open(p);}),EntryBtn("安装说明","查看目录、系统组件和失败恢复方法。",()=>ServiceClient.Open(Store.Resolve("环境补齐说明.md")))));
             Add(card,Row(AsyncBtn("运行换机语音链路验收",RunTargetAcceptance),EntryBtn("打开验收报告","查看三种 TTS、长文、停止恢复、Harness 与 AIRI 的本机结果。",()=>{string p=Store.Resolve("data/target-acceptance");Directory.CreateDirectory(p);ServiceClient.Open(p);})));
             repairDetails=new TextBox{Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Vertical,Height=280,Name="environmentRepairResult"};Add(card,repairDetails);
-            Add(card,Hint("“换机语音链路验收”会依次切换三种 TTS、生成短句和长文、停止任务后再次生成，并在 AIRI 已启用且在线时验证桌宠真实播放；结束后恢复原声音和服务状态。Harness 仍必须从连接页面完成随机短句与实际播放验证，不会用环境检查冒充接入成功。"));
+            Add(card,Hint("“换机语音链路验收”会依次切换三种 TTS、生成短句和长文、停止任务后再次生成，并在 AIRI 已启用且在线时验证桌宠真实播放；结束后恢复原声音和服务状态。Harness 在连接页单独检查 MCP 安装、启用、协议和客户端工具回执；环境检查不代表 MCP 已加载。"));
             Add(card,Hint("显卡驱动、系统 VC++／.NET 组件不能放在软件目录里代替系统安装；检测到这类问题会给出手动步骤。下载可能达到数 GB，等待期间显示当前阶段，失败后可查看日志并重试。环境检查通过后仍需实际生成试听。"));
         }
         async Task<Dictionary<string,object>> WaitAcceptanceJob(string id,bool cancelledAllowed=false){
@@ -77,7 +84,7 @@ namespace AgentVoice {
                 var health=await Service.Request("/health");bool airiEnabled=original.airi.enabled,airiOnline=Convert.ToBoolean(health["airiConnected"]);
                 if(airiEnabled&&airiOnline){var verify=await Service.Request("/api/verify/airi",new{});verificationIds["airi"]=Json.Text(verify,"id");await WaitForAiriVerification();checksResult.Add(new{check="airi-real-playback",ok=true});}
                 else checksResult.Add(new{check="airi-real-playback",ok=false,requiredAction=airiEnabled?"打开已接入的 AIRI 后重新运行验收":"在连接设备中手动启用并验证 AIRI；AIRI 是可选功能"});
-                object rawVerification;var verification=health.TryGetValue("verification",out rawVerification)?rawVerification:null;checksResult.Add(new{check="harness-verification",automatic=false,states=verification,requiredAction="在连接设备中分别完成随机短句、连接器回执和实际播放验证"});
+                object rawVerification;var verification=health.TryGetValue("verification",out rawVerification)?rawVerification:null;checksResult.Add(new{check="harness-verification",automatic=false,states=verification,requiredAction="在连接页面运行 MCP 自检，核对协议与当前客户端加载回执"});
             }catch(Exception error){failure=error;checksResult.Add(new{check="failed",ok=false,error=error.Message});}
             Exception restoreFailure=null;bool runningNow=false;
             try{runningNow=await Service.Running();}catch(Exception error){restoreFailure=error;}
@@ -89,7 +96,7 @@ namespace AgentVoice {
             Config=Store.Read();BindVoice();File.WriteAllText(reportPath,Json.Encode(new{createdAt=DateTimeOffset.Now.ToString("o"),status=failure==null?"completed":"failed",computer=Environment.MachineName,scope="tts-longtext-stop-recovery-and-optional-airi",ttsOk=failure==null,externalConnectionsRequireSeparateVerification=true,checks=checksResult}),Encoding.UTF8);
             repairDetails.Text="换机验收报告："+reportPath+"\r\n\r\n"+string.Join("\r\n",checksResult.Select(Json.Encode).ToArray());
             if(failure!=null)throw new InvalidOperationException("换机验收未通过，已把失败步骤写入报告："+failure.Message,failure);
-            Status("三种 TTS、长文与停止恢复已经通过；Harness 必须在连接页面完成真实回复验证，AIRI 未启用时保持可选。");
+            Status("三种 TTS、长文与停止恢复已经通过；Harness 必须在连接页面完成 MCP 自检，AIRI 未启用时保持可选。");
         }
         async Task RepairEnvironment(bool repair){
             string scope=new[]{"current","core","cosyvoice","gpt-sovits","all"}[repairScope.SelectedIndex];

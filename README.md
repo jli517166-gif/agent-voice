@@ -11,24 +11,25 @@ Agent Voice 是 Windows 本地语音服务与桌面控制台，连接 Codex、De
 - 自动朗读按完整句子排队，支持停止、取消及失败恢复。
 - MCP 提供服务启停、朗读控制、状态查询和声音方案切换。
 - AIRI 可接收语音并同步嘴型；不开启联动也可使用本机播放。
-- 首次配置引导安装引擎与运行环境，支持联网准备和离线资源安装。
+- 首次配置按需准备引擎与环境，各步骤可跳过，支持联网准备和离线资源安装。
+- 使用须知、开源许可和适用范围集中在“设置 → 须知与许可”，按需阅读，不拦截配置与朗读。
 - 软件更新支持联网检查、本地更新包、逐文件校验与失败回退。
 - 支持自定义配色、背景、图标与等待动画。
 
 ## 安装
 
-**直接下载程序：** [Windows x64 维护预览版](https://github.com/jli517166-gif/agent-voice/releases/tag/v0.1.1-preview.4)。无需自行编译；先阅读 [下载与首次使用](下载与首次使用.md)，准备配套引擎和环境。若仓库访问受限，附件仅对有访问权限的账户可见。
+**直接下载程序：** [Windows x64 维护预览版](https://github.com/jli517166-gif/agent-voice/releases/tag/v0.2.0-preview.1)。无需自行编译；先阅读 [下载与首次使用](下载与首次使用.md)，准备配套引擎和环境。若仓库访问受限，附件仅对有访问权限的账户可见。
 
 需要 Windows 10／11 64 位、.NET Framework 4.8，以及适配的 NVIDIA 显卡和驱动。具体显存、磁盘和依赖要求取决于所选引擎。
 
 **源码仓库及软件本体不包含 CosyVoice、GPT-SoVITS、Python 环境、预训练权重或参考录音。** 引擎和环境需要另行准备。普通使用者下载 Release 中的软件 ZIP；以下命令面向需要从源码构建的开发者。
 
-公开开发基线为 `integration/native-design-20261019`：
+开发主线为 `main`：
 
 ```powershell
 git clone https://github.com/jli517166-gif/agent-voice.git
 cd agent-voice
-git switch integration/native-design-20261019
+git switch main
 powershell -File .\build.ps1
 ```
 

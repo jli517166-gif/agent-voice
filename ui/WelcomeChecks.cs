@@ -31,12 +31,10 @@ namespace AgentVoice {
                     wizard.ShowInTaskbar=false;wizard.StartPosition=FormStartPosition.Manual;wizard.Location=new Point(-32000,-32000);wizard.Show();Application.DoEvents();
                     if(Application.OpenForms.Cast<Form>().Any(f=>f is MainForm))errors.Add("Workspace constructed before onboarding finished");
                     if(wizard.PageCount!=10||wizard.Controls.Find("nav_home",true).Length>0)errors.Add("First-boot workflow mixed with workspace navigation");
-                    wizard.Go(5,false);if(wizard.Next.Enabled||wizard.Skip.Visible)errors.Add("Native legal step can continue before reading");
-                    All(wizard).OfType<AnimeButton>().First(b=>b.Text=="我已阅读须知").PerformClick();
-                    if(!wizard.Flow.LegalAccepted||!wizard.Next.Enabled)errors.Add("Native legal acknowledgement did not unlock next");
+                    wizard.Go(5,false);if(wizard.Step!=1||!wizard.Next.Enabled)errors.Add("Native setup did not migrate removed legal page");
                     foreach(var size in new[]{new Size(1120,780),new Size(900,640),new Size(1440,900)}){
                         wizard.ClientSize=size;
-                        for(int step=0;step<10;step++){
+                        foreach(int step in SetupWorkflow.PageOrder){
                             wizard.Go(step,false);Application.DoEvents();foreach(var title in wizard.Controls.Find("onboardingTitle_"+step,true).OfType<WizardTitle>())title.Preview();
                             if(wizard.Step!=step||wizard.VisiblePageCount!=1||wizard.RunningArtCount>1)errors.Add("Multiple steps or timers visible: "+step);
                             foreach(var c in new Control[]{wizard.Next,wizard.Back,wizard.Later,wizard.Skip,wizard.Motion,wizard.Sound}.Where(c=>c.Visible)){
@@ -56,8 +54,8 @@ namespace AgentVoice {
                     wizard.Sound.Checked=false;if(state.Read().interfaceSounds)errors.Add("Sound setting not persisted");
                     wizard.Later.PerformClick();if(SetupWizard.NeedsSetup(state.Read())||!state.Read().onboardingDeferred||state.Read().onboardingComplete)errors.Add("Explicit defer semantics invalid");
                 }
-                var p2=state.Read();p2.onboardingDeferred=false;p2.onboardingComplete=false;p2.onboardingStep=6;state.Write(p2);
-                using(var resumed=new SetupWizard(fixture,true)){if(resumed.Step!=6)errors.Add("Closing interrupted setup loses step");resumed.Dispose();}
+                var p2=state.Read();p2.onboardingDeferred=false;p2.onboardingComplete=false;p2.onboardingStep=7;state.Write(p2);
+                using(var resumed=new SetupWizard(fixture,true)){if(resumed.Step!=7)errors.Add("Closing interrupted setup loses step");resumed.Dispose();}
                 if(!SetupWizard.NeedsSetup(state.Read()))errors.Add("Interrupted setup marked as finished");
                 fixture.Write(settings);before=File.ReadAllText(fixture.FilePath);
                 using(var completed=new SetupWizard(fixture,true)){completed.Go(9,false);completed.Finish(false);}
@@ -76,7 +74,7 @@ namespace AgentVoice {
                 }
                 if(InterfaceSounds.Allowed(true,true,false)||InterfaceSounds.Allowed(true,false,true)||InterfaceSounds.Allowed(false,false,false)||!InterfaceSounds.Allowed(true,false,false))errors.Add("Interface sound overlap policy invalid");
             }catch(Exception e){errors.Add(e.ToString());}
-            File.WriteAllText(Path.Combine(directory,"welcome-results.json"),Json.Encode(new{ok=errors.Count==0,independentFirstBoot=true,steps=10,layouts=3,transitionMs=480,illustrationMs=960,reducedMotion=true,errors=errors}));return errors.Count==0?0:1;
+            File.WriteAllText(Path.Combine(directory,"welcome-results.json"),Json.Encode(new{ok=errors.Count==0,independentFirstBoot=true,steps=SetupWorkflow.PageOrder.Length,layouts=3,transitionMs=480,illustrationMs=960,reducedMotion=true,errors=errors}));return errors.Count==0?0:1;
         }
     }
 }

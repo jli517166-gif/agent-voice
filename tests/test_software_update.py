@@ -2,6 +2,7 @@ import hashlib
 import json
 import sys
 import tempfile
+from support_temp import TemporaryDirectory
 import unittest
 import zipfile
 from pathlib import Path
@@ -13,7 +14,7 @@ import software_update as update
 
 class SoftwareUpdateTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
+        self.temp = TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name) / 'app'
         self.root.mkdir()

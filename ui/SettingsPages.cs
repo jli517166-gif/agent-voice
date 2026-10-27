@@ -12,27 +12,27 @@ namespace AgentVoice {
         void BuildSettings(){
             var page=WebPage("settings");
             WebTitle(page,"设置","需要时再展开，常用操作留在前台。");
-            var tabNames=new[]{"引擎与环境","声音","外观","存储"};
-            var tabWidths=new[]{130,76,76,76};
-            var tabX=new[]{38,176,260,344};
-            var tabs=new Button[4];
-            var panels=new ScenePanel[4];
+            var tabNames=new[]{"引擎与环境","声音","外观","存储","须知与许可"};
+            var tabWidths=new[]{130,76,76,76,130};
+            var tabX=new[]{38,176,260,344,428};
+            var tabs=new Button[5];
+            var panels=new ScenePanel[5];
             Action<int> select=null;
             select=delegate(int index){
-                for(int i=0;i<4;i++){
+                for(int i=0;i<tabNames.Length;i++){
                     panels[i].Visible=i==index;
                     tabs[i].Tag=i==index?"primary":"secondary";
                     if(!Accent.IsEmpty)StyleButton(tabs[i],false);
                 }
             };
-            for(int i=0;i<4;i++){
+            for(int i=0;i<tabNames.Length;i++){
                 int index=i;
                 tabs[i]=WebButton(tabNames[i],null,()=>select(index),tabX[i],126,tabWidths[i],30,false);
                 tabs[i].Tag=index==0?"primary":"secondary";
                 page.Controls.Add(tabs[i]);
             }
             WebDivider(page,38,160,902);
-            for(int i=0;i<4;i++){
+            for(int i=0;i<tabNames.Length;i++){
                 panels[i]=new ScenePanel{Host=this,Location=new Point(38,181),Size=new Size(902,440),Margin=new Padding(0)};
                 page.Controls.Add(panels[i]);
             }
@@ -56,6 +56,12 @@ namespace AgentVoice {
             SettingsLine(storageCard,2,"程序数据目录","settings.json、日志和生成音频的位置。","打开数据",()=>ServiceClient.Open(Store.Resolve("data")));
             SettingsLine(storageCard,3,"隐私与连接","自动朗读范围、数据保留、脱敏报告与撤销连接。","打开隐私",()=>ShowPage("privacy"));
             panels[3].Controls.Add(WebText("清理会保护生成或播放中的文件；可选功能在模块页单独安装。",8.8F,FontStyle.Regular,0,332,902,20,ContentAlignment.MiddleLeft));
+            var noticesCard=WebCard(panels[4],0,0,902,320);
+            SettingsLine(noticesCard,0,"使用须知","了解素材授权、使用范围与生成内容的注意事项。","阅读须知",()=>ServiceClient.Open(Store.Resolve("docs/使用须知与TTS许可.md")));
+            SettingsLine(noticesCard,1,"开源与 TTS 许可","查看程序、引擎与模型各自的许可和使用范围。","查看许可",()=>ServiceClient.Open(Store.Resolve("THIRD_PARTY_NOTICES.md")));
+            SettingsLine(noticesCard,2,"训练与分享","准备素材、训练和分享前，按需要阅读相关说明。","训练说明",()=>ServiceClient.Open(Store.Resolve("音色训练从零开始.md")));
+            SettingsLine(noticesCard,3,"本地数据与隐私","了解自动朗读范围、记录保存和连接认证。","隐私说明",()=>ServiceClient.Open(Store.Resolve("docs/本地数据与隐私.md")));
+            panels[4].Controls.Add(WebText("以上说明可随时查阅，不要求勾选或确认，也不拦截首次配置与朗读。第三方许可和适用规则仍需自行核对。",8.8F,FontStyle.Regular,0,332,902,48,ContentAlignment.TopLeft));
             select(0);
             BuildAppearance();BuildEngines();BuildEnvironmentRepair();BuildUpdates();BuildHarness();BuildAiri();BuildConnectionHub();BuildAdvanced();BuildCleanup();BuildPrivacy();BuildModules();BuildTraining();BuildAdvancedTraining();
         }

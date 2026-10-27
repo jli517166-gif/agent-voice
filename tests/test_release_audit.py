@@ -1,4 +1,5 @@
-import csv,importlib.util,io,json,os,subprocess,sys,tempfile,time,unittest,wave
+import csv,importlib.util,io,json,os,subprocess,sys,tempfile,unittest,wave
+from support_temp import TemporaryDirectory
 from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'service'))
@@ -7,16 +8,6 @@ from operation_lock import OperationLock
 from bounded_logs import BoundedLog,pump
 from prepare_training import validate_dataset,prepare,train_repo
 import test_tts_bundle as fixtures
-
-class LogDirectory(tempfile.TemporaryDirectory):
- def cleanup(self):
-  # Windows scanners can briefly retain a deleted rotating-log directory.
-  # Retry only ERROR_DIR_NOT_EMPTY; other cleanup errors remain failures.
-  for attempt in range(5):
-   try:return super().cleanup()
-   except OSError as error:
-    if getattr(error,'winerror',None)!=145 or attempt==4:raise
-    time.sleep(.1*(attempt+1))
 
 class ImportDedupTests(unittest.TestCase):
  def setUp(self):fixtures.TtsBundleTests.setUp(self)
@@ -37,7 +28,7 @@ class ImportDedupTests(unittest.TestCase):
 
 class LockAndLogTests(unittest.TestCase):
  def test_log_write_failure_never_recurses_into_redirected_stderr(self):
-  with tempfile.TemporaryDirectory() as tmp:
+  with TemporaryDirectory() as tmp:
    path=Path(tmp)/'failed.log';sink=BoundedLog(path);sink.handler.stream.close();sink.handler.stream=path.open('r',encoding='utf-8')
    with patch('sys.stderr',sink):sink.write('disk failure')
    self.assertIsNotNone(sink.error);sink.close()
@@ -55,18 +46,18 @@ class LockAndLogTests(unittest.TestCase):
   from pipeline import Pipeline
   from state import Store
   from unittest.mock import Mock
-  with tempfile.TemporaryDirectory() as tmp:
+  with TemporaryDirectory() as tmp:
    p=Pipeline(Store(tmp));p.loaded=True;p.adapter=Mock();p.adapter.alive.return_value=False
    def during_close():self.assertIsNone(p.snapshot(p.store.get()['voice'])['error'])
    p.adapter.close.side_effect=during_close;p.close()
  def test_lock_excludes_second_process_and_releases(self):
-  with tempfile.TemporaryDirectory() as tmp:
+  with TemporaryDirectory() as tmp:
    script='import sys;sys.path.insert(0,sys.argv[1]);from operation_lock import OperationLock;g=OperationLock(sys.argv[2]);g.__enter__();g.__exit__()'
    command=[sys.executable,'-c',script,str(Path(__file__).resolve().parents[1]/'service'),tmp]
    with OperationLock(tmp):self.assertNotEqual(subprocess.run(command,capture_output=True).returncode,0)
    self.assertEqual(subprocess.run(command,capture_output=True).returncode,0)
  def test_log_size_and_unicode_pump(self):
-  with LogDirectory() as tmp:
+  with TemporaryDirectory() as tmp:
    p=Path(tmp)/'service.log';sink=BoundedLog(p,max_bytes=2048,backups=2)
    for _ in range(100):sink.write('中文日志'*80+'\n')
    sink.close();records=[(f.name,f.stat().st_size) for f in Path(tmp).iterdir()];self.assertLessEqual(len(records),3,records);self.assertLess(sum(size for _,size in records),6144,records)
@@ -75,7 +66,7 @@ class LockAndLogTests(unittest.TestCase):
 class TrainingDataTests(unittest.TestCase):
  def setUp(self):
   import numpy as np,soundfile as sf
-  self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name).resolve()/'audio';self.root.mkdir();self.rows=[]
+  self.temp=TemporaryDirectory();self.root=Path(self.temp.name).resolve()/'audio';self.root.mkdir();self.rows=[]
   for n in range(12):
    name=str(n)+'.wav';sf.write(self.root/name,.1*np.sin(np.arange(24000)*(200+n*31)/24000*2*np.pi),24000);self.rows.append({'file':name,'text':'第%s条素材。'%n,'speaker':'角色','split':''})
   self.write()

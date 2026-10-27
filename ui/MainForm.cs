@@ -141,18 +141,20 @@ namespace AgentVoice {
         }
         void UpdateHarnessIndicators(Dictionary<string,object> states,bool online){
             harnessStates=states;harnessOnline=online;
-            var active=new List<string>();
+            var active=new List<string>();var details=new List<string>();
             foreach(var pair in harnessIndicators){
                 object raw=null;var item=states!=null&&states.TryGetValue(pair.Key,out raw)?raw as Dictionary<string,object>:null;
                 bool enabled=Config.harness.ContainsKey(pair.Key)&&Config.harness[pair.Key];
                 string state=!enabled?"disabled":!online?"offline":item==null?"waiting":Json.Text(item,"state");
                 string text=state=="verified"?"实际朗读验证通过":state=="connected"?"连接器在线":state=="recent_event"?"近期收到回复":state=="monitoring"?"监听就绪":state=="disabled"?"未启用":state=="offline"?"服务关闭":"等待接入";
                 bool green=mcpPassed.ContainsKey(pair.Key)&&mcpPassed[pair.Key];
-                text=green?"MCP 自检通过 · 自动朗读"+(enabled?"已启用":"关闭"):"MCP 尚未通过自检 · "+text;
+                string mcpDetail;mcpMessages.TryGetValue(pair.Key,out mcpDetail);
+                text=(green?"MCP 自检通过":!string.IsNullOrEmpty(mcpDetail)?mcpDetail:"MCP 正在检查")+" · 自动朗读"+(enabled?"已启用":"关闭");
                 foreach(var label in pair.Value){label.Text=Convert.ToString(label.Tag)+" · "+text;label.ForeColor=green?(BackColor.GetBrightness()<.4F?Color.LightGreen:Color.FromArgb(25,128,72)):ForeColor;label.AccessibleDescription=text;}
-                if(green)active.Add(Convert.ToString(pair.Value[0].Tag));
+                string name=Convert.ToString(pair.Value[0].Tag);details.Add(name+"："+text);
+                if(green)active.Add(name);
             }
-            if(harnessSummary!=null){harnessSummary.Text=active.Count==0?"Harness：等待接入":"已验证接入："+string.Join("、",active);harnessSummary.AccessibleDescription=string.Join("\r\n",harnessIndicators.Values.Where(labels=>labels.Count>0).Select(labels=>labels[0].Text));tips.SetToolTip(harnessSummary,harnessSummary.AccessibleDescription);harnessSummary.ForeColor=active.Count>0?(BackColor.GetBrightness()<.4F?Color.LightGreen:Color.FromArgb(25,128,72)):ForeColor;}
+            if(harnessSummary!=null){harnessSummary.Text=active.Count==0?"Harness：等待接入":"已验证接入："+string.Join("、",active);harnessSummary.AccessibleDescription=string.Join("\r\n",details);tips.SetToolTip(harnessSummary,harnessSummary.AccessibleDescription);harnessSummary.ForeColor=active.Count>0?(BackColor.GetBrightness()<.4F?Color.LightGreen:Color.FromArgb(25,128,72)):ForeColor;}
             SyncAutoRead();
         }
         TextBox Input(bool multiline=false){return new TextBox{BorderStyle=BorderStyle.FixedSingle,Multiline=multiline,Height=multiline?78:30,MinimumSize=new Size(100,multiline?78:28),ScrollBars=multiline?ScrollBars.Vertical:ScrollBars.None};}
@@ -177,7 +179,7 @@ namespace AgentVoice {
             quickVoice=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=330,AccessibleName="快速选择已保存的声音方案"};quickVoice.SetBounds(16,40,314,28);voice.Controls.Add(quickVoice);
             var switchVoice=AsyncBtn("切换声音",ApplyQuickVoice);switchVoice.AutoSize=false;switchVoice.MinimumSize=Size.Empty;switchVoice.SetBounds(342,40,132,38);voice.Controls.Add(switchVoice);
             var adjust=EntryBtn("调整声音","选择引擎、模型和语速。",()=>ShowPage("voiceEditor"));adjust.AutoSize=false;adjust.MinimumSize=Size.Empty;adjust.SetBounds(482,40,132,38);voice.Controls.Add(adjust);
-            harnessSummary=Hint("Harness：服务关闭");harnessSummary.AutoSize=false;harnessSummary.AutoEllipsis=true;harnessSummary.TextAlign=ContentAlignment.MiddleLeft;harnessSummary.Font=new Font(Font.FontFamily,11F);harnessSummary.SetBounds(16,128,620,24);voice.Controls.Add(harnessSummary);
+            harnessSummary=Hint("Harness：服务关闭");harnessSummary.AutoSize=false;harnessSummary.AutoEllipsis=true;harnessSummary.UseMnemonic=false;harnessSummary.TextAlign=ContentAlignment.MiddleLeft;harnessSummary.Font=new Font(Font.FontFamily,11F);harnessSummary.SetBounds(16,128,620,24);voice.Controls.Add(harnessSummary);
             quickEngine=new ComboBox{Name="quickEngine",DropDownStyle=ComboBoxStyle.DropDownList,AccessibleName="快速选择 TTS 引擎"};quickEngine.Items.AddRange(EngineChoices);quickEngine.SetBounds(16,84,314,28);voice.Controls.Add(quickEngine);
             var changeEngine=AsyncBtn("切换引擎",async()=>await QuickSwitchEngine());changeEngine.Name="quickSwitchEngine";changeEngine.AutoSize=false;changeEngine.MinimumSize=Size.Empty;changeEngine.SetBounds(342,84,132,38);voice.Controls.Add(changeEngine);tips.SetToolTip(changeEngine,"切换并恢复该引擎上次的声音；服务运行时等待新模型就绪。");
             var speech=new ScenePanel{Name="speechEditorCard",Host=this,Card=true,Location=new Point(38,284),Size=new Size(658,176),Padding=new Padding(16,10,16,10)};home.Controls.Add(speech);
@@ -194,7 +196,7 @@ namespace AgentVoice {
             var deck=new ScenePanel{Name="speechActions",Host=this,Card=true,Location=new Point(0,560),Size=new Size(978,88),Padding=new Padding(16,10,16,10)};home.Controls.Add(deck);
             var stop=Btn("停止",async()=>await StopSpeech());stop.AutoSize=false;stop.MinimumSize=Size.Empty;stop.SetBounds(16,20,108,40);deck.Controls.Add(stop);
             playButton=LiveSpeechButton("重播上一条",PlayLast);playButton.AutoSize=false;playButton.MinimumSize=Size.Empty;playButton.SetBounds(132,20,160,40);deck.Controls.Add(playButton);
-            generate=Primary(LiveSpeechButton("生成并播放",async()=>await Generate(body.Text,true)));generate.AutoSize=false;generate.MinimumSize=Size.Empty;generate.SetBounds(788,20,150,40);deck.Controls.Add(generate);deck.Controls.Add(WebAsyncButton("导出用于分享","保留正文，加入开头 AI 提示和文件内标识。",ExportForSharing,310,20,166,40));deck.Controls.Add(WebText("AI 合成语音",8F,FontStyle.Regular,492,20,200,40));BuildVoiceEditor();BuildCosyReference();
+            generate=Primary(LiveSpeechButton("生成并播放",async()=>await Generate(body.Text,true)));generate.AutoSize=false;generate.MinimumSize=Size.Empty;generate.SetBounds(788,20,150,40);deck.Controls.Add(generate);deck.Controls.Add(WebAsyncButton("导出音频","直接保存已生成的原始音频。",ExportForSharing,310,20,166,40));BuildVoiceEditor();BuildCosyReference();
         }
         void BuildHome(){
             var home=NewPage("home");var stack=Stack(home);
@@ -251,7 +253,7 @@ namespace AgentVoice {
             voiceHint=WebText("当前引擎直接生成最终语音。",8F,FontStyle.Regular,16,122,870,42,ContentAlignment.TopLeft);
             reference.Controls.Add(voiceHint);
         }
-        void BuildCosyReference(){var stack=Stack(NewPage("cosyReference"));var card=Card(stack,"参考声音");Add(card,Hint("选择一段代表性的参考音频，并填写与录音逐字一致的台词。训练数据可以有很多段，但这里一次使用一段推理参考。"));PathField(card,"reference","参考音频（建议干净、单人、情绪稳定）","音频|*.wav;*.flac;*.mp3;*.m4a",false);Field(card,"referenceText","逐字台词（必须与录音一致）",true);Add(card,Row(Btn("导入台词",()=>{using(var dialog=new OpenFileDialog{Filter="台词文件|*.txt",CheckFileExists=true})if(dialog.ShowDialog(this)==DialogResult.OK)fields["referenceText"].Text=File.ReadAllText(dialog.FileName,System.Text.Encoding.UTF8);}),AsyncBtn("使用参考声音",async()=>{await SaveDraft();Status("参考声音已应用；之后的新任务会使用这段音频和台词。");}),Btn("返回首页",()=>ShowPage("home"))));Add(card,Row(Btn("记录素材来源与用途",()=>EditMaterialRights())));Add(card,Hint("只使用有权训练、生成和使用的录音与台词。来源记录保存在本机，不代表软件核验。"));Add(card,Hint("台词不一致可能造成漏字、错字、节奏异常或音色不稳定。"));}
+        void BuildCosyReference(){var stack=Stack(NewPage("cosyReference"));var card=Card(stack,"参考声音");Add(card,Hint("选择一段代表性的参考音频，并填写与录音逐字一致的台词。训练数据可以有很多段，但这里一次使用一段推理参考。"));PathField(card,"reference","参考音频（建议干净、单人、情绪稳定）","音频|*.wav;*.flac;*.mp3;*.m4a",false);Field(card,"referenceText","逐字台词（必须与录音一致）",true);Add(card,Row(Btn("导入台词",()=>{using(var dialog=new OpenFileDialog{Filter="台词文件|*.txt",CheckFileExists=true})if(dialog.ShowDialog(this)==DialogResult.OK)fields["referenceText"].Text=File.ReadAllText(dialog.FileName,System.Text.Encoding.UTF8);}),AsyncBtn("使用参考声音",async()=>{await SaveDraft();Status("参考声音已应用；之后的新任务会使用这段音频和台词。");}),Btn("返回首页",()=>ShowPage("home"))));Add(card,Hint("台词不一致可能造成漏字、错字、节奏异常或音色不稳定。"));}
         static string ShortName(string value){return string.IsNullOrEmpty(value)?value:(value.Length<=22?value:value.Substring(0,20)+"…");}
         async Task ApplyQuickVoice(){var item=quickVoice.SelectedItem as SavedVoice;if(item==null){Status("还没有声音方案。可在模块中导入音色，或在声音设置中应用并保存自己的声音。");return;}await ProfileOperation("apply",item.id,null);BindVoice();Status("声音已切换："+item.name);}
         void BindVoice(){
@@ -280,7 +282,7 @@ namespace AgentVoice {
             }
             throw new InvalidOperationException("配置已保存，但模型加载超过 4 分钟；尚未确认切换成功，请查看日志。");
         }
-        async Task Generate(string text,bool play){await SaveDraft();if(!await Service.Running())throw new InvalidOperationException("请先启动语音服务。");var result=await Service.Request("/speak",new {text=text,play=play,source="manual"});if(result.ContainsKey("skipped")){Status("这段只有链接或代码，已跳过。");return;}lastJob=Json.Text(result,"jobId");Status("AI 合成语音 · 已进入朗读队列。");await WaitJob(lastJob);}
+        async Task Generate(string text,bool play){await SaveDraft();if(!await Service.Running())throw new InvalidOperationException("请先启动语音服务。");var result=await Service.Request("/speak",new {text=text,play=play,source="manual"});if(result.ContainsKey("skipped")){Status("这段只有链接或代码，已跳过。");return;}lastJob=Json.Text(result,"jobId");Status("已进入朗读队列。");await WaitJob(lastJob);}
         async Task WaitJob(string id){
             if(busyOverlay!=null)busyOverlay.SetStopAction(async()=>await StopSpeech());
             var watch=System.Diagnostics.Stopwatch.StartNew();

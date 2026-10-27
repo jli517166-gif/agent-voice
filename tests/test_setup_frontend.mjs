@@ -15,14 +15,14 @@ test('native bridge correlates progress, resolves replies and rejects actual err
   receive({data:{type:'result',id:sent[1].id,ok:false,error:'MCP disabled'}});
   await assert.rejects(failed,/MCP disabled/);
 });
-test('frontend ships local CSP, ten steps, bounded illustrations and reduced motion',async()=>{
+test('optional frontend ships local CSP, engine choices, bounded illustrations and reduced motion',async()=>{
   const html=await readFile(new URL('index.html',root),'utf8');
   const css=await readFile(new URL('setup.css',root),'utf8');
   const js=await readFile(new URL('setup.js',root),'utf8');
   assert.match(html,/Content-Security-Policy/);assert.doesNotMatch(html,/https:\/\/cdn/);
   assert.match(css,/prefers-reduced-motion/);assert.match(css,/object-fit:\s*contain/);
-  assert.match(js,/使用须知/);assert.match(js,/Apache-2.0/);assert.match(js,/MIT/);assert.match(js,/connect-airi/);
-  assert.match(js,/state.stepLabel/);assert.match(js,/state.legalAccepted/);
+  assert.match(js,/CosyVoice/);assert.match(js,/GPT-SoVITS/);assert.match(js,/connect-airi/);
+  assert.match(js,/state.stepLabel/);assert.doesNotMatch(js,/btn\('legal-read'/);
   assert.match(js,/check-mcp/);assert.match(js,/不发聊天消息、不生成语音/);
   assert.doesNotMatch(js,/save-reference|openReference|openProfiles|btn\('preview'|btn\('confirm'|copy-challenge/);
   assert.doesNotMatch(js,/import-voice|导入音色包|\.ttsmodel/);

@@ -1,4 +1,4 @@
-﻿param([string]$OutputDirectory = '',[string]$Version = '0.1.1-preview.4')
+﻿param([string]$OutputDirectory = '',[string]$Version = '0.2.0-preview.1')
 $ErrorActionPreference = 'Stop'
 $sourceRoot = $PSScriptRoot
 $webSdk = & (Join-Path $sourceRoot 'tools\restore_webview2.ps1') -Root $sourceRoot
@@ -42,7 +42,7 @@ if (Test-Path -LiteralPath $agentAssets) {
     New-Item -ItemType Directory -Path $pluginTarget -Force | Out-Null
     Get-ChildItem -LiteralPath $agentAssets -Force | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $pluginTarget -Recurse -Force }
 }
-foreach ($obsolete in @('integrations\opencode-plugin.mjs','integrations\pi-extension.ts','integrations\piper-requirements.txt','service\tts_bundle.py','service\config_bundle.py','tools\tts_bundle.py','tools\config_bundle.py','tools\release_audit.py','tools\module_packages.py','assets\bundled-voice.json','service\rvc_tone.py','service\rvc_accepted.py','service\rvc_index.py','service\moss_client.py','service\moss_worker.py','service\moss_audio.py','service\piper_client.py','service\piper_worker.py','MOSS引擎说明.md')) {
+foreach ($obsolete in @('service\edition.py','integrations\opencode-plugin.mjs','integrations\pi-extension.ts','integrations\piper-requirements.txt','service\tts_bundle.py','service\config_bundle.py','tools\tts_bundle.py','tools\config_bundle.py','tools\release_audit.py','tools\module_packages.py','assets\bundled-voice.json','service\rvc_tone.py','service\rvc_accepted.py','service\rvc_index.py','service\moss_client.py','service\moss_worker.py','service\moss_audio.py','service\piper_client.py','service\piper_worker.py','MOSS引擎说明.md')) {
     $obsoletePath = Join-Path $OutputDirectory $obsolete
     if (Test-Path -LiteralPath $obsoletePath) { Remove-Item -LiteralPath $obsoletePath -Force }
 }

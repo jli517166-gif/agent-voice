@@ -13,13 +13,13 @@ namespace AgentVoice {
         void SelectReadingScope(int index){readingScopeIndex=index;for(int i=0;i<readingChoices.Count;i++){readingChoices[i].Tag=i==index?"primary":"secondary";if(!Accent.IsEmpty)StyleButton(readingChoices[i]);}}
         async Task ExportForSharing(){
             if(lastJob.Length==0)throw new InvalidOperationException("请先生成一条语音。");
-            using(var dialog=new SaveFileDialog{Title="导出用于分享 · 加入 AI 合成语音提示",Filter="AI 合成语音 WAV|*.wav",FileName="AI合成语音-"+DateTime.Now.ToString("yyyyMMdd-HHmmss")+".wav"}){
+            using(var dialog=new SaveFileDialog{Title="导出音频",Filter="WAV 音频|*.wav",FileName="语音-"+DateTime.Now.ToString("yyyyMMdd-HHmmss")+".wav"}){
                 if(dialog.ShowDialog(this)!=DialogResult.OK)return;
                 var submitted=await Service.Request("/api/export/share",new{jobId=lastJob});string ident=Json.Text(submitted,"jobId");
                 await WaitJob(ident);var job=await Service.Request("/api/jobs/"+ident);
-                if(Json.Text(job,"state")!="completed")throw new InvalidOperationException("分享音频未生成完成："+Json.Text(job,"error"));
+                if(Json.Text(job,"state")!="completed")throw new InvalidOperationException("音频未生成完成："+Json.Text(job,"error"));
                 var result=job["result"] as Dictionary<string,object>;byte[] audio=await Service.Audio(Json.Text(result,"audioUrl"));
-                File.WriteAllBytes(dialog.FileName,audio);Status("分享音频已保存，包含开头的 AI 合成提示与文件内标识；正文不重新生成。");
+                File.WriteAllBytes(dialog.FileName,audio);Status("音频已保存，使用原始生成结果。");
             }
         }
         void BuildPrivacy(){
@@ -44,7 +44,7 @@ namespace AgentVoice {
                 if(await Service.Running())throw new InvalidOperationException("请先关闭语音服务，再更换密钥。");
                 if(MessageBox.Show(this,"旧密钥立即失效，自动朗读与 AIRI 关闭。MCP 需重载，AIRI 需重新接入；账号登录和声音保留。是否继续？","更换本地连接密钥",MessageBoxButtons.OKCancel)!=DialogResult.OK)return;
                 var r=await PrivacyOperation("rotate");Config=Store.Read();BindSettings();Status(Json.Text(r,"message"));
-            })),Btn("记录素材来源",()=>EditMaterialRights()),Btn("反馈与处理说明",()=>ServiceClient.Open(Store.Resolve("docs/权利与安全反馈.md")))));
+            }))));
         }
         void BindPrivacy(){if(readingChoices.Count==0)return;SelectReadingScope(Math.Max(0,Array.IndexOf(new[]{"all","project","session"},Config.privacy.harnessScope)));fields["privacyProject"].Text=Config.privacy.projectRoot;fields["privacySession"].Text=Config.privacy.sessionId;checks["retainText"].Checked=Config.privacy.retainText;checks["deleteOnExit"].Checked=Config.privacy.deleteOnExit;checks["keepBeyondAge"].Checked=Config.cleanup.keepLatestBeyondAge;numbers["logDays"].Value=Config.privacy.logRetentionDays;}
         async Task<Dictionary<string,object>> PrivacyOperation(string action,object data=null){
@@ -60,21 +60,6 @@ namespace AgentVoice {
                 var save=new AnimeButton{Text="保存这份报告",Dock=DockStyle.Bottom,Height=48,BackColor=Color.FromArgb(180,154,255),ForeColor=Color.Black};save.Click+=(s,e)=>{using(var file=new SaveFileDialog{Filter="JSON 报告|*.json",FileName="AgentVoice-脱敏诊断.json"})if(file.ShowDialog(dialog)==DialogResult.OK)File.WriteAllText(file.FileName,text,new UTF8Encoding(false));};dialog.Controls.Add(view);dialog.Controls.Add(save);dialog.ShowDialog(this);
             }
         }
-        async void EditMaterialRights(){
-            try{
-                string reference=fields.ContainsKey("reference")?fields["reference"].Text.Trim():Config.voice.reference;
-                var loaded=await PrivacyOperation("rights-read",new{reference=reference});var record=loaded["record"] as Dictionary<string,object>??new Dictionary<string,object>();
-                using(var dialog=new Form{Text="素材来源与用途 · 仅本地记录，未经软件核验",Size=new Size(820,740),MinimumSize=new Size(660,540),StartPosition=FormStartPosition.CenterParent,BackColor=Color.FromArgb(16,17,22),ForeColor=Color.FromArgb(235,237,245),Font=new Font("Microsoft YaHei UI",10F),Padding=new Padding(20)}){
-                    var stack=new FlowLayoutPanel{Dock=DockStyle.Fill,AutoScroll=true,FlowDirection=FlowDirection.TopDown,WrapContents=false};var inputs=new Dictionary<string,TextBox>();
-                    stack.Controls.Add(new Label{Text="对应当前参考录音的 SHA-256。记录不等于授权；合同和身份证不进入导出包。",Width=710,Height=44});
-                    foreach(var item in new[]{new[]{"source","素材来源（本地保留）"},new[]{"holder","权利方／说明（本地保留）"},new[]{"evidenceRef","证明文件位置（仅记录，不上传）"},new[]{"licenseSummary","可以公开的许可摘要"},new[]{"validUntil","期限"},new[]{"territory","地域"},new[]{"notes","其他本地备注"}}){stack.Controls.Add(new Label{Text=item[1],Width=690,Height=24});var input=new TextBox{Width=690,MaxLength=2000,Text=Json.Text(record,item[0]),BackColor=Color.FromArgb(34,35,44),ForeColor=dialog.ForeColor};inputs[item[0]]=input;stack.Controls.Add(input);}
-                    var useNames=new[]{"训练","生成","个人使用","公开传播","商业用途","参考录音再分发","权重再分发"};var useIds=new[]{"training","generation","privateUse","publicSharing","commercialUse","referenceRedistribution","weightRedistribution"};var boxes=new List<CheckBox>();object uses;var selected=record.TryGetValue("permittedUses",out uses)?(uses as object[]??new object[0]):new object[0];
-                    for(int i=0;i<useNames.Length;i++){var box=new CheckBox{Text="已确认允许："+useNames[i],Width=690,Height=28,Checked=selected.Any(x=>Convert.ToString(x)==useIds[i])};boxes.Add(box);stack.Controls.Add(box);}
-                    var save=new AnimeButton{Text="保存本地记录",Dock=DockStyle.Bottom,Height=46,BackColor=Color.FromArgb(180,154,255),ForeColor=Color.Black};
-                    save.Click+=async(s,e)=>{save.Enabled=false;try{var value=inputs.ToDictionary(x=>x.Key,x=>(object)x.Value.Text.Trim());value["permittedUses"]=useIds.Where((x,i)=>boxes[i].Checked).ToArray();await PrivacyOperation("rights-save",new{reference=reference,record=value});dialog.DialogResult=DialogResult.OK;}catch(Exception error){MessageBox.Show(dialog,error.Message,"记录未保存");}finally{save.Enabled=true;}};
-                    dialog.Controls.Add(stack);dialog.Controls.Add(save);dialog.ShowDialog(this);
-                }
-            }catch(Exception error){MessageBox.Show(this,error.Message,"请先选择有效参考录音");}
-        }
+
     }
 }

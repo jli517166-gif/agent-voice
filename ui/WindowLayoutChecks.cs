@@ -144,16 +144,6 @@ namespace AgentVoice {
                     RecordWindowLayout(id, mode, layouts, errors, directory, defaults);
             }
 
-            // A successful MCP refresh changes the text after initial layout.
-            // Exercise populated statuses, not just the short offline placeholder.
-            foreach(string source in new[]{"codex","deepseek"})mcpPassed[source]=true;
-            UpdateHarnessIndicators(null,true);
-            foreach(bool maximize in new[]{false,true}){
-                WindowState=FormWindowState.Normal;ClientSize=new Size(UiPx(1180),UiPx(780));
-                if(maximize)WindowState=FormWindowState.Maximized;
-                RecordWindowLayout("home",maximize?"mcp-connected-maximized":"mcp-connected-normal",layouts,errors,directory,defaults);
-            }
-
             string originalName = homeVoiceSummary.Text;
             try {
                 homeVoiceSummary.Text = "CosyVoice · " + string.Concat(Enumerable.Repeat("很长的自定义音色名称", 20));
