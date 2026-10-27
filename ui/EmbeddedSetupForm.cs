@@ -23,7 +23,7 @@ namespace AgentVoice {
         bool repairing,initializing,serviceWasRunning=true,closing,allowClose;
         internal EmbeddedSetupForm(SettingsStore store,bool test=false,bool missing=false){
             testing=test;forceMissing=missing;Controller=new EmbeddedSetupController(store);
-            Text="Agent Voice · 私用配置";Font=new Font("Microsoft YaHei UI",11F);BackColor=Color.FromArgb(16,17,22);ForeColor=Color.FromArgb(243,245,248);
+            Text="Agent Voice · 首次配置";Font=new Font("Microsoft YaHei UI",11F);BackColor=Color.FromArgb(16,17,22);ForeColor=Color.FromArgb(243,245,248);
             AutoScaleMode=AutoScaleMode.Dpi;using(var g=CreateGraphics())AutoScaleDimensions=new SizeF(g.DpiX,g.DpiY);
             var area=Screen.FromControl(this).WorkingArea;float dpi=AutoScaleDimensions.Width/96F;
             ClientSize=new Size(Math.Min((int)(1180*dpi),area.Width-40),Math.Min((int)(780*dpi),area.Height-60));MinimumSize=new Size(900,620);StartPosition=FormStartPosition.CenterScreen;

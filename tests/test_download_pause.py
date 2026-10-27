@@ -74,6 +74,13 @@ class DownloadPauseTests(unittest.TestCase):
    helper=Repair(tmp);gate=helper.gate
    code="from pathlib import Path;import time;p=Path("+repr(str(gate.pause_file))+");p.parent.mkdir(parents=True,exist_ok=True);time.sleep(.1);p.touch();time.sleep(.5);p.unlink();time.sleep(.1)"
    helper.run([sys.executable,'-c',code],timeout=.35)
+ def test_stalled_download_process_is_stopped_and_keeps_activity_files(self):
+  from environment_repair import Repair
+  with tempfile.TemporaryDirectory() as tmp:
+   helper=Repair(tmp);activity=Path(tmp)/'download';activity.mkdir();partial=activity/'model.incomplete';partial.write_bytes(b'partial')
+   with self.assertRaisesRegex(RuntimeError,'没有新增字节'):
+    helper.run([sys.executable,'-c','import time;time.sleep(30)'],timeout=30,activity=activity,stall_timeout=.15)
+   self.assertEqual(partial.read_bytes(),b'partial')
  def test_requests_hook_stops_stream_iteration_at_checkpoint(self):
   import types
   from download_control import hook_requests

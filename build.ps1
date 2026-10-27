@@ -1,4 +1,4 @@
-﻿param([string]$OutputDirectory = '',[string]$Version = '0.2.0-preview.2')
+﻿param([string]$OutputDirectory = '',[string]$Version = '0.2.0-preview.3')
 $ErrorActionPreference = 'Stop'
 $sourceRoot = $PSScriptRoot
 $webSdk = & (Join-Path $sourceRoot 'tools\restore_webview2.ps1') -Root $sourceRoot

@@ -38,18 +38,32 @@ class Repair:
         if self.offline:env.update(HF_HUB_OFFLINE='1',TRANSFORMERS_OFFLINE='1',PIP_NO_INDEX='1')
         env.update(HF_HUB_DISABLE_XET='1',HF_HUB_DOWNLOAD_TIMEOUT='60',HF_HUB_ETAG_TIMEOUT='30')
         return env
-    def run(self,command,timeout=1800):
+    @staticmethod
+    def activity_signature(directory):
+        directory=Path(directory)
+        if not directory.exists():return (0,0,0)
+        files=[path for path in directory.rglob('*') if path.is_file() and not path.name.endswith('.lock')]
+        return (len(files),sum(path.stat().st_size for path in files),max((path.stat().st_mtime_ns for path in files),default=0))
+    def run(self,command,timeout=1800,activity=None,stall_timeout=None):
         from pipeline import hidden_process
         self.gate.check()
         with self.log.open('a',encoding='utf-8') as log:
             log.write('\n'+json.dumps([str(x) for x in command],ensure_ascii=False)+'\n');log.flush()
             process=subprocess.Popen([str(x) for x in command],stdout=log,stderr=log,cwd=self.root,env=self.env(),**hidden_process())
-            active=0;last=time.monotonic()
+            active=0;last=time.monotonic();activity_at=last;activity_check=last
+            signature=self.activity_signature(activity) if activity else None
             try:
                 while process.poll() is None:
                     if self.gate.cancelled and self.gate.status().get('state')=='paused':raise DownloadCancelled('下载已停止；断点已保留')
                     now=time.monotonic()
-                    if not self.gate.paused:active+=now-last
+                    if not self.gate.paused:
+                        active+=now-last
+                        if activity and now-activity_check>=1:
+                            current=self.activity_signature(activity);activity_check=now
+                            if current!=signature:signature=current;activity_at=now
+                            elif stall_timeout and now-activity_at>stall_timeout:
+                                raise RuntimeError('下载长时间没有新增字节，已停止当前连接并保留断点重试')
+                    else:activity_at=now
                     last=now
                     if active>timeout:raise RuntimeError('安装步骤超时，已停止本次进程；详见 '+str(self.log))
                     time.sleep(.1)
@@ -345,13 +359,14 @@ class Repair:
         # verification remains enabled, including for enterprise proxy roots.
         prefix='import sys;sys.path.insert(0,'+repr(str(pip))+');\nif sys.platform=="win32":\n from pip._vendor import truststore;truststore.inject_into_ssl()\n'
         prefix+='sys.path.insert(0,'+repr(str(Path(__file__).parent))+');from download_control import DownloadGate,hook_requests;import requests;hook_requests(requests,DownloadGate('+repr(str(self.root))+'))\n'
-        code=prefix+'from huggingface_hub import snapshot_download;snapshot_download(repo_id='+repr(CATALOG[name]['modelRepo'])+',revision='+repr(CATALOG[name]['modelRevision'])+',local_dir='+repr(str(stage))+',allow_patterns='+repr(patterns)+',max_workers=3)'
         for attempt in range(3):
-            try:self.run([python,'-I','-X','utf8','-c',code],timeout=14400);break
+            workers=3 if attempt==0 else 1
+            code=prefix+'from huggingface_hub import snapshot_download;snapshot_download(repo_id='+repr(CATALOG[name]['modelRepo'])+',revision='+repr(CATALOG[name]['modelRevision'])+',local_dir='+repr(str(stage))+',allow_patterns='+repr(patterns)+',max_workers='+str(workers)+')'
+            try:self.run([python,'-I','-X','utf8','-c',code],timeout=14400,activity=stage,stall_timeout=180);break
             except DownloadCancelled:raise
             except RuntimeError:
                 if attempt==2:raise RuntimeError('模型下载连续失败，断点保留。请检查系统证书、网络和日志：'+str(self.log))
-                self.progress('模型下载中断，保留断点重试（%d/3）'%(attempt+2));time.sleep(attempt+1)
+                self.progress('模型下载中断，保留断点并改用单线程重试（%d/3）'%(attempt+2));time.sleep(attempt+1)
         copied=[]
         for file in stage.rglob('*'):
             if file.is_file() and '.cache' not in file.relative_to(stage).parts:
