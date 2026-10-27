@@ -35,7 +35,7 @@ namespace AgentVoice {
             if(!File.Exists(python)||!File.Exists(script))throw new InvalidOperationException("缺少更新运行时或组件，请先补齐主服务环境。");
             var info=new ProcessStartInfo(python,"-I -X utf8 "+ServiceClient.Quote(script)+" apply --root "+ServiceClient.Quote(Store.Root)+" --wait-pid "+Process.GetCurrentProcess().Id+" --restart"){
                 UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden,WorkingDirectory=Store.Root};
-            Process.Start(info);exiting=true;Application.Exit();
+            Process.Start(info);exiting=true;Application.Exit();Environment.Exit(0);
         }
     }
 }
