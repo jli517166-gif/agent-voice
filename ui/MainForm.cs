@@ -101,10 +101,10 @@ namespace AgentVoice {
             interfaceSounds.Stop();
             if(busyOverlay!=null){busyOverlay.SetMessage(text);return;}
             var snapshot=new Bitmap(Math.Max(1,shell.ClientSize.Width),Math.Max(1,shell.ClientSize.Height));shell.DrawToBitmap(snapshot,new Rectangle(Point.Empty,snapshot.Size));
-            string animation=Store.Resolve(Config.appearance.loadingAnimation);busyOverlay=new BusyOverlay(text,snapshot,animation,Accent,new WelcomeState(Store).Read().reduceMotion);shell.Controls.Add(busyOverlay);busyOverlay.BringToFront();busyOverlay.Focus();
+            string animation=Store.Resolve(Config.appearance.loadingAnimation);busyOverlay=new BusyOverlay(text,snapshot,animation,Accent,new WelcomeState(Store).Read().reduceMotion);busyOverlay.SetDownloadControl(()=>Service.Download);shell.Controls.Add(busyOverlay);busyOverlay.BringToFront();busyOverlay.Focus();
         }
         void HideBusy(){if(busyOverlay==null)return;var overlay=busyOverlay;busyOverlay=null;overlay.Dispose();shell.Invalidate(true);}
-        async Task Guard(Func<Task> action,string label){if(operation)return;operation=true;Cursor=Cursors.AppStarting;ShowBusy(label+"…");try{await action();}catch(Exception exc){StatusError(exc.Message);}finally{HideBusy();operation=false;Cursor=Cursors.Default;}}
+        async Task Guard(Func<Task> action,string label){if(operation)return;operation=true;Cursor=Cursors.AppStarting;ShowBusy(label+"…");try{await action();}catch(OperationCanceledException exc){Status(exc.Message);}catch(Exception exc){StatusError(exc.Message);}finally{HideBusy();operation=false;Cursor=Cursors.Default;}}
         public void ShowPage(string id){
             Navigate(id,true);
         }

@@ -89,6 +89,7 @@ def download(url, target, sha256, *, chunk_bytes=8*1024**2, max_bytes=8*1024**3,
             if failures >= 4:
                 raise RuntimeError('下载连续中断，已保留断点。请检查网络或系统证书后重试：'+str(error)) from error
             time.sleep(backoff*failures)
+    check()
     if digest(partial) != sha256:
         partial.unlink(missing_ok=True)
         raise ValueError('下载文件 SHA256 校验失败，未交给安装器')

@@ -78,7 +78,7 @@ class EnvironmentRepairTests(unittest.TestCase):
  def test_download_hash_failure_is_not_installed(self):
   import io
   with tempfile.TemporaryDirectory() as temp:
-   response=io.BytesIO(b'corrupt');response.headers={'Content-Length':'7'}
+   response=io.BytesIO(b'corrupt');response.status=200;response.headers={'Content-Length':'7'}
    with patch('environment_repair.urllib.request.urlopen',return_value=response),self.assertRaisesRegex(ValueError,'校验'):Repair(temp).download('https://example.invalid/file','x.zip','0'*64)
    self.assertFalse((Path(temp).resolve()/'data/environment-repair/downloads/x.zip').exists())
    self.assertFalse(list(Path(temp).resolve().rglob('*.part')))

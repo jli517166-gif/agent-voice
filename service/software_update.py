@@ -129,6 +129,10 @@ def check(root):
 
 
 def download(root):
+    from download_control import DownloadGate
+    from resource_download import download as receive
+    gate=DownloadGate(root)
+    gate.check()
     report = check(root)
     if report.get('state') != 'available':
         raise ValueError(report['message'])
@@ -137,21 +141,11 @@ def download(root):
         raise ValueError('更新来源不匹配')
     target = inside(root, 'data/updates/download.zip')
     target.parent.mkdir(parents=True, exist_ok=True)
-    partial = target.with_suffix('.part')
-    try:
-        with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'AgentVoice-Updater/1'}), timeout=60) as source, partial.open('wb') as output:
-            count = 0
-            while block := source.read(1024 * 1024):
-                count += len(block)
-                if count > MAX_BYTES:
-                    raise ValueError('更新包超过大小限制')
-                output.write(block)
-        if digest(partial) != report['sha256']:
-            raise ValueError('更新附件 SHA256 校验失败')
-        os.replace(partial, target)
-        return stage(root, target)
-    finally:
-        partial.unlink(missing_ok=True)
+    receive(url,target,report['sha256'],max_bytes=MAX_BYTES,check=gate.check,
+            progress=lambda **row:gate.report('正在下载软件更新',**row))
+    gate.check()
+    gate.report('下载完成，正在校验更新包')
+    return stage(root, target)
 
 
 def stage(root, package):

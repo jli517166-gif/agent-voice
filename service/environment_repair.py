@@ -5,6 +5,7 @@ import runtime_paths
 from state import Store,atomic_json
 from operation_lock import OperationLock
 from engine_registry import spec,gpt_required,worker_config
+from download_control import DownloadGate,DownloadCancelled
 
 CATALOG=json.loads(Path(__file__).with_name('environment-catalog.json').read_text(encoding='utf-8'))
 MAX_ARCHIVE_BYTES=512*1024**2
@@ -22,8 +23,10 @@ class Repair:
         runtime_paths.repair_bundled_runtime(self.root)
         self.work=self.root/'data/environment-repair';self.work.mkdir(parents=True,exist_ok=True)
         self.log=self.work/'install.log'
+        self.gate=DownloadGate(self.root)
     def progress(self,message,stage='working',**extra):
         atomic_json(self.work/'progress.json',dict(stage=stage,message=message,time=time.time(),**extra))
+        if not self.gate.paused:self.gate.report(message,**extra)
     def env(self):
         env=dict(os.environ)
         for key in list(env):
@@ -37,26 +40,43 @@ class Repair:
         return env
     def run(self,command,timeout=1800):
         from pipeline import hidden_process
+        self.gate.check()
         with self.log.open('a',encoding='utf-8') as log:
             log.write('\n'+json.dumps([str(x) for x in command],ensure_ascii=False)+'\n');log.flush()
             process=subprocess.Popen([str(x) for x in command],stdout=log,stderr=log,cwd=self.root,env=self.env(),**hidden_process())
-            try:code=process.wait(timeout=timeout)
-            except subprocess.TimeoutExpired:
+            active=0;last=time.monotonic()
+            try:
+                while process.poll() is None:
+                    if self.gate.cancelled and self.gate.status().get('state')=='paused':raise DownloadCancelled('下载已停止；断点已保留')
+                    now=time.monotonic()
+                    if not self.gate.paused:active+=now-last
+                    last=now
+                    if active>timeout:raise RuntimeError('安装步骤超时，已停止本次进程；详见 '+str(self.log))
+                    time.sleep(.1)
+                code=process.returncode
+            except BaseException:
                 from owned_process import terminate
-                terminate(process);raise RuntimeError('安装步骤超时，已停止本次进程；详见 '+str(self.log))
+                terminate(process);raise
+        if self.gate.cancelled:raise DownloadCancelled('下载已停止；断点已保留')
         if code:raise RuntimeError('安装步骤失败（退出码 %d），可修复后重试；详见 %s'%(code,self.log))
     def download(self,url,name,sha256=None):
+        self.gate.check()
         target=inside(self.root,self.work/'downloads'/name);target.parent.mkdir(parents=True,exist_ok=True)
         if target.is_file() and sha256 and hashlib.sha256(target.read_bytes()).hexdigest()==sha256:return target
         if self.offline:
             if target.is_file() and not sha256:return target
             raise ValueError('离线资源缺少或校验失败：'+name+'；请导入完整环境包后重试，不会连接网络')
+        if sha256:
+            from resource_download import download
+            return download(url,target,sha256,max_bytes=MAX_ARCHIVE_BYTES,check=self.gate.check,
+                progress=lambda **row:self.progress('正在下载 '+name,**row))
         temporary=target.with_name(target.name+'.part');last=0
         try:
             with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'AgentVoice-EnvironmentRepair/1'}),timeout=60) as incoming,temporary.open('wb') as output:
                 total=int(incoming.headers.get('Content-Length',0));count=0
                 while True:
-                    block=incoming.read(1024*1024)
+                    self.gate.check()
+                    block=incoming.read(65536)
                     if not block:break
                     count+=len(block)
                     if count>MAX_ARCHIVE_BYTES:raise ValueError('下载文件超过限制')
@@ -123,7 +143,7 @@ class Repair:
                 self.progress('独立下载解析未完成，尝试原官方 pip 通道：'+str(error))
         asset=CATALOG['pip'];wheel=self.download(asset['url'],'pip-24.3.1.whl',asset['sha256'])
         # The wheel is run directly, so a broken/missing pip does not block repair.
-        code="import sys;sys.path.insert(0,"+repr(str(wheel))+");from pip._internal.cli.main import main;raise SystemExit(main())"
+        code="import sys;sys.path.insert(0,"+repr(str(wheel))+");sys.path.insert(0,"+repr(str(Path(__file__).parent))+");import pip._vendor.requests as requests;from download_control import DownloadGate,hook_requests;hook_requests(requests,DownloadGate("+repr(str(self.root))+"));from pip._internal.cli.main import main;raise SystemExit(main())"
         base=[python,'-I','-X','utf8','-c',code,'install','--disable-pip-version-check','--no-user','--prefer-binary','--cache-dir',str(self.work/'pip-cache')]
         if target:base+=['--target',str(inside(self.root,target))]
         sources=[]
@@ -160,7 +180,7 @@ class Repair:
             target=inside(self.root,self.work/'wheels'/selected['filename'])
             def report(**row):
                 self.progress('正在下载 '+selected['filename']+' · %.1f / %.1f MB · %.2f MB/s'%(row['downloadedBytes']/1e6,row['totalBytes']/1e6,row['bytesPerSecond']/1e6),**row)
-            download(selected['url'],target,selected['sha256'],progress=report)
+            download(selected['url'],target,selected['sha256'],progress=report,check=self.gate.check)
             result.append(str(target))
         return result
     def system(self):
@@ -324,9 +344,11 @@ class Repair:
         # Use the Windows trust store in this downloader process only. TLS
         # verification remains enabled, including for enterprise proxy roots.
         prefix='import sys;sys.path.insert(0,'+repr(str(pip))+');\nif sys.platform=="win32":\n from pip._vendor import truststore;truststore.inject_into_ssl()\n'
+        prefix+='sys.path.insert(0,'+repr(str(Path(__file__).parent))+');from download_control import DownloadGate,hook_requests;import requests;hook_requests(requests,DownloadGate('+repr(str(self.root))+'))\n'
         code=prefix+'from huggingface_hub import snapshot_download;snapshot_download(repo_id='+repr(CATALOG[name]['modelRepo'])+',revision='+repr(CATALOG[name]['modelRevision'])+',local_dir='+repr(str(stage))+',allow_patterns='+repr(patterns)+',max_workers=3)'
         for attempt in range(3):
             try:self.run([python,'-I','-X','utf8','-c',code],timeout=14400);break
+            except DownloadCancelled:raise
             except RuntimeError:
                 if attempt==2:raise RuntimeError('模型下载连续失败，断点保留。请检查系统证书、网络和日志：'+str(self.log))
                 self.progress('模型下载中断，保留断点重试（%d/3）'%(attempt+2));time.sleep(attempt+1)

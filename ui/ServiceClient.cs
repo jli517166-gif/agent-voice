@@ -14,6 +14,8 @@ namespace AgentVoice {
     public sealed class ServiceClient {
         public readonly SettingsStore Store;
         public Process Owned;
+        public DownloadJob Download;
+        public DownloadJob BeginDownload(){if(Download!=null)throw new InvalidOperationException("已有下载任务正在执行。");Download=new DownloadJob(Store,()=>Download=null);return Download;}
         public ServiceClient(SettingsStore store){Store=store;}
         public Task<Dictionary<string,object>> Request(string path,object data=null,int timeout=5000) {
             return Task.Run(()=> {
@@ -93,7 +95,8 @@ namespace AgentVoice {
                 var info=new ProcessStartInfo(python,"-I -X utf8 "+Quote(Path.Combine(Store.Root,"tools",tool))+" "+arguments);
                 info.WorkingDirectory=Store.Root;info.UseShellExecute=false;info.CreateNoWindow=true;info.WindowStyle=ProcessWindowStyle.Hidden;
                 info.RedirectStandardError=true;info.RedirectStandardOutput=true;info.StandardOutputEncoding=Encoding.UTF8;info.StandardErrorEncoding=Encoding.UTF8;
-                using(var process=Process.Start(info)){var output=process.StandardOutput.ReadToEndAsync();var error=process.StandardError.ReadToEndAsync();process.WaitForExit();Task.WaitAll(output,error);if(process.ExitCode!=0)throw new InvalidOperationException(String.IsNullOrWhiteSpace(error.Result)?output.Result:error.Result);return output.Result;}
+                var download=Download;if(download!=null)info.EnvironmentVariables["AGENT_VOICE_DOWNLOAD_TOKEN"]=download.Token;else info.EnvironmentVariables.Remove("AGENT_VOICE_DOWNLOAD_TOKEN");
+                using(var process=Process.Start(info)){var output=process.StandardOutput.ReadToEndAsync();var error=process.StandardError.ReadToEndAsync();process.WaitForExit();Task.WaitAll(output,error);if(download!=null&&download.Cancelled)throw new OperationCanceledException("下载已停止；已完成文件和可续传断点已保留。");if(process.ExitCode!=0)throw new InvalidOperationException(String.IsNullOrWhiteSpace(error.Result)?output.Result:error.Result);return output.Result;}
             });
         }
         public Task<byte[]> Audio(string path){return Task.Run(()=>{

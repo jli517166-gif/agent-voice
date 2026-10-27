@@ -20,7 +20,7 @@ namespace AgentVoice {
             for(int i=1;i<SetupWorkflow.PageOrder.Length;i++)if(!SetupWorkflow.StepLabel(SetupWorkflow.PageOrder[i]).StartsWith("第 "+i+" 步 / 共 9 步"))throw new Exception("Incorrect displayed step number");
             await CheckMultiEngine(directory);
             await CheckLocalEngines(directory);
-            string python=Environment.GetEnvironmentVariable("AGENT_VOICE_TEST_PYTHON");if(!string.IsNullOrEmpty(python))await CheckBatchPreparation(directory,python);
+            string python=Environment.GetEnvironmentVariable("AGENT_VOICE_TEST_PYTHON");if(!string.IsNullOrEmpty(python)){await CheckBatchPreparation(directory,python);await CheckDownloadPause(directory,python);}
             var store=new SettingsStore(Path.Combine(directory,"fixture-"+Guid.NewGuid().ToString("N")));
             var c=store.Read();c.port=1;c.token="must-not-reach-web-content";store.Write(c);
             dynamic controller=Activator.CreateInstance(type,System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic,null,new object[]{store},null);
@@ -86,6 +86,36 @@ namespace AgentVoice {
             try{await flow.PrepareSelected(false,false);}catch(InvalidOperationException){failed=true;}
             if(!failed||!File.ReadAllLines(store.Resolve("calls.txt")).SequenceEqual(new[]{"cosyvoice","gpt-sovits"}))throw new Exception("Batch did not continue after failure or duplicated a shared environment");
             var states=flow.State.Read().setupStates;if(states["engineFiles:cosyvoice"]!="failed"||states["engineFiles:gpt-sovits"]!="prepared"||store.Read().voice.engine!="cosyvoice")throw new Exception("Partial preparation lost status or switched active voice");
+        }
+        internal static void PreparePauseFixture(SettingsStore store,string python){
+            var c=store.Read();c.port=1;c.engines.pythonService=python;store.Write(c);Directory.CreateDirectory(store.Resolve("tools"));
+            string module=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"service");
+            string script="import sys,time,json\nfrom pathlib import Path\nsys.path.insert(0,"+Json.Encode(module)+")\nfrom download_control import DownloadGate\nroot=Path(sys.argv[sys.argv.index('--root')+1]);gate=DownloadGate(root)\nfor i in range(2000):\n gate.check();(root/'counter.txt').write_text(str(i));time.sleep(.03)\nprint(json.dumps({'ok':True,'message':'fixture finished'}))\n";
+            File.WriteAllText(store.Resolve("tools/environment_repair.py"),script);
+        }
+        static async Task CheckDownloadPause(string directory,string python){
+            var store=new SettingsStore(Path.Combine(directory,"download-pause-"+Guid.NewGuid().ToString("N")));var c=store.Read();c.port=1;c.engines.pythonService=python;store.Write(c);
+            var controller=new EmbeddedSetupController(store);controller.Flow.SelectInstallEngines(new[]{0});
+            Directory.CreateDirectory(store.Resolve("tools"));
+            string module=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"service");
+            string script="import sys,time,json\nfrom pathlib import Path\nsys.path.insert(0,"+Json.Encode(module)+")\nfrom download_control import DownloadGate\nroot=Path(sys.argv[sys.argv.index('--root')+1]);gate=DownloadGate(root)\nfor i in range(200):\n gate.check();(root/'counter.txt').write_text(str(i));time.sleep(.03)\nprint(json.dumps({'ok':True,'message':'fixture finished'}))\n";
+            File.WriteAllText(store.Resolve("tools/environment_repair.py"),script);
+            var work=controller.Execute("download-engine",new Dictionary<string,object>());
+            Func<Func<bool>,Task> wait=async condition=>{var end=DateTime.UtcNow.AddSeconds(8);while(!condition()){if(DateTime.UtcNow>end)throw new Exception("Download pause fixture timed out");await Task.Delay(25);}};
+            await wait(()=>File.Exists(store.Resolve("counter.txt")));
+            if(!controller.Busy)throw new Exception("Fixture must hold the normal operation gate");
+            await controller.Execute("pause-download",new Dictionary<string,object>());
+            await wait(()=>Json.Text(Json.Object(Json.Encode(controller.DownloadState)),"status")=="paused");
+            string frozen=File.ReadAllText(store.Resolve("counter.txt"));await Task.Delay(180);
+            if(File.ReadAllText(store.Resolve("counter.txt"))!=frozen)throw new Exception("Paused worker kept transferring");
+            await controller.Execute("resume-download",new Dictionary<string,object>());
+            await wait(()=>File.ReadAllText(store.Resolve("counter.txt"))!=frozen);
+            await controller.Execute("pause-download",new Dictionary<string,object>());
+            await wait(()=>Json.Text(Json.Object(Json.Encode(controller.DownloadState)),"status")=="paused");
+            await controller.Execute("cancel-download",new Dictionary<string,object>());
+            bool cancelled=false;try{await work;}catch(OperationCanceledException){cancelled=true;}
+            if(!cancelled||controller.Busy||controller.Flow.Service.Download!=null)throw new Exception("Stopped download did not release the operation");
+            File.WriteAllText(Path.Combine(directory,"download-pause.json"),"{\"ok\":true,\"busyPauseAllowed\":true,\"resumed\":true,\"cancelledWhilePaused\":true}");
         }
         static async Task CheckLocalEngines(string directory){
             var store=new SettingsStore(Path.Combine(directory,"local-"+Guid.NewGuid().ToString("N")));var c=store.Read();c.port=1;store.Write(c);var flow=new SetupWorkflow(store);flow.SelectInstallEngines(new int[0]);

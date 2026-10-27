@@ -13,6 +13,7 @@ namespace AgentVoice {
         internal Action<string> Progress=delegate{};
         internal bool Finished,Deferred;
         internal bool Busy {get{return operation.CurrentCount==0;}}
+        internal object DownloadState {get{return Flow.Service.Download==null?null:Flow.Service.Download.Snapshot();}}
         internal static readonly string[] EngineFields={"pythonService","pythonTts","cosyRepo","cosyModel","pythonGpt","gptRepo","gptModel","ffmpeg"};
         internal EmbeddedSetupController(SettingsStore store){Flow=new SetupWorkflow(store);Flow.Report=text=>Progress(text);Go(Flow.ResumeStep);}
         internal object Snapshot(){
@@ -29,6 +30,11 @@ namespace AgentVoice {
         void Go(int step){if(step!=0&&step!=5)Flow.RequireLegal();var p=Flow.State.Read();p.onboardingVersion=2;p.onboardingStep=step;Flow.State.Write(p);}
         internal async Task<object> Execute(string action,Dictionary<string,object> args){
             if(action=="state")return new{message="",state=Snapshot()};
+            if(action=="pause-download"||action=="resume-download"||action=="cancel-download"){
+                var download=Flow.Service.Download;if(download==null)throw new InvalidOperationException("当前没有可控制的下载任务。");
+                if(action=="pause-download")download.Pause();else if(action=="resume-download")download.Resume();else download.Cancel();
+                return new{message=action=="cancel-download"?"正在停止下载，已完成文件和可续传断点会保留。":action=="pause-download"?"正在暂停，等待当前数据块或安装步骤结束。":"正在继续下载。",download=DownloadState};
+            }
             if(!await operation.WaitAsync(0))throw new InvalidOperationException("当前操作仍在执行，请等待完成。");
             string message="";
             try{

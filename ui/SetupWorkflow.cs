@@ -35,13 +35,16 @@ namespace AgentVoice {
         internal void SelectInstallEngines(int[] indices){if(indices.Length>3||indices.Any(i=>i<0||i>2))throw new InvalidOperationException("安装引擎选择无效。");var p=State.Read();p.installEngines=indices.Distinct().OrderBy(i=>i).ToArray();State.Write(p);}
         internal async Task<string> PrepareSelected(bool environment,bool repair){
             string[] families=EngineSwitching.Families(InstallEngines());if(families.Length==0)throw new InvalidOperationException("尚未选择安装引擎。请返回选择，或使用本地导入。");
+            using(var download=(!environment||repair)?Service.BeginDownload():null){
             var results=new List<string>();bool failed=false;
             foreach(string family in families){
                 string key=(environment?"environment:":"engineFiles:")+family;Report("正在处理 "+family+"（"+(results.Count+1)+"/"+families.Length+"）");
                 try{string result=environment?await PrepareEnvironment(repair,family):await PrepareEngine(family);Mark(key,"prepared");results.Add(family+"："+result);}
+                catch(OperationCanceledException){Mark(key,"stopped");throw;}
                 catch(Exception error){failed=true;Mark(key,"failed");results.Add(family+"：未完成 — "+error.Message);}
             }
             string summary=string.Join("\r\n",results);if(failed)throw new InvalidOperationException(summary+"\r\n已完成的引擎会保留，可修复失败项后重试。");return summary;
+            }
         }
         internal string Resources(){var c=Config;string model=c.voice.engine=="cosyvoice"?(c.voice.baseModel.Length>0?c.voice.baseModel:c.engines.cosyModel):(c.voice.gptModel.Length>0?c.voice.gptModel:c.engines.gptModel);return "主服务："+(File.Exists(Store.Resolve(c.engines.pythonService))?"已找到":"待安装")+"   ·   TTS 环境："+(File.Exists(Store.Resolve(c.voice.engine=="cosyvoice"?c.engines.pythonTts:c.engines.pythonGpt))?"已找到":"待安装")+"\r\n基础模型："+(Directory.Exists(Store.Resolve(model))?"已找到":"待安装")+"（文件检查不代表语音可用）";}
         internal async Task<string> InspectComputer(){
@@ -60,7 +63,7 @@ namespace AgentVoice {
         internal async Task<string> PrepareEnvironment(bool repair,string engine="current"){
             if(repair&&await Service.Running())throw new InvalidOperationException("请先停止语音服务，再补齐环境。");
             var c=Config;bool offline=State.Read().offline;
-            if(!File.Exists(Store.Resolve(c.engines.pythonService))){if(!repair||offline)throw new InvalidOperationException("缺少主服务运行环境。请导入环境包；或关闭严格离线，再选择联网补齐。");await EnvironmentBootstrap.EnsureCore(Store,Report);}
+            if(!File.Exists(Store.Resolve(c.engines.pythonService))){if(!repair||offline)throw new InvalidOperationException("缺少主服务运行环境。请导入环境包；或关闭严格离线，再选择联网补齐。");await EnvironmentBootstrap.EnsureCore(Store,Report,Service.Download);}
             var result=Json.Object(await RunPreparationTool((repair?"repair":"inspect")+" --root "+ServiceClient.Quote(Store.Root)+" --engine "+engine+" --prepare-only"+(repair?" --dependencies-only":"")+(offline?" --offline":"")));
             Mark("environment",Convert.ToBoolean(result["ok"])?"prepared":"failed");
             // Keep the detailed diagnostic, including failed paths, available in this step.
@@ -71,7 +74,7 @@ namespace AgentVoice {
         internal async Task<string> PrepareEngine(string engine="current"){
             if(State.Read().offline)throw new InvalidOperationException("严格离线已开启，请展开本地安装，导入引擎包或定位已有引擎。");
             if(await Service.Running())throw new InvalidOperationException("请先停止语音服务，再准备引擎文件。");
-            await EnvironmentBootstrap.EnsureCore(Store,Report);
+            await EnvironmentBootstrap.EnsureCore(Store,Report,Service.Download);
             var result=Json.Object(await RunPreparationTool("resources --root "+ServiceClient.Quote(Store.Root)+" --engine "+engine));
             if(!Convert.ToBoolean(result["ok"]))throw new InvalidOperationException(Json.Text(result,"error"));
             Mark("engineFiles","prepared");InvalidateVoice();return Json.Text(result,"message");
@@ -79,6 +82,7 @@ namespace AgentVoice {
         async Task<string> RunPreparationTool(string args){
             var task=Service.RunTool("environment_repair.py",args);string previous="";
             while(!task.IsCompleted){
+                if(Service.Download!=null){var state=Json.Object(Json.Encode(Service.Download.Snapshot()));if(Json.Text(state,"message").Length>0)Report(Json.Text(state,"message"));}
                 try{string file=Store.Resolve("data/environment-repair/progress.json");if(File.Exists(file)){string text=Json.Text(Json.Object(File.ReadAllText(file)),"message");if(text!=previous){previous=text;Report(text);}}}catch(IOException){}catch(ArgumentException){}
                 await Task.WhenAny(task,Task.Delay(350));
             }

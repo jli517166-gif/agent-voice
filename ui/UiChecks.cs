@@ -35,7 +35,8 @@ namespace AgentVoice {
             if(pages.ContainsKey("profiles")||pages.ContainsKey("outputMode"))errors.Add("Removed processing page still exists");
             if(!HarnessNeedsDesktop(new Dictionary<string,object>{{"manualRequired",true}})||HarnessNeedsDesktop(new Dictionary<string,object>{{"ok",true}}))errors.Add("Harness desktop-account verification state is not parsed correctly");
             int stopClicks=0;ShowBusy("长文生成验收");busyOverlay.SetStopAction(()=>stopClicks++);busyOverlay.SetStopAction(()=>stopClicks++);
-            var overlayStops=busyOverlay.Controls.OfType<System.Windows.Forms.Button>().ToArray();
+            var overlayStops=busyOverlay.Controls.OfType<System.Windows.Forms.Button>().Where(button=>button.Text=="停止朗读").ToArray();
+            if(busyOverlay.Controls.OfType<System.Windows.Forms.Button>().Any(button=>button.Text!="停止朗读"&&button.Visible))errors.Add("Idle overlay exposed download controls");
             if(overlayStops.Length!=1)errors.Add("Busy overlay must expose exactly one stop action");else overlayStops[0].PerformClick();
             if(stopClicks!=1)errors.Add("Busy overlay stop action did not execute");
             string staleTargetDirectory=Path.Combine(directory,"target-error-fixture");Directory.CreateDirectory(staleTargetDirectory);string staleTargetError=Path.Combine(staleTargetDirectory,"runner-error.txt");File.WriteAllText(staleTargetError,"旧验收错误");

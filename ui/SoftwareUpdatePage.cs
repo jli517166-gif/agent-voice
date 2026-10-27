@@ -23,8 +23,10 @@ namespace AgentVoice {
             Add(card,Hint("GitHub 仓库私有或网络受限时，检查更新会明确提示原因；可用有权限的账号下载后选择本地更新包。旧版无更新清单的 ZIP 不会直接覆盖程序。安装失败查看更新记录，原文件会回滚。"));
         }
         async Task RunUpdate(string action){
+            using(var download=action=="download"?Service.BeginDownload():null){
             var result=Json.Object(await Service.RunTool("software_update.py",action+" --root "+ServiceClient.Quote(Store.Root)));
             string message=Json.Text(result,"message");updateDetails.Text=message+"\r\n\r\n"+Json.Encode(result);Status(message);
+        }
         }
         async Task InstallStagedUpdate(){
             if(!File.Exists(Store.Resolve("data/updates/pending.json")))throw new InvalidOperationException("请先下载并校验，或选择本地更新包。");

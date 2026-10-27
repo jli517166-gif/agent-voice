@@ -53,6 +53,10 @@ namespace AgentVoice {
             await form.Browser.ExecuteScriptAsync("document.querySelector('[data-action=\"legal-read\"]').click()");
             await Wait(()=>Script(form,"document.querySelector('#next').disabled===false"));
 
+            if(Environment.GetEnvironmentVariable("AGENT_VOICE_DOWNLOAD_CHECK_ONLY")=="1"){
+                string python=Environment.GetEnvironmentVariable("AGENT_VOICE_TEST_PYTHON");if(string.IsNullOrEmpty(python))throw new Exception("Pause UI fixture requires a test interpreter");
+                await CheckPauseButtons(form,directory,python);return;
+            }
             var preferred=form.ClientSize;
             foreach(var size in new[]{new Size(1180,780),new Size(900,640),new Size(1600,960),preferred}){
                 form.ClientSize=size;await Task.Delay(140);
@@ -94,6 +98,7 @@ namespace AgentVoice {
             await form.Controller.Execute("go",new Dictionary<string,object>{{"step",6}});form.Browser.CoreWebView2.Reload();
             await Wait(()=>Script(form,"document.querySelector('.body')?.textContent.includes('Apache-2.0')===true"));
             if(!await Script(form,"document.querySelector('.body').textContent.includes('MIT') && !document.querySelector('[data-action=\"preview\"], [data-action=\"confirm\"]')"))errors.Add("License page retained audition or omitted source license");
+            string testPython=Environment.GetEnvironmentVariable("AGENT_VOICE_TEST_PYTHON");if(!string.IsNullOrEmpty(testPython))await CheckPauseButtons(form,directory,testPython);
             // Sample a foreground window region while resizing; exclude other topmost apps.
             form.TopMost=true;form.Activate();form.WindowState=FormWindowState.Normal;form.ClientSize=new Size(1180,780);form.Location=new Point(30,30);await Task.Delay(200);
             var fractions=new List<double>();int excluded=0,stop=0;Rectangle region=Rectangle.Empty;object gate=new object();IntPtr root=form.Handle;
@@ -102,7 +107,7 @@ namespace AgentVoice {
                 while(Volatile.Read(ref stop)==0){Rectangle area;lock(gate)area=region;
                     var points=new[]{new Point(area.Left+3,area.Top+3),new Point(area.Right-3,area.Top+3),new Point(area.Left+3,area.Bottom-3),new Point(area.Right-3,area.Bottom-3)};
                     if(points.Any(p=>GetAncestor(WindowFromPoint(p),2)!=root)){excluded++;Thread.Sleep(12);continue;}
-                    using(var bitmap=new Bitmap(Math.Max(1,area.Width),Math.Max(1,area.Height))){using(var g=Graphics.FromImage(bitmap))g.CopyFromScreen(area.Location,Point.Empty,area.Size);int white=0,total=0;for(int y=0;y<bitmap.Height;y+=16)for(int x=0;x<bitmap.Width;x+=16){var p=bitmap.GetPixel(x,y);if(p.R>245&&p.G>245&&p.B>245)white++;total++;}fractions.Add(white/(double)total);}Thread.Sleep(12);
+                    using(var bitmap=new Bitmap(Math.Max(1,area.Width),Math.Max(1,area.Height))){using(var g=Graphics.FromImage(bitmap))g.CopyFromScreen(area.Location,Point.Empty,area.Size);int white=0,total=0;for(int y=0;y<bitmap.Height;y+=16)for(int x=0;x<bitmap.Width;x+=16){var p=bitmap.GetPixel(x,y);if(p.R>245&&p.G>245&&p.B>245)white++;total++;}if(points.Any(p=>GetAncestor(WindowFromPoint(p),2)!=root)){excluded++;continue;}double fraction=white/(double)total;if(fraction>.28&&!File.Exists(Path.Combine(directory,"resize-white-frame.png")))bitmap.Save(Path.Combine(directory,"resize-white-frame.png"));fractions.Add(fraction);}Thread.Sleep(12);
                 }
             });
             try{for(int i=0;i<36;i++){if(i%9==0)form.WindowState=FormWindowState.Maximized;else{form.WindowState=FormWindowState.Normal;form.ClientSize=new Size(1100+(i%5)*80,720+(i%3)*45);}update();await Task.Delay(60);}}
@@ -118,6 +123,31 @@ namespace AgentVoice {
             }
             var result=new{ok=errors.Count==0,pages=10,layouts=layouts,frames=fractions.Count,excludedFrames=excluded,maxWhite=fractions.Count==0?0:fractions.Max(),errors=errors};
             File.WriteAllText(Path.Combine(directory,"web-results.json"),Json.Encode(result));if(errors.Count>0)throw new Exception(string.Join("\n",errors));
+        }
+        static async Task CheckPauseButtons(EmbeddedSetupForm form,string directory,string python){
+            var controller=form.Controller;var store=controller.Flow.Store;
+            EmbeddedSetupChecks.PreparePauseFixture(store,python);controller.Flow.SelectInstallEngines(new[]{0});
+            await controller.Execute("preferences",new Dictionary<string,object>{{"offline",false},{"reduceMotion",true},{"sound",false}});
+            await controller.Execute("go",new Dictionary<string,object>{{"step",3}});form.Browser.CoreWebView2.Reload();
+            await Wait(()=>Script(form,"document.querySelector('[data-action=\"download-engine\"]')!==null"));
+            await form.Browser.ExecuteScriptAsync("document.querySelector('[data-action=\"download-engine\"]').click()");
+            try{
+                await Wait(()=>Script(form,"!document.querySelector('#downloadControls').hidden && !document.querySelector('#pauseDownload').disabled"));
+                await Wait(()=>Task.FromResult(File.Exists(store.Resolve("counter.txt"))));
+                await form.Browser.ExecuteScriptAsync("document.querySelector('#pauseDownload').click()");
+                await Wait(()=>Script(form,"document.body.classList.contains('download-paused')"));
+                string frozen=File.ReadAllText(store.Resolve("counter.txt"));await Task.Delay(200);
+                if(File.ReadAllText(store.Resolve("counter.txt"))!=frozen)throw new Exception("UI pause did not stop the owned worker");
+                await form.Browser.ExecuteScriptAsync("document.querySelector('#pauseDownload').click()");
+                await Wait(()=>Task.FromResult(File.ReadAllText(store.Resolve("counter.txt"))!=frozen));
+                await form.Browser.ExecuteScriptAsync("document.querySelector('#pauseDownload').click()");
+                await Wait(()=>Script(form,"document.body.classList.contains('download-paused')"));
+                using(var stream=File.Create(Path.Combine(directory,"web-download-paused.png")))await form.Browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);
+                await form.Browser.ExecuteScriptAsync("document.querySelector('#cancelDownload').click()");
+                await Wait(()=>Task.FromResult(!controller.Busy));
+                await Wait(()=>Script(form,"document.querySelector('#downloadControls').hidden && document.querySelector('#taskTitle').textContent==='已停止' && !document.querySelector('#feedback').classList.contains('error')"));
+                File.WriteAllText(Path.Combine(directory,"web-download-pause.json"),"{\"ok\":true,\"actualWorkerFrozen\":true,\"resume\":true,\"stopWhilePaused\":true}");
+            }finally{if(controller.Busy&&controller.Flow.Service.Download!=null){controller.Flow.Service.Download.Cancel();}}
         }
         static IEnumerable<Control> Descendants(Control root){yield return root;foreach(Control child in root.Controls)foreach(var item in Descendants(child))yield return item;}
         static void CopyTree(string source,string target){Directory.CreateDirectory(target);foreach(string file in Directory.GetFiles(source))File.Copy(file,Path.Combine(target,Path.GetFileName(file)));foreach(string folder in Directory.GetDirectories(source))CopyTree(folder,Path.Combine(target,Path.GetFileName(folder)));}

@@ -50,7 +50,7 @@
   }
   function updateDisabled(){
     document.querySelectorAll('button,input,select,textarea').forEach(item=>{
-      const exempt=['showLog','closeDrawer'].includes(item.id);
+      const exempt=['showLog','closeDrawer','pauseDownload','cancelDownload'].includes(item.id);
       item.disabled=busy&&!exempt;
     });
     $('#next').disabled=busy||(state?.step===5&&!state.legalAccepted);
@@ -58,6 +58,9 @@
     const legal=document.querySelector('[data-action="legal-read"]');if(legal){legal.textContent=state.legalAccepted?'已阅读须知 ✓':'我已阅读须知';legal.disabled=busy||state.legalAccepted;}
   }
   function append(message){logs.push(String(message));if(logs.length>200)logs.shift();$('#result').textContent=String(message);if($('#drawer').open&&$('#drawer').dataset.mode==='log')$('#drawerBody pre').textContent=logs.join('\n\n');}
+  let transfer=null;
+  function downloadState(value){transfer=value;const visible=busy&&!!value?.active;$('#downloadControls').hidden=!visible;$('#pauseDownload').textContent=value?.paused?'继续下载':'暂停下载';$('#pauseDownload').disabled=!!value?.cancelled;$('#cancelDownload').disabled=!!value?.cancelled;$('#downloadState').textContent=value?.message||'';document.body.classList.toggle('download-paused',value?.status==='paused');}
+  async function controlDownload(action){try{const result=await B.request(action);downloadState(result.download);$('#downloadState').textContent=result.message;}catch(error){$('#downloadState').textContent=error.message;}}
   function feedback(title,message,error=false){$('#feedback').hidden=false;$('#feedback').classList.toggle('error',error);$('#taskTitle').textContent=title;append(message);}
   function toast(message){clearTimeout(toastTimer);$('#toast').textContent=message;$('#toast').hidden=false;toastTimer=setTimeout(()=>$('#toast').hidden=true,2400);}
   async function run(action,args={},label='正在处理'){
@@ -71,8 +74,8 @@
       if(['save-paths'].includes(action))drafts={};
       if(['save-paths','preferences','save-airi','legal-read'].includes(action))toast(result?.message||'已保存');
       return result;
-    }catch(error){if(action==='download-engine'&&$('#localEngine'))$('#localEngine').open=true;if($('#drawer').open){let note=$('#drawerError');if(!note){note=document.createElement('p');note.id='drawerError';note.className='error-copy';note.setAttribute('role','alert');$('#drawerBody').prepend(note);}note.textContent=error.message;}if(error.state)render(error.state);feedback('未完成 · 请修复后重试',error.message,true);return null;}
-    finally{if(!parallel){busy=false;document.body.classList.remove('working');delete document.body.dataset.task;$('#feedback .progress').hidden=true;updateDisabled();}}
+    }catch(error){if(action==='download-engine'&&$('#localEngine'))$('#localEngine').open=true;if($('#drawer').open){let note=$('#drawerError');if(!note){note=document.createElement('p');note.id='drawerError';note.className='error-copy';note.setAttribute('role','alert');$('#drawerBody').prepend(note);}note.textContent=error.message;}if(error.state)render(error.state);feedback(error.cancelled?'已停止':'未完成 · 请修复后重试',error.message,!error.cancelled);return null;}
+    finally{if(!parallel){busy=false;downloadState(null);document.body.classList.remove('working');delete document.body.dataset.task;$('#feedback .progress').hidden=true;updateDisabled();}}
   }
   async function browse(kind){const value=await B.request('browse',{kind});return value.path||'';}
   const field=(id,label,value,multiline=false)=>`<label class="field">${label}${multiline?`<textarea id="${id}">${esc(drafts[id]??value)}</textarea>`:`<input id="${id}" value="${esc(drafts[id]??value)}">`}</label>`;
@@ -116,6 +119,7 @@
   $('#closeCelebration').onclick=()=>$('#celebration').hidden=true;
   addEventListener('resize',()=>{document.body.classList.add('resizing');clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>document.body.classList.remove('resizing'),160);});
   document.addEventListener('visibilitychange',()=>{document.body.classList.toggle('resizing',document.hidden);});
-  B.subscribe(message=>{if(message.type==='progress')append(message.message);if(message.type==='notice')feedback('请稍候',message.message,true);});
+  $('#pauseDownload').onclick=()=>controlDownload(transfer?.paused?'resume-download':'pause-download');$('#cancelDownload').onclick=()=>controlDownload('cancel-download');
+  B.subscribe(message=>{if(message.type==='progress'){append(message.message);downloadState(message.download);}if(message.type==='notice')feedback('请稍候',message.message,true);});
   B.request('state').then(result=>{render(result.state);if(state.step===9)run('summary',{},'读取真实配置状态');}).catch(error=>feedback('配置页面未连接到程序',error.message,true));
 })();

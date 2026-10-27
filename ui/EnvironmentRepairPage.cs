@@ -12,14 +12,15 @@ using System.Linq;
 namespace AgentVoice {
     public static class EnvironmentBootstrap {
         static string Inside(string root,string path){string full=Path.GetFullPath(path);if(!full.StartsWith(Path.GetFullPath(root).TrimEnd('\\')+"\\",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("环境文件必须位于软件目录内。");return full;}
-        public static async Task EnsureCore(SettingsStore store,Action<string> status){
+        public static async Task EnsureCore(SettingsStore store,Action<string> status,DownloadJob download=null){
             var cfg=store.Read();if(File.Exists(store.Resolve(cfg.engines.pythonService)))return;
             string target=Inside(store.Root,Path.Combine(store.Root,"runtime","core"));
             if(File.Exists(Path.Combine(target,"python.exe"))){cfg.engines.pythonService=store.Portable(Path.Combine(target,"python.exe"));store.Write(cfg);return;}
             var catalog=Json.Object(File.ReadAllText(store.Resolve("service/environment-catalog.json")));var python=(Dictionary<string,object>)catalog["python"];
             string cache=Inside(store.Root,Path.Combine(store.Root,"data","environment-repair","downloads"));Directory.CreateDirectory(cache);string archive=Path.Combine(cache,"python-bootstrap.zip"),stage=Inside(store.Root,Path.Combine(store.Root,"runtime",".bootstrap-"+Guid.NewGuid().ToString("N")));
             status("主服务 Python 缺失，正在下载软件内的独立环境……");ServicePointManager.SecurityProtocol|=SecurityProtocolType.Tls12;
-            using(var client=new WebClient())await client.DownloadFileTaskAsync(new Uri(Json.Text(python,"url")),archive);
+            if(download!=null)await download.Copy(Json.Text(python,"url"),archive,status);
+            else using(var client=new WebClient())await client.DownloadFileTaskAsync(new Uri(Json.Text(python,"url")),archive);
             string actual;using(var stream=File.OpenRead(archive))using(var sha=SHA256.Create())actual=BitConverter.ToString(sha.ComputeHash(stream)).Replace("-","").ToLowerInvariant();if(actual!=Json.Text(python,"sha256"))throw new InvalidOperationException("Python 下载校验失败，请重试。");
             Directory.CreateDirectory(stage);
             try{
@@ -96,11 +97,13 @@ namespace AgentVoice {
             if(repair&&offline&&!File.Exists(Store.Resolve(Config.engines.pythonService)))throw new InvalidOperationException("严格离线模式缺少主服务 Python，请在配置中心导入环境补齐包。");
             if(repair&&await Service.Running())throw new InvalidOperationException("请先在首页关闭语音服务，再补齐环境，避免修改运行中的依赖。");
             if(!repair&&!File.Exists(Store.Resolve(Config.engines.pythonService))){repairDetails.Text="缺少主服务 Python。点击“补齐缺失环境”会先在 runtime/core 创建独立 Python，再继续检查和补齐。";return;}
-            if(repair){await EnvironmentBootstrap.EnsureCore(Store,BusyStatus);Config=Store.Read();}
+            using(var download=repair?Service.BeginDownload():null){
+            if(repair){await EnvironmentBootstrap.EnsureCore(Store,BusyStatus,Service.Download);Config=Store.Read();}
             var progress=new Timer{Interval=1000};progress.Tick+=(s,e)=>{try{string p=Store.Resolve("data/environment-repair/progress.json");if(File.Exists(p))BusyStatus(Json.Text(Json.Object(File.ReadAllText(p)),"message"));}catch(IOException){}catch(ArgumentException){}};
             try{
                 progress.Start();string text=await Service.RunTool("environment_repair.py",(repair?"repair":"inspect")+" --root "+ServiceClient.Quote(Store.Root)+" --engine "+scope+(offline?" --offline":""));var report=Json.Object(text);bool ok=Convert.ToBoolean(report["ok"]),verified=report.ContainsKey("verifiedUsable")&&Convert.ToBoolean(report["verifiedUsable"]);repairDetails.Text=EnvironmentReport(report);Config=Store.Read();BindSettings();Status(!ok?"仍有未通过项目，请按页面提示处理后重试。":!repair?"环境检查通过；补齐时还会进行真实合成验证。":verified?"环境补齐与真实合成验证均已通过。":"主服务环境补齐通过；请选择声音引擎完成真实合成验证。");
             }finally{progress.Stop();progress.Dispose();}
+        }
         }
         string EnvironmentReport(Dictionary<string,object> report){
             var text=new StringBuilder();object items;string error=Json.Text(report,"error");if(error.Length>0)text.AppendLine(error);

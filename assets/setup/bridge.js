@@ -8,7 +8,7 @@
       const id=session+'_'+(++sequence);
       return new Promise((resolve,reject)=>{
         const timeout=setTimeout(()=>{pending.delete(id);reject(new Error('操作仍未返回，请查看过程或返回软件检查任务；未标记成功。'));},20*60*1000);
-        pending.set(id,{resolve,reject,timeout});native.postMessage({id,action,args});
+      pending.set(id,{resolve,reject,timeout,heartbeat(){clearTimeout(this.timeout);this.timeout=setTimeout(()=>{pending.delete(id);reject(new Error('操作长时间未响应，未标记成功；请查看过程。'));},20*60*1000);}});native.postMessage({id,action,args});
       });
     },
     subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);}
@@ -19,8 +19,8 @@
       const operation=pending.get(message.id);if(!operation)return;
       pending.delete(message.id);clearTimeout(operation.timeout);
       if(message.ok)operation.resolve(message.result);else{
-        const error=new Error(message.error||'操作未完成。');error.state=message.state;operation.reject(error);
+        const error=new Error(message.error||'操作未完成。');error.state=message.state;error.cancelled=!!message.cancelled;operation.reject(error);
       }
-    }else for(const listener of listeners)listener(message);
+    }else {if(message.type==='progress')pending.get(message.id)?.heartbeat();for(const listener of listeners)listener(message);}
   });
 })();

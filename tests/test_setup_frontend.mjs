@@ -27,3 +27,14 @@ test('frontend ships local CSP, ten steps, bounded illustrations and reduced mot
   assert.doesNotMatch(js,/save-reference|openReference|openProfiles|btn\('preview'|btn\('confirm'|copy-challenge/);
   assert.doesNotMatch(js,/import-voice|导入音色包|\.ttsmodel/);
 });
+
+test('paused download progress keeps the request alive and cancellation remains explicit',async()=>{
+  const timers=new Map(),sent=[];let receive,next=0;
+  const window={chrome:{webview:{postMessage:m=>sent.push(m),addEventListener:(name,fn)=>receive=fn}}};
+  vm.runInNewContext(await readFile(new URL('bridge.js',root),'utf8'),{window,setTimeout:(fn)=>{timers.set(++next,fn);return next;},clearTimeout:id=>timers.delete(id),Map,Set,Error});
+  const pending=window.setupBridge.request('download-engine',{});const original=[...timers.keys()][0];
+  receive({data:{type:'progress',id:sent[0].id,download:{active:true,status:'paused'}}});
+  assert.equal(timers.has(original),false);assert.equal(timers.size,1);
+  receive({data:{type:'result',id:sent[0].id,ok:false,cancelled:true,error:'stopped'}});
+  await assert.rejects(pending,error=>error.cancelled===true);assert.equal(timers.size,0);
+});

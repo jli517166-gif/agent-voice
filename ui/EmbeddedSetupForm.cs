@@ -28,7 +28,7 @@ namespace AgentVoice {
             var area=Screen.FromControl(this).WorkingArea;float dpi=AutoScaleDimensions.Width/96F;
             ClientSize=new Size(Math.Min((int)(1180*dpi),area.Width-40),Math.Min((int)(780*dpi),area.Height-60));MinimumSize=new Size(900,620);StartPosition=FormStartPosition.CenterScreen;
             fallback.BackColor=BackColor;fallback.Padding=new Padding(42);Controls.Add(fallback);detail.Text="正在准备本地配置界面……";fallback.Controls.Add(detail);
-            Controller.Progress=text=>Send(new{type="progress",id=activeRequest,message=text});
+            Controller.Progress=text=>Send(new{type="progress",id=activeRequest,message=text,download=Controller.DownloadState});
             Shown+=async(s,e)=>{
                 // Loading configuration must not depend on an already healthy service.
                 await Initialize();
@@ -88,7 +88,7 @@ namespace AgentVoice {
                 Send(new{type="result",id=id,ok=true,result=result});
                 if(new[]{"next","back","skip"}.Contains(action))PlayCue();
                 if(Controller.Finished){DialogResult=DialogResult.OK;Close();}
-            }catch(Exception error){Send(new{type="result",id=id,ok=false,error=error.Message,state=Controller.Snapshot()});}
+            }catch(Exception error){Send(new{type="result",id=id,ok=false,error=error.Message,cancelled=error is OperationCanceledException,state=Controller.Snapshot()});}
         }
         object Browse(Dictionary<string,object> args){
             if(Controller.Busy)throw new InvalidOperationException("当前任务仍在执行。");string kind=Json.Text(args,"kind"),path="";
@@ -107,7 +107,7 @@ namespace AgentVoice {
         void Send(object value){if(IsDisposed||Browser==null||Browser.IsDisposed||Browser.CoreWebView2==null)return;Browser.CoreWebView2.PostWebMessageAsJson(Json.Encode(value));}
         async void PlayCue(){try{var p=Controller.Flow.State.Read();bool running=await Controller.Flow.Service.Running();if(!IsDisposed&&InterfaceSounds.Allowed(p.interfaceSounds,testing,running))sounds.Play(Controller.Flow.Store.Root,Math.Max(0,p.onboardingStep-1));}catch{/* Sound is optional and must never block setup. */}}
         async void OnClosing(object sender,FormClosingEventArgs e){
-            if(Controller.Busy||repairing||initializing){e.Cancel=true;Send(new{type="notice",message="任务仍在执行。请等待当前操作完成后关闭。"});return;}
+            if(Controller.Busy||repairing||initializing){e.Cancel=true;Send(new{type="notice",message=Controller.Flow.Service.Download!=null&&Controller.Flow.Service.Download.Paused?"下载已暂停。请先继续或停止下载，再关闭窗口。":"任务仍在执行。请等待当前操作完成后关闭。"});return;}
             if(allowClose||Controller.Finished)return;e.Cancel=true;if(closing)return;closing=true;
             if(Controller.Flow.PreviewMayBePending){
                 Exception stopError=null;try{await Controller.Flow.StopPreview();}catch(Exception error){stopError=error;}

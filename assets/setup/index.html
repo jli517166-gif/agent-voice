@@ -5,7 +5,7 @@
 <body><div class="app">
 <header><div class="brand">Agent Voice<span>让对话，带上你的声音。</span></div><div id="position" aria-live="polite">首次配置</div><div class="preferences"><label><input id="motion" type="checkbox">减少动画</label><label><input id="sound" type="checkbox">音效</label></div></header>
 <main id="viewport"><section id="page" aria-label="当前配置页面"><h1>稍候，声音的旅程就要开始。</h1><p>正在打开本机配置向导，让引擎、音色与连接各就其位。</p></section></main>
-<section id="feedback" hidden aria-live="polite"><div class="progress" hidden></div><div class="feedback-row"><strong id="taskTitle"></strong><button id="showLog" class="quiet">查看过程</button></div><pre id="result"></pre></section>
+<section id="feedback" hidden aria-live="polite"><div class="progress" hidden></div><div class="feedback-row"><strong id="taskTitle"></strong><button id="showLog" class="quiet">查看过程</button></div><pre id="result"></pre><div id="downloadControls" hidden><button id="pauseDownload" class="quiet">暂停下载</button><button id="cancelDownload" class="quiet">停止下载</button><span id="downloadState" role="status"></span></div></section>
 <footer><div><button id="back" class="secondary">上一步</button><button id="skip" class="quiet">跳过本步</button></div><div><button id="defer" class="quiet">稍后配置</button><button id="next" class="primary">开始配置</button></div></footer>
 </div><dialog id="drawer" aria-labelledby="drawerTitle"><div class="drawer-head"><h2 id="drawerTitle"></h2><button id="closeDrawer" class="quiet" aria-label="关闭面板">关闭</button></div><div id="drawerBody"></div></dialog>
 <div id="toast" role="status" hidden></div><div id="celebration" hidden aria-live="polite"><div class="celebration-lines"></div><h2>恭喜，接入成功。</h2><p>本次检查已通过，具体验证范围以操作结果为准。</p><button class="primary" id="closeCelebration">继续配置</button></div>

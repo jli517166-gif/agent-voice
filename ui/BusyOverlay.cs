@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -19,6 +19,15 @@ namespace AgentVoice {
         readonly int[] frameDelays;
         string message;
         Button stopButton;
+        Button pauseDownload,cancelDownload;Func<DownloadJob> currentDownload;
+        public void SetDownloadControl(Func<DownloadJob> current){
+            currentDownload=current;
+            pauseDownload=new Button{Text="暂停下载",BackColor=Color.FromArgb(46,43,60),ForeColor=Color.White,FlatStyle=FlatStyle.Flat,Visible=false};
+            cancelDownload=new Button{Text="停止下载",BackColor=Color.FromArgb(46,43,60),ForeColor=Color.White,FlatStyle=FlatStyle.Flat,Visible=false};
+            pauseDownload.FlatAppearance.BorderSize=cancelDownload.FlatAppearance.BorderSize=0;
+            pauseDownload.Click+=(s,e)=>{var job=currentDownload();if(job==null)return;if(job.Paused)job.Resume();else job.Pause();Invalidate();};
+            cancelDownload.Click+=(s,e)=>{var job=currentDownload();if(job!=null)job.Cancel();Invalidate();};Controls.Add(pauseDownload);Controls.Add(cancelDownload);
+        }
         public void SetStopAction(Action action){
             if(stopButton!=null)return;
             stopButton=new Button{Text="停止朗读",AccessibleName="停止朗读",BackColor=Color.FromArgb(46,43,60),ForeColor=Color.White,FlatStyle=FlatStyle.Flat};
@@ -37,18 +46,21 @@ namespace AgentVoice {
                     }
                 }catch{if(custom!=null)custom.Dispose();custom=null;if(imageStream!=null)imageStream.Dispose();imageStream=null;}
             }
-            timer.Tick+=(s,e)=>Invalidate();VisibleChanged+=(s,e)=>{if(Visible&&!reduced)timer.Start();else timer.Stop();};if(!reduced)timer.Start();
+            timer.Interval=reduced?200:40;timer.Tick+=(s,e)=>Invalidate();VisibleChanged+=(s,e)=>{if(Visible)timer.Start();else timer.Stop();};timer.Start();
         }
         public void SetMessage(string value){message=value;Invalidate();}
         protected override void OnPaintBackground(PaintEventArgs e){if(snapshot!=null)e.Graphics.DrawImage(snapshot,ClientRectangle);else e.Graphics.Clear(BackColor);}
         protected override void OnPaint(PaintEventArgs e){
             base.OnPaint(e);var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;float scale=g.DpiX/96F;
+            var download=currentDownload==null?null:currentDownload();bool hasDownload=download!=null;
+            if(pauseDownload!=null){pauseDownload.Visible=cancelDownload.Visible=hasDownload;if(hasDownload){pauseDownload.Text=download.Paused?"继续下载":"暂停下载";pauseDownload.Enabled=cancelDownload.Enabled=!download.Cancelled;var state=Json.Object(Json.Encode(download.Snapshot()));string status=Json.Text(state,"message");if(status.Length>0)message=status;}}
             using(var shade=new SolidBrush(Color.FromArgb(185,9,10,15)))g.FillRectangle(shade,ClientRectangle);
-            int width=Math.Min((int)(520*scale),Math.Max(1,Width-(int)(48*scale))),height=Math.Min((int)((stopButton==null?270:322)*scale),Math.Max(1,Height-(int)(32*scale)));
+            int width=Math.Min((int)(520*scale),Math.Max(1,Width-(int)(48*scale))),height=Math.Min((int)((stopButton==null&&!hasDownload?270:322)*scale),Math.Max(1,Height-(int)(32*scale)));
             var box=new Rectangle((Width-width)/2,(Height-height)/2,width,height);
             using(var shadow=Shapes.Rounded(new Rectangle(box.X,box.Y+(int)(8*scale),box.Width,box.Height),18))using(var brush=new SolidBrush(Color.FromArgb(40,0,0,0)))g.FillPath(brush,shadow);
             using(var path=Shapes.Rounded(box,18))using(var fill=new SolidBrush(Color.FromArgb(27,28,36)))g.FillPath(fill,path);
             if(stopButton!=null){stopButton.Size=new Size((int)(132*scale),(int)(36*scale));stopButton.Location=new Point(box.X+(width-stopButton.Width)/2,box.Bottom-(int)(54*scale));}
+            if(hasDownload){pauseDownload.SetBounds(box.X+(width-(int)(284*scale))/2,box.Bottom-(int)(54*scale),(int)(132*scale),(int)(36*scale));cancelDownload.SetBounds(pauseDownload.Right+(int)(20*scale),pauseDownload.Top,pauseDownload.Width,pauseDownload.Height);}
             var visual=new Rectangle(box.X+(int)(32*scale),box.Y+(int)(30*scale),box.Width-(int)(64*scale),(int)(92*scale));
             if(custom!=null){
                 if(!reduced&&frameDelays!=null&&frameDelays.Length>1){long t=elapsed.ElapsedMilliseconds%frameDelays.Sum();int index=0;while(t>=frameDelays[index]&&index<frameDelays.Length-1)t-=frameDelays[index++];custom.SelectActiveFrame(FrameDimension.Time,index);}
