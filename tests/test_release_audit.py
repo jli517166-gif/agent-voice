@@ -7,24 +7,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
 from operation_lock import OperationLock
 from bounded_logs import BoundedLog,pump
 from prepare_training import validate_dataset,prepare,train_repo
-import test_tts_bundle as fixtures
 
-class ImportDedupTests(unittest.TestCase):
- def setUp(self):fixtures.TtsBundleTests.setUp(self)
- def tearDown(self):fixtures.TtsBundleTests.tearDown(self)
- def test_repeated_light_and_full_reuse_reference(self):
-  from tts_bundle import import_model
-  first=import_model(self.root,self.package)
-  for _ in range(4):
-   result=import_model(self.root,self.package);self.assertTrue(result['referenceReused']);self.assertEqual(result['voice']['reference'],first['voice']['reference'])
-  full=import_model(self.root,self.full);self.assertTrue(full['referenceReused']);self.assertEqual(full['voice']['reference'],first['voice']['reference'])
-  self.assertEqual(len(list((self.root/'voice-model-packages/已导入').iterdir())),1)
- def test_live_service_excludes_offline_import(self):
-  from tts_bundle import import_model
-  before=self.store.path.read_bytes()
-  with OperationLock(self.root):
-   with self.assertRaisesRegex(ValueError,'正在运行'):import_model(self.root,self.package)
-  self.assertEqual(before,self.store.path.read_bytes())
 
 class LockAndLogTests(unittest.TestCase):
  def test_log_write_failure_never_recurses_into_redirected_stderr(self):

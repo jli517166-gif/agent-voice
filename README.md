@@ -18,7 +18,7 @@ Agent Voice 是 Windows 本地语音服务与桌面控制台，连接 Codex、De
 
 ## 安装
 
-**直接下载程序：** [Windows x64 维护预览版](https://github.com/jli517166-gif/agent-voice/releases/tag/v0.2.0-preview.1)。无需自行编译；先阅读 [下载与首次使用](下载与首次使用.md)，准备配套引擎和环境。若仓库访问受限，附件仅对有访问权限的账户可见。
+**直接下载程序：** [Windows x64 维护预览版](https://github.com/jli517166-gif/agent-voice/releases/tag/v0.2.0-preview.2)。无需自行编译；先阅读 [下载与首次使用](下载与首次使用.md)，准备配套引擎和环境。若仓库访问受限，附件仅对有访问权限的账户可见。
 
 需要 Windows 10／11 64 位、.NET Framework 4.8，以及适配的 NVIDIA 显卡和驱动。具体显存、磁盘和依赖要求取决于所选引擎。
 

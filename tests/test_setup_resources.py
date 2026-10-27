@@ -7,8 +7,8 @@ from environment_repair import Repair
 class SetupResourcesTests(unittest.TestCase):
  def test_new_license_download_does_not_change_existing_model_identity(self):
   from model_integrity import model_sources,inventory_fingerprint
-  import test_tts_bundle as fixtures
-  fixture=fixtures.TtsBundleTests();fixture.setUp()
+  import model_fixture as fixtures
+  fixture=fixtures.ModelFixture();fixture.setUp()
   try:
    before={key:file.read_bytes() for key,file in model_sources(fixture.model).items()};helper=Repair(fixture.root)
    def download(command,**kw):

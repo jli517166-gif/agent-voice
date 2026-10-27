@@ -10,7 +10,7 @@ from privacy import reading_allowed,clear_output_records,rotate_token,clean_logs
 from voice_rights import read_record,save_record,public_summary
 from release_compliance import inspect
 from operation_lock import OperationLock
-import test_core,optional_voice_module,test_tts_bundle
+import test_core
 
 
 def wav_bytes():
@@ -155,28 +155,6 @@ class ApiPrivacyTests(unittest.TestCase):
         self.assertEqual(mime,'audio/mpeg');self.assertNotIn(b'AIGC',audio);self.assertNotIn(b'AgentVoice.local',audio)
 
 
-class RightsAndPackageTests(unittest.TestCase):
-    setUp=test_tts_bundle.TtsBundleTests.setUp
-    tearDown=test_tts_bundle.TtsBundleTests.tearDown
-    rewrite=test_tts_bundle.TtsBundleTests.rewrite
-    def test_optional_export_has_no_rights_prompt_dependency(self):
-        from tts_bundle import export_model,import_model
-        with patch('voice_rights.public_summary',side_effect=OSError('unavailable registry')):
-            export_model(self.root,self.package,package_mode='lightweight')
-        with zipfile.ZipFile(self.package) as archive:manifest=json.loads(archive.read('manifest.json'))
-        self.assertNotIn('licenseSummary',manifest);self.assertNotIn('baseModelSource',manifest)
-        result=import_model(self.root,self.package);self.assertTrue(result['ok']);self.assertNotIn('licenseStatus',result)
-    def test_legacy_package_metadata_does_not_block_import(self):
-        from tts_bundle import import_model
-        package=self.rewrite(self.package,lambda m,f:m.update(licenseSummary={'old':'opaque legacy declaration'}))
-        with patch('voice_rights.save_imported_summary',side_effect=OSError('registry unavailable')):
-            self.assertTrue(import_model(self.root,package)['ok'])
-    def test_optional_import_still_rejects_corrupted_reference(self):
-        from tts_bundle import import_model
-        def corrupt(m,f):f[m['reference']]=b'corrupted'
-        package=self.rewrite(self.package,corrupt);before=self.store.path.read_bytes()
-        with self.assertRaises(ValueError):import_model(self.root,package)
-        self.assertEqual(self.store.path.read_bytes(),before)
 
 
 class ReleaseGateTests(unittest.TestCase):

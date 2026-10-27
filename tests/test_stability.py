@@ -6,9 +6,8 @@ from state import Store,defaults,atomic_json
 from jobs import Jobs,Cancelled
 from pipeline import Pipeline
 from test_core import FakePipeline
-import test_tts_bundle as fixtures
+import model_fixture as fixtures
 from voice_profiles import save_profile,apply_profile,seal_profile
-from tts_bundle import export_model,import_model,source_fingerprint
 
 class QueueFaultTests(unittest.TestCase):
     def setUp(self):
@@ -76,9 +75,9 @@ class QueueFaultTests(unittest.TestCase):
             c.abort.assert_called_once()
         finally:release.set()
 
-class ProfileAndPackageTests(unittest.TestCase):
-    def setUp(self):fixtures.TtsBundleTests.setUp(self)
-    def tearDown(self):fixtures.TtsBundleTests.tearDown(self)
+class ProfileTests(unittest.TestCase):
+    def setUp(self):fixtures.ModelFixture.setUp(self)
+    def tearDown(self):fixtures.ModelFixture.tearDown(self)
     def test_profile_save_failure_rolls_back_asset_records(self):
         before=self.store.path.read_bytes();voice=dict(self.store.get()['voice'],assetScope='private')
         with patch.object(self.store,'update',side_effect=RuntimeError('disk error')):
@@ -107,20 +106,6 @@ class ProfileAndPackageTests(unittest.TestCase):
     def test_legacy_profile_can_be_sealed_without_changing_current_voice(self):
         voice=self.store.get()['voice'];self.store.update({'profiles':[{'id':'old','name':'旧方案','voice':voice}]});r=seal_profile(self.store,'old')
         self.assertEqual(r['profile']['id'],'old');self.assertEqual(self.store.get()['voice'],voice)
-    def test_comments_and_readme_do_not_break_new_packages(self):
-        source=self.root/'tts-engines/cosyvoice/source/cosyvoice/version.py';source.write_text('# harmless comment\n__version__ = "fixture"\n')
-        (source.parent/'README.md').write_text('new documentation')
-        self.assertTrue(import_model(self.root,self.package)['ok'])
-    def test_semantic_source_change_still_rejected(self):
-        (self.root/'tts-engines/cosyvoice/source/cosyvoice/version.py').write_text('__version__="incompatible"')
-        with self.assertRaisesRegex(ValueError,'源码版本'):import_model(self.root,self.package)
-    def test_private_tts_archive_cannot_be_released_under_different_suffix(self):
-        modulepath=Path(__file__).resolve().parents[1]/'tools/release_audit.py';spec=importlib.util.spec_from_file_location('audit_test',modulepath);audit=importlib.util.module_from_spec(spec);spec.loader.exec_module(audit)
-        self.store.update({'voice':{'assetScope':'private'}});export_model(self.root,self.package)
-        other=self.package.with_suffix('.zip');other.write_bytes(self.package.read_bytes());self.assertTrue(audit.private_bundle(other,set()))
-    def test_private_reference_hash_detected_even_when_scope_public(self):
-        modulepath=Path(__file__).resolve().parents[1]/'tools/release_audit.py';spec=importlib.util.spec_from_file_location('audit_test',modulepath);audit=importlib.util.module_from_spec(spec);spec.loader.exec_module(audit)
-        sha=hashlib.sha256((self.root/'reference.wav').read_bytes()).hexdigest();self.assertTrue(audit.private_bundle(self.package,{sha}))
 
 class RuntimeAndStateTests(unittest.TestCase):
     def test_custom_gpt_venv_is_not_repointed_to_core(self):

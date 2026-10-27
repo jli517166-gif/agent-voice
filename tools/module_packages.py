@@ -1,7 +1,7 @@
 """Separate application, engine and offline-environment packages.
 
 The manifest is consumed by the native desktop installer, including on machines
-without Python. Voice archives retain their existing engine-labelled format.
+without Python. Feature packages are generic and contain no built-in voice transfer module.
 """
 import argparse, hashlib, json, os, posixpath, re, shutil, stat, sys, zipfile
 from pathlib import Path
@@ -155,7 +155,7 @@ def application_package(build,output,folder='Agent语音',audit_directory=None):
     return {'ok':True,'kind':'application','file':str(output),'bytes':output.stat().st_size,'sha256':digest(output)}
 
 
-def feature_package(root,output,ident='voice-packages',name='音色包导入导出',version='1.0.0'):
+def feature_package(root,output,ident='extension',name='功能扩展',version='1.0.0'):
     if not re.fullmatch(r'[a-z][a-z0-9-]{0,63}',ident):raise ValueError('功能模块标识无效')
     root=Path(root).resolve();prefix='modules/'+ident
     if not (root/prefix/'module.exe').is_file():raise ValueError('请先单独构建功能模块')
@@ -166,12 +166,12 @@ def feature_package(root,output,ident='voice-packages',name='音色包导入导�
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('kind',choices=['application','engine','environment','feature']);parser.add_argument('--root',required=True);parser.add_argument('--output',required=True)
     parser.add_argument('--engine',choices=ENGINES);parser.add_argument('--engines',nargs='*',choices=ENGINES,default=list(ENGINES));parser.add_argument('--model');parser.add_argument('--include-downloads',action='store_true');parser.add_argument('--profile',default='bundled');parser.add_argument('--minimum-driver',default='')
-    parser.add_argument('--module-version',default='1.0.0')
+    parser.add_argument('--module-version',default='1.0.0');parser.add_argument('--module-id',default='extension');parser.add_argument('--module-name',default='功能扩展')
     parser.add_argument('--application-folder',choices=['Agent语音','Agent语音-私用版'],default='Agent语音')
     parser.add_argument('--audit-directory',help='将软件本体排除的开发记录集中保存到此目录')
     args=parser.parse_args()
     if args.kind=='application':result=application_package(args.root,args.output,args.application_folder,args.audit_directory)
-    elif args.kind=='feature':result=feature_package(args.root,args.output,version=args.module_version)
+    elif args.kind=='feature':result=feature_package(args.root,args.output,ident=args.module_id,name=args.module_name,version=args.module_version)
     elif args.kind=='engine':result=engine_package(args.root,args.engine,args.output,args.model)
     else:result=environment_package(args.root,args.engines,args.output,args.include_downloads,args.profile,args.minimum_driver)
     print(json.dumps(result,ensure_ascii=False))
