@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch,Mock
 import importlib.util
 
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"service"))
 from state import Store,defaults
 
@@ -110,6 +111,38 @@ class McpControlTests(unittest.TestCase):
             self.assertNotIn('resources',initialized['result']['capabilities'])
             self.assertIn('error',request(4,'resources/read',{'uri':'ui://agent-voice/player.html'}))
             process.stdin.close();process.wait(timeout=5);process.stdout.close();process.stderr.close()
+
+    def test_stop_waits_for_real_http_service_to_close(self):
+        import hashlib,http.server,threading,time
+        module=self.mcp_module()
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary).resolve();store=Store(root);stopped=threading.Event()
+            ident=hashlib.sha256(str(root).lower().encode('utf-8')).hexdigest()[:24]
+            class Handler(http.server.BaseHTTPRequestHandler):
+                def log_message(self,*args):pass
+                def answer(self,body):
+                    data=json.dumps(body).encode();self.send_response(200);self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
+                def do_GET(self):self.answer({'service':'agent-voice-public','instanceId':ident})
+                def do_POST(self):
+                    self.answer({'ok':True})
+                    def close_later():
+                        time.sleep(.2);self.server.shutdown();self.server.server_close();stopped.set()
+                    threading.Thread(target=close_later,daemon=True).start()
+            server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler)
+            config=store.get();config['port']=server.server_port;store.path.write_text(json.dumps(config),encoding='utf-8');worker=threading.Thread(target=lambda:server.serve_forever(poll_interval=.02),daemon=True);worker.start()
+            try:
+                result=module.AgentVoice(root,'codex').call('stop_voice_service',{})
+                self.assertTrue(stopped.wait(.02),'Stop returned success before the HTTP listener closed')
+                self.assertFalse(result['running'])
+            finally:
+                server.shutdown();worker.join(2);server.server_close();stopped.wait(2)
+
+    def test_stop_timeout_does_not_report_success(self):
+        module=self.mcp_module()
+        with tempfile.TemporaryDirectory() as temporary:
+            voice=module.AgentVoice(temporary,'codex');voice.running=Mock(return_value={'ready':True});voice.request=Mock(return_value={'ok':True})
+            with patch.object(module.time,'monotonic',side_effect=[0,16]),self.assertRaisesRegex(ValueError,'未确认.*停止'):
+                voice.call('stop_voice_service',{})
 
     def test_old_unverified_harness_switches_are_migrated_out(self):
         with tempfile.TemporaryDirectory() as temporary:

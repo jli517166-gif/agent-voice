@@ -149,8 +149,18 @@ class AgentVoice:
             return self.public_status(health)
         if name=="start_voice_service":return self.start()
         if name=="stop_voice_service":
-            if not self.running():return {"ok":True,"alreadyStopped":True}
-            return self.request("/api/shutdown",{})
+            if not self.running():return {"ok":True,"alreadyStopped":True,"running":False}
+            self.request("/api/shutdown",{})
+            deadline=time.monotonic()+15
+            while time.monotonic()<deadline:
+                try:
+                    if not self.running():return {"ok":True,"running":False}
+                except RuntimeError:
+                    # The listener can remain bound while its workers exit;
+                    # a timeout during this boundary is not proof of shutdown.
+                    pass
+                time.sleep(.1)
+            raise ValueError("已发出关闭请求，但未确认语音服务停止；请稍后查询状态或检查服务日志。")
         if name=="stop_speech":
             if not self.running():raise ValueError("语音服务尚未启动")
             return self.request("/stop",{})
@@ -199,7 +209,7 @@ def main():
                 if ident is None:continue
                 if method=="initialize":
                     requested=message.get("params",{}).get("protocolVersion","2025-06-18")
-                    response(ident,{"protocolVersion":requested,"capabilities":{"tools":{"listChanged":False}},"serverInfo":{"name":"agent-voice-control","version":"1.5.0"},"instructions":"通过语言命令控制本机 Agent Voice。执行用户明确要求的朗读、停止、服务启停和声音切换。朗读提交成功只代表进入队列，不代表播放完成。Codex 不提供自定义面板或浮窗，也没有接管内置朗读按钮。"})
+                    response(ident,{"protocolVersion":requested,"capabilities":{"tools":{"listChanged":False}},"serverInfo":{"name":"agent-voice-control","version":"1.5.1"},"instructions":"通过语言命令控制本机 Agent Voice。执行用户明确要求的朗读、停止、服务启停和声音切换。朗读提交成功只代表进入队列，不代表播放完成。Codex 不提供自定义面板或浮窗，也没有接管内置朗读按钮。"})
                     note(method,message.get("params",{}))
                 elif method=="ping":response(ident,{})
                 elif method=="tools/list":
