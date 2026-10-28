@@ -44,7 +44,7 @@ class Repair:
         if not directory.exists():return (0,0,0)
         files=[path for path in directory.rglob('*') if path.is_file() and not path.name.endswith('.lock')]
         return (len(files),sum(path.stat().st_size for path in files),max((path.stat().st_mtime_ns for path in files),default=0))
-    def run(self,command,timeout=1800,activity=None,stall_timeout=None):
+    def run(self,command,timeout=1800,activity=None,stall_timeout=None,activity_message=None):
         from pipeline import hidden_process
         self.gate.check()
         with self.log.open('a',encoding='utf-8') as log:
@@ -52,6 +52,7 @@ class Repair:
             process=subprocess.Popen([str(x) for x in command],stdout=log,stderr=log,cwd=self.root,env=self.env(),**hidden_process())
             active=0;last=time.monotonic();activity_at=last;activity_check=last
             signature=self.activity_signature(activity) if activity else None
+            reported_signature=signature;reported_at=last
             try:
                 while process.poll() is None:
                     if self.gate.cancelled and self.gate.status().get('state')=='paused':raise DownloadCancelled('下载已停止；断点已保留')
@@ -63,6 +64,11 @@ class Repair:
                             if current!=signature:signature=current;activity_at=now
                             elif stall_timeout and now-activity_at>stall_timeout:
                                 raise RuntimeError('下载长时间没有新增字节，已停止当前连接并保留断点重试')
+                            elapsed=max(.001,now-reported_at)
+                            delta=max(0,current[1]-reported_signature[1])
+                            message=activity_message or '正在接收下载文件'
+                            self.progress(message+' · 已接收 %d 个文件'%current[0],downloadedBytes=current[1],totalBytes=0,bytesPerSecond=delta/elapsed,fileCount=current[0])
+                            reported_signature=current;reported_at=now
                     else:activity_at=now
                     last=now
                     if active>timeout:raise RuntimeError('安装步骤超时，已停止本次进程；详见 '+str(self.log))
@@ -362,7 +368,7 @@ class Repair:
         for attempt in range(3):
             workers=3 if attempt==0 else 1
             code=prefix+'from huggingface_hub import snapshot_download;snapshot_download(repo_id='+repr(CATALOG[name]['modelRepo'])+',revision='+repr(CATALOG[name]['modelRevision'])+',local_dir='+repr(str(stage))+',allow_patterns='+repr(patterns)+',max_workers='+str(workers)+')'
-            try:self.run([python,'-I','-X','utf8','-c',code],timeout=14400,activity=stage,stall_timeout=180);break
+            try:self.run([python,'-I','-X','utf8','-c',code],timeout=14400,activity=stage,stall_timeout=180,activity_message='正在下载 '+name+' 基础模型');break
             except DownloadCancelled:raise
             except RuntimeError:
                 if attempt==2:raise RuntimeError('模型下载连续失败，断点保留。请检查系统证书、网络和日志：'+str(self.log))

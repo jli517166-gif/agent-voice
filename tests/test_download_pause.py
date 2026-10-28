@@ -81,6 +81,19 @@ class DownloadPauseTests(unittest.TestCase):
    with self.assertRaisesRegex(RuntimeError,'没有新增字节'):
     helper.run([sys.executable,'-c','import time;time.sleep(30)'],timeout=30,activity=activity,stall_timeout=.15)
    self.assertEqual(partial.read_bytes(),b'partial')
+ def test_child_activity_reports_downloaded_bytes_speed_and_file_count(self):
+  from environment_repair import Repair
+  with tempfile.TemporaryDirectory() as tmp:
+   helper=Repair(tmp);activity=Path(tmp)/'download';activity.mkdir();rows=[]
+   helper.progress=lambda message,stage='working',**extra:rows.append(dict(message=message,**extra))
+   target=activity/'model.incomplete'
+   code="from pathlib import Path;import time;p=Path("+repr(str(target))+");p.write_bytes(b'x'*4096);time.sleep(1.25)"
+   helper.run([sys.executable,'-c',code],timeout=5,activity=activity,stall_timeout=3,activity_message='正在下载测试模型')
+   reported=[row for row in rows if row.get('downloadedBytes',0)>0]
+   self.assertTrue(reported,rows)
+   self.assertEqual(reported[-1]['totalBytes'],0)
+   self.assertGreaterEqual(reported[-1]['bytesPerSecond'],0)
+   self.assertEqual(reported[-1]['fileCount'],1)
  def test_requests_hook_stops_stream_iteration_at_checkpoint(self):
   import types
   from download_control import hook_requests

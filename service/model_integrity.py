@@ -1,6 +1,6 @@
 """Local model validation and identity; no archive import or export."""
 
-import hashlib,json
+import hashlib,json,re
 
 from pathlib import Path
 
@@ -35,12 +35,13 @@ def model_ready(directory, engine='cosyvoice', variant=None):
     directory = Path(directory)
     if not directory.is_dir() or not all((directory/name).is_file() for name in REQUIRED) or not (directory/'CosyVoice-BlankEN').is_dir():
         raise ValueError('请选择完整 CosyVoice 3 模型目录，包含权重、yaml、说话人／语音编码器和 CosyVoice-BlankEN 配套资源')
-    import yaml
-    document = yaml.compose((directory/'cosyvoice3.yaml').read_text(encoding='utf-8-sig'), Loader=yaml.SafeLoader)
-    if not isinstance(document, yaml.MappingNode):
-        raise ValueError('CosyVoice 模型配置格式无效')
-    llm = next((node for key,node in document.value if key.value == 'llm'), None)
-    if llm is None or llm.tag != '!new:cosyvoice.llm.llm.CosyVoice3LM':
+    # This validation is used before the engine environment exists, so it must
+    # not depend on PyYAML already being installed. Only accept an exact,
+    # top-level CosyVoice 3 LLM constructor tag; the engine performs the full
+    # YAML parse later inside its isolated runtime.
+    text=(directory/'cosyvoice3.yaml').read_text(encoding='utf-8-sig')
+    tags=re.findall(r'(?m)^llm\s*:\s*(![^\s#]+)',text)
+    if tags != ['!new:cosyvoice.llm.llm.CosyVoice3LM']:
         raise ValueError('模型配置与 CosyVoice 3 引擎不匹配，不能只改文件名或后缀')
 
 def model_sources(directory, engine='cosyvoice', variant=None):
