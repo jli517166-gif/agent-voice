@@ -1,9 +1,9 @@
 {
   "format": "agent-voice-release",
-  "version": "v0.2.0-preview.4",
+  "version": "v0.2.0-preview.5",
   "edition": "public",
   "platform": "windows-x64",
-  "downloadUrl": "https://github.com/jli517166-gif/agent-voice/releases/download/v0.2.0-preview.4/AgentVoice-Windows-x64-v0.2.0-preview.4.zip",
-  "sha256": "1a183c5277f97d079e1f6eb8f62522707e04964eadf62041f96e5c12f31144dd",
-  "bytes": 8202221
+  "downloadUrl": "https://github.com/jli517166-gif/agent-voice/releases/download/v0.2.0-preview.5/AgentVoice-Windows-x64-v0.2.0-preview.5.zip",
+  "sha256": "43241dd3d0cc09a96cd51af730feedb5df45652d8c1694c0bbccc8eb1560e460",
+  "bytes": 8205186
 }
