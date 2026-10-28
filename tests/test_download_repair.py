@@ -154,3 +154,30 @@ class TorchIndexTests(unittest.TestCase):
         self.assertEqual(result['filename'],'torch-2.6.0+cu124-cp311-cp311-win_amd64.whl')
         with patch('torch_download.urllib.request.urlopen',return_value=io.BytesIO(content)), self.assertRaises(ValueError):
             wheel('https://download.pytorch.org/whl/cu124','torch==2.7.0','cp311')
+
+
+class PipResilienceContractTests(unittest.TestCase):
+    def test_large_dependency_downloads_use_patient_network_retries(self):
+        source = (Path(__file__).resolve().parents[1] / 'service' / 'environment_repair.py').read_text(encoding='utf-8')
+        self.assertIn("'--retries','10','--timeout','120'", source)
+
+    def test_embedded_runtimes_bootstrap_build_tools_before_sdists(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / 'service' / 'environment_repair.py').read_text(encoding='utf-8')
+        catalog = json.loads((root / 'service' / 'environment-catalog.json').read_text(encoding='utf-8'))
+        self.assertEqual(catalog['bootstrapPackages'], ['setuptools==75.6.0', 'wheel==0.45.1'])
+        self.assertIn("self.probe(python,['setuptools','wheel'])", source)
+        self.assertIn("Python 构建工具安装失败", source)
+
+    def test_pip_dependency_activity_is_visible_to_download_ui(self):
+        source = (Path(__file__).resolve().parents[1] / 'service' / 'environment_repair.py').read_text(encoding='utf-8')
+        self.assertIn("activity=self.work/'tmp'", source)
+        self.assertIn("activity_message='正在下载或安装 Python 依赖'", source)
+
+    def test_gpt_windows_runtime_uses_pure_python_jieba_compatibility(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / 'service' / 'environment_repair.py').read_text(encoding='utf-8')
+        catalog = json.loads((root / 'service' / 'environment-catalog.json').read_text(encoding='utf-8'))
+        self.assertNotIn('jieba_fast', catalog['gpt-sovits']['packages'])
+        self.assertEqual(catalog['gpt-sovits']['packages']['jieba'], 'jieba==0.42.1')
+        self.assertIn("if name=='gpt-sovits':self.install_jieba_fast_compat(python)", source)

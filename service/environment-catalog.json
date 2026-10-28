@@ -9,6 +9,10 @@
     "url": "https://files.pythonhosted.org/packages/ef/7d/500c9ad20238fcfcb4cb9243eede163594d7020ce87bd9610c9e02771876/pip-24.3.1-py3-none-any.whl",
     "sha256": "3790624780082365f47549d032f3770eeb2b1e8bd1f7b2e02dace1afa361b4ed"
   },
+  "bootstrapPackages": [
+    "setuptools==75.6.0",
+    "wheel==0.45.1"
+  ],
   "core": {
     "packages": {
       "numpy": "numpy==1.26.4",
@@ -82,7 +86,6 @@
       "peft": "peft==0.17.1",
       "yaml": "PyYAML==6.0.3",
       "psutil": "psutil==7.2.2",
-      "jieba_fast": "jieba-fast==0.53",
       "jieba": "jieba==0.42.1",
       "split_lang": "split-lang==2.1.1",
       "fast_langdetect": "fast-langdetect==1.0.1",

@@ -122,6 +122,22 @@ class Repair:
         finally:
             if stage.exists():shutil.rmtree(inside(self.root,stage))
         return entry
+    def install_jieba_fast_compat(self,python):
+        """Provide GPT-SoVITS' jieba_fast import on embedded Windows Python.
+
+        The pinned jieba-fast release has no CPython 3.11 Windows wheel and its
+        source build needs Python development headers that the official
+        embeddable runtime intentionally does not ship.  GPT-SoVITS only uses
+        the API-compatible segmentation and posseg surfaces here, so map those
+        names to the maintained pure-Python jieba package.
+        """
+        if not self.probe(python,['jieba_fast'])['missing']:return
+        probe=subprocess.run([str(python),'-I','-X','utf8','-c','import json,site;print(json.dumps(site.getsitepackages()))'],capture_output=True,text=True,encoding='utf-8',timeout=30,env=self.env(),**__import__('pipeline').hidden_process())
+        if probe.returncode:raise RuntimeError('无法定位 GPT-SoVITS 独立 Python 的包目录：'+probe.stderr[-1000:])
+        directories=json.loads(probe.stdout.strip().splitlines()[-1]);target=inside(self.root,Path(directories[0])/'jieba_fast');target.mkdir(parents=True,exist_ok=True)
+        (target/'__init__.py').write_text('from jieba import *\nfrom jieba import __version__\n',encoding='utf-8')
+        (target/'posseg.py').write_text('from jieba.posseg import *\n',encoding='utf-8')
+        if self.probe(python,['jieba_fast'])['missing']:raise RuntimeError('jieba_fast 兼容层安装后仍不可导入')
     def probe(self,python,modules):
         if not Path(python).is_file():return {'missing':list(modules),'error':'Python 不存在'}
         # g2p_en's module import downloads NLTK data as a side effect. Inspect its
@@ -164,7 +180,23 @@ class Repair:
         asset=CATALOG['pip'];wheel=self.download(asset['url'],'pip-24.3.1.whl',asset['sha256'])
         # The wheel is run directly, so a broken/missing pip does not block repair.
         code="import sys;sys.path.insert(0,"+repr(str(wheel))+");sys.path.insert(0,"+repr(str(Path(__file__).parent))+");import pip._vendor.requests as requests;from download_control import DownloadGate,hook_requests;hook_requests(requests,DownloadGate("+repr(str(self.root))+"));from pip._internal.cli.main import main;raise SystemExit(main())"
-        base=[python,'-I','-X','utf8','-c',code,'install','--disable-pip-version-check','--no-user','--prefer-binary','--cache-dir',str(self.work/'pip-cache')]
+        # Large CUDA dependency trees frequently cross slower mirrors.  Pip's
+        # short default read timeout turns a temporary stall into a full failed
+        # environment repair, so keep the official sources but retry patiently.
+        base=[python,'-I','-X','utf8','-c',code,'install','--disable-pip-version-check','--no-user','--prefer-binary','--retries','10','--timeout','120','--cache-dir',str(self.work/'pip-cache')]
+        bootstrap=list(CATALOG.get('bootstrapPackages') or [])
+        if not target and bootstrap and self.probe(python,['setuptools','wheel'])['missing']:
+            bootstrap_sources=[(str(self.work/'wheels'),None)] if self.offline else [(None,candidate) for candidate in list(CATALOG.get('pipIndexes') or ['https://pypi.org/simple'])]
+            bootstrap_failure=None
+            for bootstrap_link,bootstrap_index in bootstrap_sources:
+                command=list(base)
+                if bootstrap_link:command+=['--find-links',bootstrap_link,'--no-index']
+                else:command+=['--index-url',bootstrap_index]
+                try:
+                    self.run(command+['--force-reinstall','--no-deps',*bootstrap],timeout=timeout,activity=self.work/'tmp',activity_message='正在下载或安装 Python 构建工具')
+                    bootstrap_failure=None;break
+                except RuntimeError as exc:bootstrap_failure=exc
+            if bootstrap_failure:raise RuntimeError('Python 构建工具安装失败：'+str(bootstrap_failure))
         if target:base+=['--target',str(inside(self.root,target))]
         sources=[]
         if self.offline:
@@ -183,8 +215,8 @@ class Repair:
                 # A distribution can still have metadata while its actual module is
                 # missing/corrupt. Repair the failed roots, then resolve missing deps.
                 # Do not force-upgrade otherwise healthy transitive dependencies.
-                self.run(command+['--force-reinstall','--no-deps',*requirements],timeout=timeout)
-                if not no_deps and not target:self.run(command+[*requirements],timeout=timeout)
+                self.run(command+['--force-reinstall','--no-deps',*requirements],timeout=timeout,activity=self.work/'tmp',activity_message='正在下载或安装 Python 依赖')
+                if not no_deps and not target:self.run(command+[*requirements],timeout=timeout,activity=self.work/'tmp',activity_message='正在下载或安装 Python 依赖')
                 return
             except RuntimeError as exc:
                 failure=exc;self.progress('依赖源不可用，尝试下一个：'+str(link or candidate))
@@ -461,6 +493,7 @@ class Repair:
                 probe=self.probe(python,['torch','torchaudio',*CATALOG[name]['packages']])
                 if any(m in probe['missing'] for m in ('torch','torchaudio')):self.pip(python,CATALOG[name]['torch'],CATALOG[name]['torchIndex'])
                 self.pip(python,[CATALOG[name]['packages'][m] for m in probe['missing'] if m in CATALOG[name]['packages']])
+                if name=='gpt-sovits':self.install_jieba_fast_compat(python)
                 if name=='gpt-sovits' and row['resourcesMissing']:
                     inside(self.root,source.parent/'nltk_data');self.run([python,'-X','utf8',self.root/'tools/prepare_gpt_resources.py','--source',source])
                 model=Path(row['model'])

@@ -93,7 +93,7 @@ class EnvironmentRepairTests(unittest.TestCase):
    helper=Repair(temp);helper.run=Mock();helper.download=Mock(return_value=Path(temp).resolve()/'pip.whl')
    helper.pip(Path(temp).resolve()/'python.exe',['Pillow==12.3.0'])
    commands=[call.args[0] for call in helper.run.call_args_list]
-   self.assertEqual(len(commands),2);self.assertIn('--force-reinstall',commands[0]);self.assertIn('--no-deps',commands[0]);self.assertNotIn('--force-reinstall',commands[1])
+   self.assertEqual(len(commands),3);self.assertIn('setuptools==75.6.0',commands[0]);self.assertIn('--force-reinstall',commands[-2]);self.assertIn('--no-deps',commands[-2]);self.assertNotIn('--force-reinstall',commands[-1])
  def test_repair_success_requires_real_synthesis(self):
   with tempfile.TemporaryDirectory() as temp:
    helper=Repair(temp)
@@ -126,7 +126,7 @@ class EnvironmentRepairTests(unittest.TestCase):
  def test_pip_falls_back_to_next_index(self):
   with tempfile.TemporaryDirectory() as temp:
    helper=Repair(temp);helper.download=Mock(return_value=Path(temp).resolve()/'pip.whl');calls=[]
-   def run(command,timeout=1800):
+   def run(command,timeout=1800,**kwargs):
     calls.append(command)
     if 'https://first.invalid/simple' in command:raise RuntimeError('boom')
    helper.run=run
