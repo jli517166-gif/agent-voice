@@ -67,7 +67,7 @@ namespace AgentVoice {
                     case "install-engine":case "install-environment":
                         string kind=action=="install-engine"?"engine":"environment",file=Text(args,"file");
                         if(ModulePackages.Inspect(file).kind!=kind)throw new InvalidOperationException("所选模块与当前步骤不匹配。");
-                        await Flow.InstallModule(file,kind,text=>Progress(text));message=Flow.Resources()+"\n文件安装完成；可在控制台生成语音。";break;
+                        message=await Flow.InstallModule(file,kind,text=>Progress(text));message+="\n"+Flow.Resources();break;
                     case "save-paths":
                         if(await Flow.Service.Running())throw new InvalidOperationException("请先停止服务，再修改引擎路径。");
                         var current=Flow.Config;

@@ -15,6 +15,7 @@ namespace AgentVoice {
             var type=typeof(Program).Assembly.GetType("AgentVoice.EmbeddedSetupController");
             if(type==null)throw new InvalidOperationException("Embedded setup controller has not been implemented");
             await CheckRemovedVoiceActions(directory);
+            await CheckOfflineEnvironmentMessage(directory);
             await CheckAutomaticReading(directory);
             CheckPreferenceWrites(directory);
             for(int i=1;i<SetupWorkflow.PageOrder.Length;i++)if(!SetupWorkflow.StepLabel(SetupWorkflow.PageOrder[i]).StartsWith("第 "+i+" 步 / 共 7 步"))throw new Exception("Incorrect displayed step number");
@@ -51,6 +52,13 @@ namespace AgentVoice {
             var p=new WelcomeState(store).Read();if(!p.offline||!p.reduceMotion||p.interfaceSounds)throw new Exception("Preferences not persisted");
             await controller.Execute("defer",new Dictionary<string,object>());
             p=new WelcomeState(store).Read();if(!p.onboardingDeferred||p.onboardingComplete||p.heardVoice)throw new Exception("Defer reported verified configuration");
+        }
+        static async Task CheckOfflineEnvironmentMessage(string directory){
+            var store=new SettingsStore(Path.Combine(directory,"offline-message-"+Guid.NewGuid().ToString("N")));
+            var config=store.Read();config.port=1;store.Write(config);
+            string package=ModuleChecks.Package(directory,"offline-message-"+Guid.NewGuid().ToString("N"),new Dictionary<string,string>{{"runtime/core/python.exe","fixture interpreter"}},new[]{"runtime/core"},new Dictionary<string,string>{{"pythonService","runtime/core/python.exe"}});
+            var controller=new EmbeddedSetupController(store);var result=Json.Object(Json.Encode(await controller.Execute("install-environment",new Dictionary<string,object>{{"file",package}})));string message=Json.Text(result,"message");
+            if(message.Contains("可在控制台生成语音")||!message.Contains("不包含 TTS 源码与基础模型"))throw new Exception("Offline environment import still claims a complete voice installation");
         }
         static async Task CheckAutomaticReading(string directory){
             var store=new SettingsStore(Path.Combine(directory,"privacy-setup-"+Guid.NewGuid().ToString("N")));var config=store.Read();config.port=1;store.Write(config);var controller=new EmbeddedSetupController(store);

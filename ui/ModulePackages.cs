@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Diagnostics;
 using System.Text;
 using System.Threading;
 using System.Web.Script.Serialization;
@@ -35,6 +36,18 @@ namespace AgentVoice {
         static T Read<T>(string text){return new JavaScriptSerializer{MaxJsonLength=32*1024*1024}.Deserialize<T>(text);}
         static string Hash(Stream stream){using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(stream)).Replace("-","").ToLowerInvariant();}
         static string HashFile(string file){using(var stream=File.OpenRead(file))return Hash(stream);}
+        static string Size(long value){string[] units={"B","KB","MB","GB","TB"};double size=value;int unit=0;while(size>=1024&&unit<units.Length-1){size/=1024;unit++;}return size.ToString(unit==0?"0":"0.0")+" "+units[unit];}
+        static Version ParsedVersion(string value){Version result;if(!Version.TryParse(value??"",out result))throw new InvalidDataException("环境包的最低 NVIDIA 驱动版本无效");return result;}
+        static string NvidiaDriver(){
+            try{using(var process=Process.Start(new ProcessStartInfo("nvidia-smi","--query-gpu=driver_version --format=csv,noheader,nounits"){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true})){if(!process.WaitForExit(15000)){try{process.Kill();}catch{}throw new InvalidOperationException("NVIDIA 驱动检测超时");}string output=process.StandardOutput.ReadToEnd().Split(new[]{'\r','\n'},StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();return process.ExitCode==0?output:"";}}
+            catch(InvalidOperationException){throw;}catch{return "";}
+        }
+        static void CheckCompatibility(ModuleManifest manifest){
+            if(manifest.kind!="environment"||string.IsNullOrWhiteSpace(manifest.minimumDriver)||manifest.minimumDriver=="0")return;
+            Version required=ParsedVersion(manifest.minimumDriver),current;string detected=NvidiaDriver();
+            if(!Version.TryParse(detected,out current))throw new InvalidOperationException("未检测到可用的 NVIDIA 驱动；此环境包最低需要 "+required+"。请先安装或更新显卡驱动，再导入环境包。");
+            if(current<required)throw new InvalidOperationException("当前 NVIDIA 驱动 "+current+" 低于环境包最低要求 "+required+"。请先更新显卡驱动，再导入环境包。");
+        }
         static bool Relative(string path){return !string.IsNullOrEmpty(path)&&!path.Contains('\\')&&!path.Contains(':')&&!path.StartsWith("/")&&path.Split('/').All(p=>p.Length>0&&p!="."&&p!=".."&&!p.EndsWith(".")&&!p.EndsWith(" ")&&p.IndexOfAny(Path.GetInvalidFileNameChars())<0);}
         static bool Under(string path,string folder){return path==folder||path.StartsWith(folder+"/",StringComparison.Ordinal);}
         static string Inside(SettingsStore store,string relative){
@@ -115,20 +128,21 @@ namespace AgentVoice {
             File.WriteAllLines(cfg,lines,new UTF8Encoding(false));string pth=Path.Combine(runtime,"Lib/site-packages/000_candidate_gpu.pth");if(File.Exists(pth))File.WriteAllText(pth,"import sys,pathlib; sys.path.insert(0,str(pathlib.Path(sys.prefix)/'gpu-packages'))\n",new UTF8Encoding(false));
         }
         public static object Install(SettingsStore store,string file,Action<string> progress,CancellationToken cancellation){
-            Recover(store);var m=Inspect(file);string id=Guid.NewGuid().ToString("N"),stage="data/module-install/stage-"+id,backup="data/module-backups/"+id;
+            progress("正在读取并校验模块清单……");Recover(store);var m=Inspect(file);CheckCompatibility(m);string id=Guid.NewGuid().ToString("N"),stage="data/module-install/stage-"+id,backup="data/module-backups/"+id;
             using(var guard=Lock(store)){
                 var journal=new ModuleJournal{stage=stage,backup=backup,hadSettings=File.Exists(store.FilePath)};bool committing=false;
                 Directory.CreateDirectory(Inside(store,stage));
                 try{
-                    long total=m.files.Sum(f=>f.size);var drive=new DriveInfo(Path.GetPathRoot(store.Root));if(drive.AvailableFreeSpace<total+128L*1024*1024)throw new IOException("安装空间不足：需要暂存整个模块，并保留原组件用于回滚。");
+                    long total=m.files.Sum(f=>f.size),completed=0;var drive=new DriveInfo(Path.GetPathRoot(store.Root));if(drive.AvailableFreeSpace<total+128L*1024*1024)throw new IOException("安装空间不足：需要暂存整个模块，并保留原组件用于回滚。");
                     using(var zip=ZipFile.OpenRead(file)){
                         var expected=new HashSet<string>(m.files.Select(f=>"payload/"+f.path),StringComparer.Ordinal);expected.Add("manifest.json");var names=new HashSet<string>(StringComparer.OrdinalIgnoreCase);foreach(var e in zip.Entries){if(!names.Add(e.FullName)||!expected.Contains(e.FullName))throw new InvalidDataException("模块包含未登记或重复文件："+e.FullName);if((e.ExternalAttributes>>16&0xF000)==0xA000)throw new InvalidDataException("模块不能包含链接");}
                         if(names.Count!=m.files.Length+1)throw new InvalidDataException("模块资源不完整");
                         for(int i=0;i<m.files.Length;i++){
                             cancellation.ThrowIfCancellationRequested();var f=m.files[i];var e=zip.GetEntry("payload/"+f.path);if(e==null||e.Length!=f.size)throw new InvalidDataException("模块长度不匹配："+f.path);
-                            string target=Inside(store,stage+"/"+f.path);Directory.CreateDirectory(Path.GetDirectoryName(target));progress("校验并暂存 "+(i+1)+" / "+m.files.Length);
+                            string target=Inside(store,stage+"/"+f.path);Directory.CreateDirectory(Path.GetDirectoryName(target));
                             using(var input=e.Open())using(var output=File.Create(target)){var buffer=new byte[1024*1024];long count=0;int got;while((got=input.Read(buffer,0,buffer.Length))>0){cancellation.ThrowIfCancellationRequested();count+=got;if(count>f.size)throw new InvalidDataException("模块解压大小异常");output.Write(buffer,0,got);}if(count!=f.size)throw new InvalidDataException("模块数据截断");}
                             if(HashFile(target)!=f.sha256)throw new InvalidDataException("模块校验失败："+f.path);
+                            completed+=f.size;progress("校验并暂存 "+(i+1)+" / "+m.files.Length+" · "+Size(completed)+" / "+Size(total)+" · "+(total==0?100d:completed*100d/total).ToString("0.0")+"%");
                         }
                     }
                     if(m.components.Contains("tts-engines/gpt-sovits/runtime"))Relocate(new SettingsStore(Inside(store,stage)),store);

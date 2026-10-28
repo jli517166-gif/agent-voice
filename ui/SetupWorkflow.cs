@@ -75,7 +75,7 @@ namespace AgentVoice {
         internal async Task<string> InspectComputer(){
             string result=await Task.Run(()=>{var b=new StringBuilder();b.AppendLine(Environment.OSVersion+" · "+(Environment.Is64BitOperatingSystem?"64 位":"32 位"));b.AppendLine("可用空间："+(new DriveInfo(Path.GetPathRoot(Store.Root)).AvailableFreeSpace/1073741824d).ToString("0.0")+" GB");string probe=Store.Resolve("data/setup-write-"+Guid.NewGuid().ToString("N")+".tmp");Directory.CreateDirectory(Path.GetDirectoryName(probe));try{File.WriteAllText(probe,"check");b.AppendLine("安装目录可写。");}finally{if(File.Exists(probe))File.Delete(probe);}try{using(var p=Process.Start(new ProcessStartInfo("nvidia-smi","--query-gpu=name,driver_version,memory.total --format=csv,noheader"){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true})){var output=p.StandardOutput.ReadToEndAsync();var error=p.StandardError.ReadToEndAsync();if(!p.WaitForExit(15000)){p.Kill();throw new InvalidOperationException("显卡检测超时");}Task.WaitAll(output,error);b.AppendLine(p.ExitCode==0?output.Result:"未检测到 NVIDIA 驱动。请安装驱动后重试。");}}catch(Exception e){b.AppendLine("显卡检查："+e.Message);}b.AppendLine("文件存在不代表声音可用；Harness 通过 MCP 协议自检，配置流程不自动生成语音。");return b.ToString();});Mark("computer","checked");return result;
         }
-        internal async Task InstallModule(string file,string kind,Action<string> progress){
+        internal async Task<string> InstallModule(string file,string kind,Action<string> progress){
             if(await Service.Running())throw new InvalidOperationException("请先停止语音服务，再安装模块。当前配置保留。");
             var manifest=ModulePackages.Inspect(file);
             var dispatcher=new Progress<string>(progress);await Task.Run(()=>ModulePackages.Install(Store,file,s=>((IProgress<string>)dispatcher).Report(s),CancellationToken.None));
@@ -84,6 +84,8 @@ namespace AgentVoice {
                 SelectInstallEngines(InstallEngines().Concat(new[]{index}).Distinct().ToArray());Mark("engineFiles:"+manifest.engine,"installed");
             }
             Mark(kind,"installed");InvalidateVoice();
+            if(kind=="environment")return "环境包已安装。它只补齐本地运行依赖，不包含 TTS 源码与基础模型；尚未导入时，还需安装对应引擎包。文件安装不等于声音可用，请继续执行“检查已有环境”并完成实际生成验证。";
+            return "引擎包已安装。它包含对应 TTS 源码与基础模型，但不替代运行环境；尚未补齐时，还需导入环境包。文件安装不等于声音可用，请继续执行环境检查。";
         }
         internal async Task<string> PrepareEnvironment(bool repair,string engine="current"){
             if(repair&&await Service.Running())throw new InvalidOperationException("请先停止语音服务，再补齐环境。");

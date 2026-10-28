@@ -81,6 +81,9 @@ def engine_package(root,engine,output,model=None):
 
 def environment_package(root,engines,output,include_downloads=False,profile='bundled',minimum_driver=''):
     if not set(engines)<=set(ENGINES):raise ValueError('未适配引擎')
+    minimum_driver=str(minimum_driver).strip()
+    if not re.fullmatch(r'\d+(?:\.\d+){1,3}',minimum_driver):
+        raise ValueError('离线环境包必须声明最低 NVIDIA 驱动版本，例如 551.61')
     root=Path(root).resolve();components=['runtime/core','tools/ffmpeg.exe','tools/ffprobe.exe']
     defaults={'pythonService':'runtime/core/python.exe','ffmpeg':'tools/ffmpeg.exe'}
     for engine in dict.fromkeys(engines):

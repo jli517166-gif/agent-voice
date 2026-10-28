@@ -14,10 +14,16 @@ class ModulePackageTests(unittest.TestCase):
         with zipfile.ZipFile(file) as archive:return json.loads(archive.read('manifest.json')),archive.namelist()
     def test_engine_and_environment_have_disjoint_resources_and_no_voice(self):
         for name in ['tts-engines/cosyvoice/source/cosyvoice/cli/cosyvoice.py','tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B/llm.pt','tts-engines/cosyvoice/runtime/tools/python.exe','runtime/core/python.exe','tools/ffmpeg.exe','tools/ffprobe.exe','voices/private.wav','data/settings.json']:self.put(name)
-        a=self.root/'cosyvoice.ttsengine';b=self.root/'offline.ttsenvironment';engine_package(self.root,'cosyvoice',a);environment_package(self.root,['cosyvoice'],b)
+        a=self.root/'cosyvoice.ttsengine';b=self.root/'offline.ttsenvironment';engine_package(self.root,'cosyvoice',a);environment_package(self.root,['cosyvoice'],b,minimum_driver='551.61')
         engine,names=self.manifest(a);environment,other=self.manifest(b)
         self.assertFalse(set(names[1:])&set(other[1:]));self.assertEqual(engine['kind'],'engine');self.assertEqual(environment['kind'],'environment')
         for name in names+other:self.assertNotIn('settings.json',name);self.assertNotIn('private.wav',name)
+        self.assertEqual(environment['minimumDriver'],'551.61')
+    def test_environment_package_requires_a_driver_compatibility_floor(self):
+        for name in ['runtime/core/python.exe','tools/ffmpeg.exe','tools/ffprobe.exe']:
+            self.put(name)
+        with self.assertRaisesRegex(ValueError,'最低 NVIDIA 驱动'):
+            environment_package(self.root,[],self.root/'unsafe.ttsenvironment')
     def test_unknown_engine_outside_model_and_existing_output_rejected(self):
         with self.assertRaises(ValueError):engine_package(self.root,'unknown',self.root/'x.ttsengine')
         with self.assertRaises(ValueError):engine_package(self.root,'cosyvoice',self.root/'x.ttsengine','../outside')
