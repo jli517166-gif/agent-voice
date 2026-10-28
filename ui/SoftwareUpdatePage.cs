@@ -28,10 +28,22 @@ namespace AgentVoice {
             string message=Json.Text(result,"message");updateDetails.Text=message+"\r\n\r\n"+Json.Encode(result);Status(message);
         }
         }
+        static bool OtherWindowInThisInstallation(){
+            using(var current=Process.GetCurrentProcess()){
+                string executable=Path.GetFullPath(current.MainModule.FileName);
+                foreach(var process in Process.GetProcessesByName(current.ProcessName))using(process){
+                    if(process.Id==current.Id||process.HasExited||process.MainWindowHandle==IntPtr.Zero)continue;
+                    try{if(string.Equals(Path.GetFullPath(process.MainModule.FileName),executable,StringComparison.OrdinalIgnoreCase))return true;}
+                    catch(System.ComponentModel.Win32Exception){}catch(InvalidOperationException){}
+                }
+            }
+            return false;
+        }
         async Task InstallStagedUpdate(){
             string pendingFile=Store.Resolve("data/updates/pending.json");
             if(!File.Exists(pendingFile))throw new InvalidOperationException("请先下载并校验，或选择本地更新包。");
             if(await Service.Running())throw new InvalidOperationException("请先在控制台关闭语音服务，再安装更新。");
+            if(OtherWindowInThisInstallation())throw new InvalidOperationException("请先关闭首次配置窗口和同一安装目录中的其他 Agent Voice 窗口，再安装更新。");
             var pending=Json.Object(File.ReadAllText(pendingFile));string stage=Json.Text(pending,"stage");
             if(!System.Text.RegularExpressions.Regex.IsMatch(stage,"^stage-[a-f0-9]{32}$"))throw new InvalidOperationException("待更新目录无效，请重新下载并校验。");
             string updates=Store.Resolve("data/updates"),script=Path.GetFullPath(Path.Combine(updates,stage,"tools","software_update.py"));

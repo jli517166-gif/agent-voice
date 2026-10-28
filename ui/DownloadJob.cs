@@ -16,16 +16,17 @@ namespace AgentVoice {
   public void Resume(){File.Delete(prefix+".pause");}
   public void Cancel(){File.WriteAllText(prefix+".cancel","");}
   public object Snapshot(){
-   var data=ReadState();string status=Json.Text(data,"state"),raw=Json.Text(data,"message");long count=Number(data,"downloadedBytes"),total=Number(data,"totalBytes"),speed=Number(data,"bytesPerSecond");
+   var data=ReadState();string status=Json.Text(data,"state"),raw=Json.Text(data,"message");long count=Number(data,"downloadedBytes"),total=Number(data,"totalBytes");double speed=DecimalNumber(data,"bytesPerSecond");
    double percent=total>0?Math.Min(100,Math.Round(count*100d/total,1)):-1,eta=speed>0&&total>count?Math.Ceiling((total-count)/(double)speed):-1;
    string detail=count>0?(total>0?percent.ToString("0.0")+"% · "+Bytes(count)+" / "+Bytes(total):"已下载 "+Bytes(count)+" · 总量计算中"):"";
-   if(speed>0)detail+=(detail.Length>0?" · ":"")+Bytes(speed)+"/s";
+   if(speed>0)detail+=(detail.Length>0?" · ":"")+Bytes((long)speed)+"/s";
    if(eta>=0)detail+=" · 约 "+Duration(eta);
    string message=Paused?(status=="paused"?"下载已暂停，点击继续下载":"正在暂停，等待当前数据块或安装步骤结束"):(status=="paused"?"正在继续下载":raw);
    if(detail.Length>0&&!message.Contains(detail))message+=(message.Length>0?"\r\n":"")+detail;
    return new{active=!disposed,paused=Paused,cancelled=Cancelled,status=Paused?(status=="paused"?"paused":"pausing"):"running",message=message,downloadedBytes=count,totalBytes=total,bytesPerSecond=speed,percent=percent,etaSeconds=eta};
   }
   static long Number(Dictionary<string,object> data,string key){long value;return long.TryParse(Json.Text(data,key),out value)&&value>0?value:0;}
+  static double DecimalNumber(Dictionary<string,object> data,string key){double value;return double.TryParse(Json.Text(data,key),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out value)&&value>0?value:0;}
   static string Bytes(long value){string[] units={"B","KB","MB","GB","TB"};double size=value;int unit=0;while(size>=1024&&unit<units.Length-1){size/=1024;unit++;}return size.ToString(unit==0?"0":"0.0")+" "+units[unit];}
   static string Duration(double seconds){var span=TimeSpan.FromSeconds(Math.Min(seconds,359999));return span.TotalHours>=1?((int)span.TotalHours)+"小时"+span.Minutes+"分":span.TotalMinutes>=1?((int)span.TotalMinutes)+"分"+span.Seconds+"秒":Math.Max(1,span.Seconds)+"秒";}
   Dictionary<string,object> ReadState(){try{using(var file=new FileStream(prefix+".json",FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))using(var reader=new StreamReader(file,Encoding.UTF8))return Json.Object(reader.ReadToEnd());}catch(IOException){return new Dictionary<string,object>();}catch(ArgumentException){return new Dictionary<string,object>();}}
