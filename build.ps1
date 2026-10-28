@@ -1,4 +1,4 @@
-﻿param([string]$OutputDirectory = '',[string]$Version = '0.2.0-preview.4')
+﻿param([string]$OutputDirectory = '',[string]$Version = '0.2.0-preview.5')
 $ErrorActionPreference = 'Stop'
 $sourceRoot = $PSScriptRoot
 $webSdk = & (Join-Path $sourceRoot 'tools\restore_webview2.ps1') -Root $sourceRoot
@@ -49,6 +49,12 @@ foreach ($obsolete in @('service\edition.py','integrations\opencode-plugin.mjs',
 Get-ChildItem -LiteralPath $sourceRoot -Filter '*.md' -File | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $OutputDirectory $_.Name) -Force }
 New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'docs') -Force | Out-Null
 Get-ChildItem -LiteralPath (Join-Path $sourceRoot 'docs') -Filter '*.md' -File | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path (Join-Path $OutputDirectory 'docs') $_.Name) -Force }
+$guideRoot = Join-Path $sourceRoot 'docs\guides'
+if (Test-Path -LiteralPath $guideRoot) {
+    $guideTarget = Join-Path $OutputDirectory 'docs\guides'
+    New-Item -ItemType Directory -Path $guideTarget -Force | Out-Null
+    Get-ChildItem -LiteralPath $guideRoot -Filter '*.md' -File | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $guideTarget $_.Name) -Force }
+}
 New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'tts-engines\gpt-sovits') -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'voices'),(Join-Path $OutputDirectory 'trained-voices'),(Join-Path $OutputDirectory 'data'),(Join-Path $OutputDirectory 'tts-engines'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\source'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\runtime\tools'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\models') -Force | Out-Null
 $manifestPython = $env:AGENT_VOICE_BUILD_PYTHON

@@ -29,9 +29,14 @@ namespace AgentVoice {
         }
         }
         async Task InstallStagedUpdate(){
-            if(!File.Exists(Store.Resolve("data/updates/pending.json")))throw new InvalidOperationException("请先下载并校验，或选择本地更新包。");
+            string pendingFile=Store.Resolve("data/updates/pending.json");
+            if(!File.Exists(pendingFile))throw new InvalidOperationException("请先下载并校验，或选择本地更新包。");
             if(await Service.Running())throw new InvalidOperationException("请先在控制台关闭语音服务，再安装更新。");
-            string python=Store.Resolve(Config.engines.pythonService),script=Store.Resolve("tools/software_update.py");
+            var pending=Json.Object(File.ReadAllText(pendingFile));string stage=Json.Text(pending,"stage");
+            if(!System.Text.RegularExpressions.Regex.IsMatch(stage,"^stage-[a-f0-9]{32}$"))throw new InvalidOperationException("待更新目录无效，请重新下载并校验。");
+            string updates=Store.Resolve("data/updates"),script=Path.GetFullPath(Path.Combine(updates,stage,"tools","software_update.py"));
+            if(!script.StartsWith(updates.TrimEnd('\\')+"\\",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("待更新目录越界，请重新下载并校验。");
+            string python=Store.Resolve(Config.engines.pythonService);
             if(!File.Exists(python)||!File.Exists(script))throw new InvalidOperationException("缺少更新运行时或组件，请先补齐主服务环境。");
             var info=new ProcessStartInfo(python,"-I -X utf8 "+ServiceClient.Quote(script)+" apply --root "+ServiceClient.Quote(Store.Root)+" --wait-pid "+Process.GetCurrentProcess().Id+" --restart"){
                 UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden,WorkingDirectory=Store.Root};

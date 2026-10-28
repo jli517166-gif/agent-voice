@@ -23,12 +23,12 @@ namespace AgentVoice {
             cosyArt.Controls.Add(WebText("MIC",16F,FontStyle.Bold,0,0,112,78,ContentAlignment.MiddleCenter));
             var cosySteps=WebCard(cosyGuide,0,151,902,312);
             TrainingStep(cosySteps,0,"准备声音","检查录音、逐字台词与训练数据格式。","检查素材",()=>{var ignored=Guard(async()=>await CheckTraining(false),"检查训练素材");},590,110,"生成清单",()=>{var ignored=Guard(async()=>await CheckTraining(true),"生成训练清单");},706,110);
-            TrainingStep(cosySteps,1,"选择训练路线","参考克隆用录音与台词；硬件较好时按高级指南。","从零开始",()=>ServiceClient.Open(Store.Resolve("音色训练从零开始.md")),560,110,"AI 训练约定",()=>ServiceClient.Open(Store.Resolve("AI训练操作约定.md")),678,150);
+            TrainingStep(cosySteps,1,"选择训练路线","参考克隆用录音与台词；硬件较好时按高级指南。","从零开始",()=>ServiceClient.Open(Store.Resolve("docs/guides/音色训练从零开始.md")),560,110,"AI 训练约定",()=>ServiceClient.Open(Store.Resolve("docs/guides/AI训练操作约定.md")),678,150);
             TrainingStep(cosySteps,2,"本地试听并验证","确认引擎、模型与台词一致，再用长短句验证。","选择训练模型",SelectTrainedModel,550,155,"管理可选模块",()=>ShowPage("modules"),713,125);
             TrainingStep(cosySteps,3,"导出训练结果","按内容选择轻量、完整、训练增量或训练完整包。","高级训练",()=>ShowPage("advancedTraining"),540,105,"检查脚本",()=>{var ignored=Guard(InspectTrainingScript,"检查训练脚本");},653,105);
             cosySteps.Controls.Add(WebButton("打开目录","打开本地训练结果目录。",OpenTrainingWorkspace,770,255,110,36));
             var cosyFooter=WebCard(cosyGuide,0,468,902,48);
-            cosyFooter.Controls.Add(WebButton("查看详细操作手册","包含素材表格、Windows/WSL 路径、命令、失败处理和输出验收。",()=>ServiceClient.Open(Store.Resolve("音色训练从零开始.md")),0,4,185,39));
+            cosyFooter.Controls.Add(WebButton("查看详细操作手册","包含素材表格、Windows/WSL 路径、命令、失败处理和输出验收。",()=>ServiceClient.Open(Store.Resolve("docs/guides/音色训练从零开始.md")),0,4,185,39));
             cosyFooter.Controls.Add(WebButton("打开 CosyVoice 源码","查看本机安装的 CosyVoice。",()=>ServiceClient.Open(Store.Resolve(Config.engines.cosyRepo)),191,4,230,39));
             cosyFooter.Controls.Add(WebButton("打开官方训练脚本","查看官方 CosyVoice3 训练流程。",()=>ServiceClient.Open("https://github.com/FunAudioLLM/CosyVoice/blob/main/examples/libritts/cosyvoice3/run.sh"),427,4,185,39));
             cosyFooter.Controls.Add(WebButton("打开训练界面","整理音频、台词和训练结果。",OpenTrainingWorkspace,618,4,145,39));
@@ -42,12 +42,12 @@ namespace AgentVoice {
             var gptArt=WebCard(gptIntro,770,16,112,78);
             gptArt.Controls.Add(WebText("GPT",16F,FontStyle.Bold,0,0,112,78,ContentAlignment.MiddleCenter));
             var gptSteps=WebCard(gptGuide,0,151,902,312);
-            TrainingStep(gptSteps,0,"准备素材","干净短句、官方切片与标注；保留试听句。","训练手册",()=>ServiceClient.Open(Store.Resolve("GPT-SoVITS训练指南.md")),700,100);
+            TrainingStep(gptSteps,0,"准备素材","干净短句、官方切片与标注；保留试听句。","训练手册",()=>ServiceClient.Open(Store.Resolve("docs/guides/GPT-SoVITS训练指南.md")),700,100);
             TrainingStep(gptSteps,1,"训练特征","独立环境运行官方脚本，完成特征提取。","打开源码",()=>ServiceClient.Open(Store.Resolve(Config.engines.gptRepo)),700,100);
             TrainingStep(gptSteps,2,"验证模型","先在官方推理页测试；不支持自动合并 LoRA。","官方说明",()=>ServiceClient.Open("https://github.com/RVC-Boss/GPT-SoVITS/blob/main/docs/cn/README.md"),700,100);
             TrainingStep(gptSteps,3,"验证结果","参考音频 3～10 秒，选择训练结果并试听。","打开目录",OpenTrainingWorkspace,700,100);
             var gptFooter=WebCard(gptGuide,0,468,902,48);
-            gptFooter.Controls.Add(WebButton("查看详细操作手册","分别说明 ProPlus 与 v5 Turbo 的流程、权重格式和当前接入限制。",()=>ServiceClient.Open(Store.Resolve("GPT-SoVITS训练指南.md")),0,4,185,39));
+            gptFooter.Controls.Add(WebButton("查看详细操作手册","分别说明 ProPlus 与 v5 Turbo 的流程、权重格式和当前接入限制。",()=>ServiceClient.Open(Store.Resolve("docs/guides/GPT-SoVITS训练指南.md")),0,4,185,39));
             gptFooter.Controls.Add(WebButton("打开训练目录","保存独立训练结果和验收记录。",OpenTrainingWorkspace,191,4,140,39));
             gptFooter.Controls.Add(WebButton("管理可选模块","打开独立的可选功能模块。",()=>ShowPage("modules"),337,4,120,39));
             gptFooter.Controls.Add(WebButton("高级训练","查看高配置电脑训练专属权重的完整流程。",()=>ShowPage("advancedTraining"),463,4,110,39));
@@ -100,7 +100,7 @@ namespace AgentVoice {
             var intro=WebCard(page,38,126,902,142);
             WebCardTitle(intro,"高级 CosyVoice 训练");
             intro.Controls.Add(WebText("适合显存和算力较强的电脑。目标是使用多段带准确台词的数据训练专属权重，并用未见文本验收；训练仍由 CosyVoice 官方脚本完成。",8F,FontStyle.Regular,16,44,870,42,ContentAlignment.TopLeft));
-            intro.Controls.Add(WebButton("打开完整手册","查看硬件、数据、训练、验收和导出标准。",()=>ServiceClient.Open(Store.Resolve("高级CosyVoice训练手册.md")),16,92,150,38));
+            intro.Controls.Add(WebButton("打开完整手册","查看硬件、数据、训练、验收和导出标准。",()=>ServiceClient.Open(Store.Resolve("docs/guides/高级CosyVoice训练手册.md")),16,92,150,38));
             intro.Controls.Add(WebButton("打开训练目录","整理数据和训练结果。",OpenTrainingWorkspace,174,92,150,38));
             intro.Controls.Add(WebButton("打开官方训练脚本","查看当前 CosyVoice3 recipe。",()=>ServiceClient.Open("https://github.com/FunAudioLLM/CosyVoice/blob/main/examples/libritts/cosyvoice3/run.sh"),332,92,190,38));
 

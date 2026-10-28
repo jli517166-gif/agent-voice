@@ -49,7 +49,7 @@ namespace AgentVoice {
                 if(scope=="all"){await flow.PrepareEngine("cosyvoice");await flow.PrepareEngine("gpt-sovits");}else await flow.PrepareEngine(scope);
                 Config=Store.Read();BindSettings();repairDetails.Text=await flow.InspectResources(scope);
             })));
-            Add(card,Row(Primary(AsyncBtn("检查缺少什么",async()=>await RepairEnvironment(false))),AsyncBtn("补齐缺失环境",async()=>await RepairEnvironment(true)),EntryBtn("打开修复报告","查看下载进度、详细安装日志和设置备份。",()=>{string p=Store.Resolve("data/environment-repair");Directory.CreateDirectory(p);ServiceClient.Open(p);}),EntryBtn("安装说明","查看目录、系统组件和失败恢复方法。",()=>ServiceClient.Open(Store.Resolve("环境补齐说明.md")))));
+            Add(card,Row(Primary(AsyncBtn("检查缺少什么",async()=>await RepairEnvironment(false))),AsyncBtn("补齐缺失环境",async()=>await RepairEnvironment(true)),EntryBtn("打开修复报告","查看下载进度、详细安装日志和设置备份。",()=>{string p=Store.Resolve("data/environment-repair");Directory.CreateDirectory(p);ServiceClient.Open(p);}),EntryBtn("安装说明","查看目录、系统组件和失败恢复方法。",()=>ServiceClient.Open(Store.Resolve("docs/guides/环境补齐说明.md")))));
             Add(card,Row(AsyncBtn("运行换机语音链路验收",RunTargetAcceptance),EntryBtn("打开验收报告","查看三种 TTS、长文、停止恢复、Harness 与 AIRI 的本机结果。",()=>{string p=Store.Resolve("data/target-acceptance");Directory.CreateDirectory(p);ServiceClient.Open(p);})));
             repairDetails=new TextBox{Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Vertical,Height=280,Name="environmentRepairResult"};Add(card,repairDetails);
             Add(card,Hint("“换机语音链路验收”会依次切换三种 TTS、生成短句和长文、停止任务后再次生成，并在 AIRI 已启用且在线时验证桌宠真实播放；结束后恢复原声音和服务状态。Harness 在连接页单独检查 MCP 安装、启用、协议和客户端工具回执；环境检查不代表 MCP 已加载。"));

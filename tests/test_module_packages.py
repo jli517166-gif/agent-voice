@@ -70,18 +70,18 @@ class ModulePackageTests(unittest.TestCase):
     def test_application_keeps_user_manuals_and_separates_development_audits(self):
         self.put('agent语音.exe')
         for folder in ('service','tools','integrations','docs','.agents'):(self.root/folder).mkdir(exist_ok=True)
-        for name in ('安装手册.md','高级CosyVoice训练手册.md','docs/licenses/LICENSE.txt','docs/legal-components.json',
+        for name in ('docs/guides/安装手册.md','docs/guides/高级CosyVoice训练手册.md','docs/licenses/LICENSE.txt','docs/legal-components.json',
                      'docs/维护收尾-20261023.md','docs/Codex语言控制验收.md','私用版使用与维护.md'):
             self.put(name,name.encode('utf-8'))
-        self.put('安装手册.md','安装步骤；[验收记录](docs/维护收尾-20261023.md)；[训练](高级CosyVoice训练手册.md)。'.encode('utf-8'))
+        self.put('docs/guides/安装手册.md','安装步骤；[验收记录](../维护收尾-20261023.md)；[训练](高级CosyVoice训练手册.md)。'.encode('utf-8'))
         report=self.root/'audit'
         output=self.root/'clean.zip';application_package(self.root,output,audit_directory=report)
         with zipfile.ZipFile(output) as z:
-            names=z.namelist();manual=z.read('Agent语音/安装手册.md').decode('utf-8')
-        self.assertNotIn('](docs/维护收尾-20261023.md)',manual)
+            names=z.namelist();manual=z.read('Agent语音/docs/guides/安装手册.md').decode('utf-8')
+        self.assertNotIn('](../维护收尾-20261023.md)',manual)
         self.assertIn('验收记录',manual)
         self.assertIn('](高级CosyVoice训练手册.md)',manual)
-        for name in ('安装手册.md','高级CosyVoice训练手册.md','docs/licenses/LICENSE.txt','docs/legal-components.json'):
+        for name in ('docs/guides/安装手册.md','docs/guides/高级CosyVoice训练手册.md','docs/licenses/LICENSE.txt','docs/legal-components.json'):
             self.assertIn('Agent语音/'+name,names)
         for name in ('docs/维护收尾-20261023.md','docs/Codex语言控制验收.md','私用版使用与维护.md'):
             self.assertNotIn('Agent语音/'+name,names)

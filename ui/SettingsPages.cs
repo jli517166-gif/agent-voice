@@ -59,7 +59,7 @@ namespace AgentVoice {
             var noticesCard=WebCard(panels[4],0,0,902,320);
             SettingsLine(noticesCard,0,"使用须知","了解素材授权、使用范围与生成内容的注意事项。","阅读须知",()=>ServiceClient.Open(Store.Resolve("docs/使用须知与TTS许可.md")));
             SettingsLine(noticesCard,1,"开源与 TTS 许可","查看程序、引擎与模型各自的许可和使用范围。","查看许可",()=>ServiceClient.Open(Store.Resolve("THIRD_PARTY_NOTICES.md")));
-            SettingsLine(noticesCard,2,"训练与分享","准备素材、训练和分享前，按需要阅读相关说明。","训练说明",()=>ServiceClient.Open(Store.Resolve("音色训练从零开始.md")));
+            SettingsLine(noticesCard,2,"训练与分享","准备素材、训练和分享前，按需要阅读相关说明。","训练说明",()=>ServiceClient.Open(Store.Resolve("docs/guides/音色训练从零开始.md")));
             SettingsLine(noticesCard,3,"本地数据与隐私","了解自动朗读范围、记录保存和连接认证。","隐私说明",()=>ServiceClient.Open(Store.Resolve("docs/本地数据与隐私.md")));
             panels[4].Controls.Add(WebText("以上说明可随时查阅，不要求勾选或确认，也不拦截首次配置与朗读。第三方许可和适用规则仍需自行核对。",8.8F,FontStyle.Regular,0,332,902,48,ContentAlignment.TopLeft));
             select(0);
@@ -84,7 +84,7 @@ namespace AgentVoice {
             Add(card,Row(AsyncBtn("创建桌面快捷方式",async()=>{await Task.Run(()=>{});Icons.Shortcut(Application.ExecutablePath,Config.appearance.icon.Length>0?Store.Resolve(Config.appearance.icon):Application.ExecutablePath);Status("快捷方式已创建。");})));
         }
         string ImportImage(string value,string name){if(string.IsNullOrWhiteSpace(value))return "";string source=Store.Resolve(value);using(var image=Image.FromFile(source)){}string dir=Path.Combine(Store.Root,"data","appearance");Directory.CreateDirectory(dir);string target=Path.Combine(dir,name+Path.GetExtension(source));if(!source.Equals(target,StringComparison.OrdinalIgnoreCase))File.Copy(source,target,true);return Store.Portable(target);}
-        void BuildEngines(){var card=SettingsCard("engine","本地 TTS 引擎");Add(card,Row(Primary(AsyncBtn("环境自检",Diagnose)),AsyncBtn("恢复声音",RecoverVoice),EntryBtn("故障帮助","查看检查范围、依赖位置和恢复步骤。",()=>ServiceClient.Open(Store.Resolve("稳定性与故障排查.md")))));Add(card,Hint("只保留 CosyVoice、GPT-SoVITS v5 Turbo 和 ProPlus，全部直接输出。各引擎使用独立环境；CosyVoice 的认可音色保持原参数。"));Add(card,Row(EntryBtn("打开引擎目录","查看独立的源码、运行环境与模型。",()=>ServiceClient.Open(TtsEngineDirectory())),Btn("CosyVoice 官方页面",()=>ServiceClient.Open("https://github.com/FunAudioLLM/CosyVoice")),Btn("GPT-SoVITS 官方页面",()=>ServiceClient.Open("https://github.com/RVC-Boss/GPT-SoVITS"))));
+        void BuildEngines(){var card=SettingsCard("engine","本地 TTS 引擎");Add(card,Row(Primary(AsyncBtn("环境自检",Diagnose)),AsyncBtn("恢复声音",RecoverVoice),EntryBtn("故障帮助","查看检查范围、依赖位置和恢复步骤。",()=>ServiceClient.Open(Store.Resolve("docs/guides/稳定性与故障排查.md")))));Add(card,Hint("只保留 CosyVoice、GPT-SoVITS v5 Turbo 和 ProPlus，全部直接输出。各引擎使用独立环境；CosyVoice 的认可音色保持原参数。"));Add(card,Row(EntryBtn("打开引擎目录","查看独立的源码、运行环境与模型。",()=>ServiceClient.Open(TtsEngineDirectory())),Btn("CosyVoice 官方页面",()=>ServiceClient.Open("https://github.com/FunAudioLLM/CosyVoice")),Btn("GPT-SoVITS 官方页面",()=>ServiceClient.Open("https://github.com/RVC-Boss/GPT-SoVITS"))));
             foreach(var item in new[]{new[]{"pythonService","主服务 Python", "file"},new[]{"pythonTts","CosyVoice Python","file"},new[]{"cosyRepo","CosyVoice 源码","folder"},new[]{"cosyModel","CosyVoice 默认模型","folder"},new[]{"pythonGpt","GPT-SoVITS Python","file"},new[]{"gptRepo","GPT-SoVITS 源码","folder"},new[]{"gptModel","GPT-SoVITS 默认权重目录","folder"},new[]{"ffmpeg","FFmpeg 编码器","file"}})PathField(card,item[0],item[1],"文件|*.*",item[2]=="folder");
             Add(card,Row(Primary(AsyncBtn("保存运行环境",async()=>{if(await Service.Running())throw new InvalidOperationException("请先关闭服务，再修改运行环境。");var next=Json.Copy(Config);foreach(var field in typeof(Engines).GetFields())field.SetValue(next.engines,fields[field.Name].Text.Trim());Store.Write(next);Config=next;Status("独立 TTS 环境已保存，启动服务后生效。");}))));
         }
@@ -119,8 +119,8 @@ namespace AgentVoice {
             mcp.Controls.Add(WebAsyncButton("检查 / 修复 MCP","检查当前路径、启用、协议和客户端工具回执；DeepSeek 旧目录失效时可修复，客户端仍需重载。",async()=>{lastMcpCheck=DateTime.MinValue;await RefreshMcpConnection(true,true);},420,92,214,38));
             mcpConnectionHint=WebText("MCP：尚未检查客户端是否读取工具。",11F,FontStyle.Regular,16,140,870,44);mcpConnectionHint.AutoEllipsis=true;mcp.Controls.Add(mcpConnectionHint);
             mcp.Controls.Add(WebText("未实测的 Harness 请按适配器契约扩展；配置正确不等于工具已进入客户端会话。",8F,FontStyle.Regular,16,192,870,34,ContentAlignment.TopLeft));
-            mcp.Controls.Add(WebButton("打开 Harness 二次开发指南","新增识别器、连接器、验证命令和测试。",()=>ServiceClient.Open(Store.Resolve("Harness二次开发指南.md")),16,242,300,38));
-            mcp.Controls.Add(WebButton("打开 MCP 开发说明","复用或扩展本地 MCP 控制服务。",()=>ServiceClient.Open(Store.Resolve("MCP控制插件开发说明.md")),324,242,210,38));
+            mcp.Controls.Add(WebButton("打开 Harness 二次开发指南","新增识别器、连接器、验证命令和测试。",()=>ServiceClient.Open(Store.Resolve("docs/guides/Harness二次开发指南.md")),16,242,300,38));
+            mcp.Controls.Add(WebButton("打开 MCP 开发说明","复用或扩展本地 MCP 控制服务。",()=>ServiceClient.Open(Store.Resolve("docs/guides/MCP控制插件开发说明.md")),324,242,210,38));
             BuildConnectionGuide();
         }
         void BuildAiri(){

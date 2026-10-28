@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -53,7 +54,7 @@ namespace AgentVoice {
         protected override void OnPaint(PaintEventArgs e){
             base.OnPaint(e);var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;float scale=g.DpiX/96F;
             var download=currentDownload==null?null:currentDownload();bool hasDownload=download!=null;
-            if(pauseDownload!=null){pauseDownload.Visible=cancelDownload.Visible=hasDownload;if(hasDownload){pauseDownload.Text=download.Paused?"继续下载":"暂停下载";pauseDownload.Enabled=cancelDownload.Enabled=!download.Cancelled;var state=Json.Object(Json.Encode(download.Snapshot()));string status=Json.Text(state,"message");if(status.Length>0)message=status;}}
+            Dictionary<string,object> downloadState=null;if(pauseDownload!=null){pauseDownload.Visible=cancelDownload.Visible=hasDownload;if(hasDownload){pauseDownload.Text=download.Paused?"继续下载":"暂停下载";pauseDownload.Enabled=cancelDownload.Enabled=!download.Cancelled;downloadState=Json.Object(Json.Encode(download.Snapshot()));string status=Json.Text(downloadState,"message");if(status.Length>0)message=status;}}
             using(var shade=new SolidBrush(Color.FromArgb(185,9,10,15)))g.FillRectangle(shade,ClientRectangle);
             int width=Math.Min((int)(520*scale),Math.Max(1,Width-(int)(48*scale))),height=Math.Min((int)((stopButton==null&&!hasDownload?270:322)*scale),Math.Max(1,Height-(int)(32*scale)));
             var box=new Rectangle((Width-width)/2,(Height-height)/2,width,height);
@@ -77,6 +78,7 @@ namespace AgentVoice {
                 TextRenderer.DrawText(g,"正在处理",titleFont,new Rectangle(box.X+(int)(24*scale),box.Y+(int)(140*scale),box.Width-(int)(48*scale),(int)(28*scale)),Color.FromArgb(242,242,248),TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter);
             using(var textFont=new Font("Microsoft YaHei UI",10.5F))
                 TextRenderer.DrawText(g,message??"请稍候，完成后会自动返回。",textFont,new Rectangle(box.X+(int)(28*scale),box.Y+(int)(180*scale),box.Width-(int)(56*scale),(int)(62*scale)),Color.FromArgb(189,190,207),TextFormatFlags.HorizontalCenter|TextFormatFlags.WordBreak|TextFormatFlags.EndEllipsis);
+            if(hasDownload&&downloadState!=null){double percent;double.TryParse(Json.Text(downloadState,"percent"),out percent);bool known=Convert.ToInt64(downloadState["totalBytes"])>0;var track=new RectangleF(box.X+(int)(36*scale),box.Y+(int)(250*scale),box.Width-(int)(72*scale),(int)(8*scale));using(var shape=Shapes.Rounded(track,track.Height/2))using(var fill=new SolidBrush(Color.FromArgb(65,255,255,255)))g.FillPath(fill,shape);float ratio=known?(float)Math.Max(0,Math.Min(1,percent/100d)):(float)((elapsed.Elapsed.TotalSeconds*.25)%1);var value=new RectangleF(track.X,track.Y,Math.Max(track.Height,track.Width*ratio),track.Height);using(var shape=Shapes.Rounded(value,value.Height/2))using(var fill=new SolidBrush(accent))g.FillPath(fill,shape);using(var font=new Font("Microsoft YaHei UI",9F))TextRenderer.DrawText(g,known?percent.ToString("0.0")+"%":"正在计算总量",font,new Rectangle(box.X,box.Y+(int)(263*scale),box.Width,(int)(22*scale)),Color.FromArgb(210,210,224),TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter);}
         }
         protected override void Dispose(bool disposing){if(disposing){timer.Stop();timer.Dispose();if(custom!=null)custom.Dispose();if(imageStream!=null)imageStream.Dispose();if(snapshot!=null)snapshot.Dispose();}base.Dispose(disposing);}
     }

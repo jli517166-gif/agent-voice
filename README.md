@@ -33,7 +33,7 @@ git switch main
 powershell -File .\build.ps1
 ```
 
-构建结果位于 `dist`。运行 `dist/agent语音.exe`，按配置页面准备资源。手动安装请先阅读 [安装手册](安装手册.md)：CosyVoice 默认位于 `tts-engines/cosyvoice/`，GPT-SoVITS 默认位于 `tts-engines/gpt-sovits/`，都以当前 EXE 所在目录为根。
+构建结果位于 `dist`。运行 `dist/agent语音.exe`，按配置页面准备资源。手动安装请先阅读 [安装手册](docs/guides/安装手册.md)：CosyVoice 默认位于 `tts-engines/cosyvoice/`，GPT-SoVITS 默认位于 `tts-engines/gpt-sovits/`，都以当前 EXE 所在目录为根。
 
 ## 使用
 
@@ -47,11 +47,11 @@ powershell -File .\build.ps1
 
 | 主题 | 文档 |
 |---|---|
-| 安装与目录 | [安装手册](安装手册.md)、[资源安装指南](模块安装与配置指南.md) |
-| 环境与运行 | [环境补齐说明](环境补齐说明.md)、[TTS 使用手册](TTS使用手册.md) |
-| 连接 | [接入说明](接入说明.md)、[MCP 开发说明](MCP控制插件开发说明.md) |
+| 安装与目录 | [安装手册](docs/guides/安装手册.md)、[资源安装指南](docs/guides/模块安装与配置指南.md) |
+| 环境与运行 | [环境补齐说明](docs/guides/环境补齐说明.md)、[TTS 使用手册](docs/guides/TTS使用手册.md) |
+| 连接 | [接入说明](docs/guides/接入说明.md)、[MCP 开发说明](docs/guides/MCP控制插件开发说明.md) |
 | 开发 | [贡献指南](CONTRIBUTING.md)、[架构与开发](docs/架构与开发.md) |
-| 训练 | [基础训练指南](音色训练从零开始.md)、[高级训练指南](高级CosyVoice训练手册.md)、[GPT-SoVITS 指南](GPT-SoVITS训练指南.md) |
-| 故障与隐私 | [故障排查](稳定性与故障排查.md)、[本地数据与隐私](docs/本地数据与隐私.md) |
+| 训练 | [基础训练指南](docs/guides/音色训练从零开始.md)、[高级训练指南](docs/guides/高级CosyVoice训练手册.md)、[GPT-SoVITS 指南](docs/guides/GPT-SoVITS训练指南.md) |
+| 故障与隐私 | [故障排查](docs/guides/稳定性与故障排查.md)、[本地数据与隐私](docs/本地数据与隐私.md) |
 
 本项目代码许可见 [LICENSE](LICENSE)，第三方组件与素材见 [第三方声明](THIRD_PARTY_NOTICES.md)。录音、训练材料、基础模型与依赖分别遵循其适用条款。源码仓库不收集使用者的录音、密钥或聊天记录；提交问题前请先脱敏。

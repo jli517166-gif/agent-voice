@@ -18,6 +18,7 @@ namespace AgentVoice {
         readonly bool testing,forceMissing;
         readonly InterfaceSounds sounds=new InterfaceSounds();
         readonly Panel fallback=new Panel{Dock=DockStyle.Fill};
+        readonly Timer resizeReveal=new Timer{Interval=120};
         readonly Label detail=new Label{Dock=DockStyle.Top,Height=140,AutoSize=false};
         string activeRequest="";
         bool repairing,initializing,serviceWasRunning=true,closing,allowClose;
@@ -28,6 +29,9 @@ namespace AgentVoice {
             var area=Screen.FromControl(this).WorkingArea;float dpi=AutoScaleDimensions.Width/96F;
             ClientSize=new Size(Math.Min((int)(1180*dpi),area.Width-40),Math.Min((int)(780*dpi),area.Height-60));MinimumSize=new Size(900,620);StartPosition=FormStartPosition.CenterScreen;
             fallback.BackColor=BackColor;fallback.Padding=new Padding(42);Controls.Add(fallback);detail.Text="正在准备本地配置界面……";fallback.Controls.Add(detail);
+            resizeReveal.Tick+=(s,e)=>{resizeReveal.Stop();if(!IsDisposed&&Browser!=null&&!Browser.IsDisposed)Browser.Visible=true;};
+            Resize+=(s,e)=>{if(Browser==null||Browser.IsDisposed||!Browser.Visible)return;Browser.Visible=false;resizeReveal.Stop();resizeReveal.Start();};
+            FormClosed+=(s,e)=>resizeReveal.Dispose();
             Controller.Progress=text=>Send(new{type="progress",id=activeRequest,message=text,download=Controller.DownloadState});
             Shown+=async(s,e)=>{
                 // Loading configuration must not depend on an already healthy service.
@@ -102,7 +106,7 @@ namespace AgentVoice {
             return new{path=path};
         }
         object OpenDoc(Dictionary<string,object> args){
-            string name=Json.Text(args,"name");if(!new[]{"模块安装与配置指南.md","TTS使用手册.md","环境补齐说明.md","接入说明.md","音色训练从零开始.md","稳定性与故障排查.md","docs/使用须知与TTS许可.md","docs/licenses/CosyVoice-Apache-2.0.txt","docs/licenses/GPT-SoVITS-MIT.txt"}.Contains(name))throw new InvalidOperationException("不支持的文档。");ServiceClient.Open(Controller.Flow.Store.Resolve(name));return new{message="已打开说明。"};
+            string name=Json.Text(args,"name");if(!new[]{"docs/guides/模块安装与配置指南.md","docs/guides/TTS使用手册.md","docs/guides/环境补齐说明.md","docs/guides/接入说明.md","docs/guides/音色训练从零开始.md","docs/guides/稳定性与故障排查.md","docs/使用须知与TTS许可.md","docs/licenses/CosyVoice-Apache-2.0.txt","docs/licenses/GPT-SoVITS-MIT.txt"}.Contains(name))throw new InvalidOperationException("不支持的文档。");ServiceClient.Open(Controller.Flow.Store.Resolve(name));return new{message="已打开说明。"};
         }
         void Send(object value){if(IsDisposed||Browser==null||Browser.IsDisposed||Browser.CoreWebView2==null)return;Browser.CoreWebView2.PostWebMessageAsJson(Json.Encode(value));}
         async void PlayCue(){try{var p=Controller.Flow.State.Read();bool running=await Controller.Flow.Service.Running();if(!IsDisposed&&InterfaceSounds.Allowed(p.interfaceSounds,testing,running))sounds.Play(Controller.Flow.Store.Root,Math.Max(0,p.onboardingStep-1));}catch{/* Sound is optional and must never block setup. */}}

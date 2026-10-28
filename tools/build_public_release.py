@@ -32,7 +32,7 @@ def prepare(build,output,version):
         if archive.testzip():raise ValueError('归档校验失败')
     guide=ROOT/'下载与首次使用.md'
     text=guide.read_text(encoding='utf-8-sig')
-    for local in ('安装手册.md','THIRD_PARTY_NOTICES.md'):
+    for local in ('docs/guides/安装手册.md','THIRD_PARTY_NOTICES.md'):
         text=text.replace(']('+local+')','](https://github.com/jli517166-gif/agent-voice/blob/'+version+'/'+quote(local)+')')
     # GitHub normalizes non-ASCII upload basenames to an opaque "default.md".
     published=output/'DOWNLOADS.md';published.write_text(text,encoding='utf-8')

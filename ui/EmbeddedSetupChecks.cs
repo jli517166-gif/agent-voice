@@ -98,12 +98,13 @@ namespace AgentVoice {
             var controller=new EmbeddedSetupController(store);controller.Flow.SelectInstallEngines(new[]{0});
             Directory.CreateDirectory(store.Resolve("tools"));
             string module=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"service");
-            string script="import sys,time,json\nfrom pathlib import Path\nsys.path.insert(0,"+Json.Encode(module)+")\nfrom download_control import DownloadGate\nroot=Path(sys.argv[sys.argv.index('--root')+1]);gate=DownloadGate(root)\nfor i in range(200):\n gate.check();(root/'counter.txt').write_text(str(i));time.sleep(.03)\nprint(json.dumps({'ok':True,'message':'fixture finished'}))\n";
+            string script="import sys,time,json\nfrom pathlib import Path\nsys.path.insert(0,"+Json.Encode(module)+")\nfrom download_control import DownloadGate\nroot=Path(sys.argv[sys.argv.index('--root')+1]);gate=DownloadGate(root)\nfor i in range(200):\n gate.check();gate.report('fixture download',downloadedBytes=(i+1)*1024,totalBytes=200*1024,bytesPerSecond=32768);(root/'counter.txt').write_text(str(i));time.sleep(.03)\nprint(json.dumps({'ok':True,'message':'fixture finished'}))\n";
             File.WriteAllText(store.Resolve("tools/environment_repair.py"),script);
             var work=controller.Execute("download-engine",new Dictionary<string,object>());
             Func<Func<bool>,Task> wait=async condition=>{var end=DateTime.UtcNow.AddSeconds(8);while(!condition()){if(DateTime.UtcNow>end)throw new Exception("Download pause fixture timed out");await Task.Delay(25);}};
             await wait(()=>File.Exists(store.Resolve("counter.txt")));
             if(!controller.Busy)throw new Exception("Fixture must hold the normal operation gate");
+            var visible=Json.Object(Json.Encode(controller.DownloadState));if(Convert.ToInt64(visible["totalBytes"])!=200*1024||Convert.ToDouble(visible["percent"])<=0||!Json.Text(visible,"message").Contains("%"))throw new Exception("Download progress did not expose totals and percentage");
             await controller.Execute("pause-download",new Dictionary<string,object>());
             await wait(()=>Json.Text(Json.Object(Json.Encode(controller.DownloadState)),"status")=="paused");
             string frozen=File.ReadAllText(store.Resolve("counter.txt"));await Task.Delay(180);

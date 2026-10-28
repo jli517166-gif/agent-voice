@@ -222,7 +222,7 @@ namespace AgentVoice {
             auto.Controls.Add(autoReadToggle);
 
             var footer=WebCard(page,38,678,902,74);
-            footer.Controls.Add(WebButton("开发其他客户端连接器","新增适配器前先阅读 Harness 二次开发指南。",()=>ServiceClient.Open(Store.Resolve("Harness二次开发指南.md")),16,16,236,39));
+            footer.Controls.Add(WebButton("开发其他客户端连接器","新增适配器前先阅读 Harness 二次开发指南。",()=>ServiceClient.Open(Store.Resolve("docs/guides/Harness二次开发指南.md")),16,16,236,39));
             footer.Controls.Add(WebText("当前实测支持范围：Codex、DeepSeek Harness。",9F,FontStyle.Regular,270,16,610,20,ContentAlignment.MiddleLeft));
             footer.Controls.Add(WebText("未真机验证的 Harness 不进入正式支持列表。",8.8F,FontStyle.Regular,270,40,610,20,ContentAlignment.MiddleLeft));
         }
