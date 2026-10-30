@@ -105,11 +105,24 @@ def install_deepseek(store,python,server):
             except (OSError,ValueError):installed=False
             if not installed:
                 run([cli,"plugin","--profile","desktop","add","@deepseek-ai/dsh-mcp-client@"+version],timeout=300)
+            # The host package command may rewrite node_modules after configure.
+            # Restore our managed chat client last, while it remains covered by
+            # ConnectionTransaction, then verify the exact installed bytes.
+            expected=store.root/"integrations/deepseek-control-client.js"
+            expected_text=expected.read_text(encoding="utf-8-sig")
+            for active_profile in (profile,profile.parent/"headless"):
+                if active_profile!=profile and not active_profile.is_dir():continue
+                client=active_profile/"node_modules/dsh-agent-voice-public/client.js"
+                client.parent.mkdir(parents=True,exist_ok=True)
+                staged=client.with_name(client.name+".agent-voice.tmp")
+                try:
+                    staged.write_text(expected_text,encoding="utf-8")
+                    os.replace(staged,client)
+                finally:staged.unlink(missing_ok=True)
             patch=profile/"cordis.patch.yml"
             write_patch(patch,replace_entry(read_patch(patch),entry))
             validate_patch(patch,store,python,server)
             client=profile/"node_modules/dsh-agent-voice-public/client.js"
-            expected=store.root/"integrations/deepseek-control-client.js"
             if not client.is_file() or client.read_text(encoding="utf-8-sig")!=expected.read_text(encoding="utf-8-sig"):
                 raise ValueError("聊天栏前端更新校验失败，请重新安装快捷控制")
             transaction.commit()

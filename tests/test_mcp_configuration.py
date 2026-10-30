@@ -110,6 +110,17 @@ class McpConfigurationTests(unittest.TestCase):
         installed = self.profile / 'node_modules/dsh-agent-voice-public/client.js'
         self.assertEqual(installed.read_text(encoding='utf-8-sig'), source.read_text(encoding='utf-8-sig'))
 
+    def test_host_plugin_add_overwrite_restores_managed_chat_client(self):
+        def run(command, **kwargs):
+            if '--version' in command:return '0.2.0-rc.2'
+            client=self.profile/'node_modules/dsh-agent-voice-public/client.js'
+            client.write_text('// stale host cache',encoding='utf-8')
+            return ''
+        self.assertTrue(self.install(run)['ok'])
+        expected=(self.server.parent/'deepseek-control-client.js').read_text(encoding='utf-8-sig')
+        for profile in (self.profile,self.headless):
+            self.assertEqual((profile/'node_modules/dsh-agent-voice-public/client.js').read_text(encoding='utf-8-sig'),expected)
+
     def test_configure_partial_failure_also_rolls_back(self):
         before = self.snapshot()
         real = harness_setup.configure
