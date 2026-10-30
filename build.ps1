@@ -26,7 +26,13 @@ Get-ChildItem -LiteralPath (Join-Path $sourceRoot 'docs\licenses') -File -ErrorA
 foreach ($folder in @('service','integrations','tools')) {
     $target = Join-Path $OutputDirectory $folder
     New-Item -ItemType Directory -Path $target -Force | Out-Null
-    Get-ChildItem -LiteralPath (Join-Path $sourceRoot $folder) -File | Where-Object { $folder -ne 'tools' -or $_.Name -in @('software_update.py','prepare_airi.py','export_connector.py','connect_harness.py','verify_harness.py','install_mcp.py','diagnose.py','voice_profiles.py','provision_core_runtime.py','core-requirements.txt','prepare_training.py','prepare_gpt_resources.py','environment_repair.py','train_cosy_lora.py','prepare_cosy_tokens.py','privacy_tools.py','offline_install_check.ps1','singing_control.py') } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $target $_.Name) -Force }
+    Get-ChildItem -LiteralPath (Join-Path $sourceRoot $folder) -File | Where-Object { $folder -ne 'tools' -or $_.Name -in @('software_update.py','prepare_airi.py','export_connector.py','connect_harness.py','verify_harness.py','install_mcp.py','diagnose.py','voice_profiles.py','provision_core_runtime.py','core-requirements.txt','prepare_training.py','prepare_gpt_resources.py','environment_repair.py','train_cosy_lora.py','prepare_cosy_tokens.py','privacy_tools.py','offline_install_check.ps1','singing_control.py','prepare_pet_source.py') } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $target $_.Name) -Force }
+}
+$petProvider=Join-Path $sourceRoot 'integrations\dsh-pet-indesktop\agent_voice.py'
+if (Test-Path -LiteralPath $petProvider) {
+    $petTarget=Join-Path $OutputDirectory 'integrations\dsh-pet-indesktop'
+    New-Item -ItemType Directory -Path $petTarget -Force | Out-Null
+    Copy-Item -LiteralPath $petProvider -Destination (Join-Path $petTarget 'agent_voice.py') -Force
 }
 $agentAssets = Join-Path $sourceRoot '.agents'
 if (Test-Path -LiteralPath (Join-Path $sourceRoot 'assets')) {

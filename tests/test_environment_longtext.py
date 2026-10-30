@@ -72,6 +72,16 @@ class EnvironmentRepairTests(unittest.TestCase):
    self.assertNotIn('PIP_TARGET',env);self.assertNotIn('PYTHONPATH',env);self.assertNotIn('HF_HUB_OFFLINE',env)
    for key in ['PIP_CACHE_DIR','TMP','TEMP','HF_HOME','TORCH_HOME','MODELSCOPE_CACHE','NLTK_DATA']:
     self.assertIn(Path(temp).resolve(),Path(env[key]).resolve().parents)
+ def test_standalone_pet_environment_checks_edge_voice_dependency(self):
+  with tempfile.TemporaryDirectory() as temp:
+   root=Path(temp).resolve()
+   for name in ('runtime/core/python.exe','tools/ffmpeg.exe'):
+    file=root/name;file.parent.mkdir(parents=True,exist_ok=True);file.write_bytes(b'fixture')
+   store=Store(root);voice=store.get()['voice'];voice.update(engine='dsh-pet',petEndpoint='standalone://current');store.update({'voice':voice})
+   helper=Repair(root)
+   with patch.object(helper,'probe',side_effect=lambda python,modules:{'missing':['edge_tts'] if modules==['edge_tts'] else []}):result=helper.inspect('current')
+   self.assertIn('edge_tts',result['items'][0]['missingPackages'])
+   self.assertFalse(result['ok'])
  def test_external_interpreter_cannot_be_mutated(self):
   with tempfile.TemporaryDirectory() as temp:
    with self.assertRaises(ValueError):Repair(temp).pip(sys.executable,['numpy'])

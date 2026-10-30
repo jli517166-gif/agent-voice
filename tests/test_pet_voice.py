@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -8,7 +9,7 @@ from unittest.mock import Mock,patch
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'service'))
 from engine_pet import Adapter
-from pet_endpoint import validate_endpoint
+from pet_endpoint import validate_endpoint,STANDALONE
 from pipeline import Pipeline
 from state import Store
 from voice_profiles import save_profile,apply_profile
@@ -34,6 +35,7 @@ class PetVoiceTests(unittest.TestCase):
 
     def test_endpoint_stays_on_loopback(self):
         self.assertEqual(validate_endpoint(self.voice['petEndpoint']),self.voice['petEndpoint'])
+        self.assertEqual(validate_endpoint(STANDALONE),STANDALONE)
         for value in ('http://example.com:3080/dsh-pet-7340','http://127.0.0.1:3080/admin',
                       'http://127.0.0.1:3080@evil.test/dsh-pet-7340','https://127.0.0.1:3080/dsh-pet-7340'):
             with self.subTest(value=value),self.assertRaises(ValueError):validate_endpoint(value)
@@ -72,6 +74,28 @@ class PetVoiceTests(unittest.TestCase):
         with patch('engine_pet.urllib.request.urlopen',return_value=Response(b'{"ok":false,"reason":"generate-error"}')):
             with self.assertRaisesRegex(RuntimeError,'generate-error'):
                 adapter.synthesize('你好',self.voice,self.root/'out.wav',lambda:None)
+
+    def test_installed_standalone_pet_uses_its_current_edge_voice(self):
+        config=self.root/'pet-user/dsh-pet-standalone-webm-chat/config.json'
+        config.parent.mkdir(parents=True)
+        config.write_text(json.dumps({'voice_chime_tts_backend':'edge','voice_chime_voice':'zh-CN-XiaoxiaoNeural','voice_chime_rate':5,'voice_chime_pitch':2}),encoding='utf-8')
+        self.voice.update(petEndpoint=STANDALONE,petVoice='')
+        self.store.update({'voice':self.voice})
+        captured=[]
+        class Communicate:
+            def __init__(self,text,name,rate,pitch):captured.append((text,name,rate,pitch))
+            async def save(self,path):Path(path).write_bytes(b'ID3standalone')
+        target=self.root/'data/output/standalone.wav'
+        def convert(command,input,stdout,stderr,timeout,check):
+            self.assertEqual(input,b'ID3standalone')
+            with wave.open(str(target),'wb') as output:
+                output.setnchannels(1);output.setsampwidth(2);output.setframerate(24000);output.writeframes(b'\x00\x00'*2400)
+            return Mock(returncode=0,stderr=b'')
+        with patch.dict(os.environ,{'APPDATA':str(config.parents[1])}),patch.dict(sys.modules,{'edge_tts':Mock(Communicate=Communicate)}),patch('engine_pet.subprocess.run',side_effect=convert):
+            adapter=Adapter(self.store);adapter.prepare(self.voice,lambda:None)
+            adapter.synthesize('独立桌宠',self.voice,target,lambda:None)
+        self.assertEqual(captured,[('独立桌宠','zh-CN-XiaoxiaoNeural','+5%','+2Hz')])
+        self.assertTrue(target.is_file())
 
 
 if __name__=='__main__':unittest.main()

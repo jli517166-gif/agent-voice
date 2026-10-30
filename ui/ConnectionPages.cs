@@ -177,7 +177,7 @@ namespace AgentVoice {
 
             ClientIcon(clients,117,"DS");
             clients.Controls.Add(WebText("DeepSeek Harness",13F,FontStyle.Bold,70,135,600,26,ContentAlignment.MiddleLeft));
-            clients.Controls.Add(WebText("聊天栏控制语音与唱歌；可把当前声音注册给 dsh-pet。",9F,FontStyle.Regular,70,164,650,20,ContentAlignment.MiddleLeft));
+            clients.Controls.Add(WebText("聊天栏控制语音与唱歌；原版 dsh-pet 宿主插件可注册当前声音。",9F,FontStyle.Regular,70,164,680,20,ContentAlignment.MiddleLeft));
             clients.Controls.Add(WebHarnessStatus("deepseek","DeepSeek Harness",70,190,640));
             clients.Controls.Add(WebAsyncButton("安装 MCP","选择目录，安装 MCP；客户端重载后再次自检，无需发送验证消息。",BeginAutoHarness,762,156,132,39));
             WebDivider(clients,16,234,870);

@@ -71,6 +71,16 @@ class CoreTests(unittest.TestCase):
     def test_initial_public_config_contains_no_private_voice(self):
         cfg=defaults();self.assertEqual(cfg['voice']['baseModel'],'');self.assertEqual(cfg['voice']['reference'],'');self.assertEqual(cfg['harness'],{'codex':False,'deepseek':False})
         self.assertNotIn('synthesisMode',cfg['voice']);self.assertFalse(cfg['voice']['advancedEnabled'])
+    def test_standalone_pet_request_cannot_loop_into_pet_engine(self):
+        voice=self.store.get()['voice'];voice.update(engine='dsh-pet',petEndpoint='standalone://current')
+        self.store.update({'voice':voice})
+        request=urllib.request.Request(self.base+'/v1/audio/speech',
+            data=json.dumps({'model':'agent-voice-tts','input':'循环检查','voice':'current'}).encode(),
+            headers={'Authorization':'Bearer '+self.token,'Content-Type':'application/json',
+                     'X-Agent-Voice-Pet':'standalone'})
+        with self.assertRaises(urllib.error.HTTPError) as caught:self.opener.open(request,timeout=3)
+        self.assertEqual(caught.exception.code,400)
+        caught.exception.close()
     def test_playback_status_ignores_synthesis_only_and_cancelled_epoch(self):
         jobs=self.server.jobs
         with jobs.lock:

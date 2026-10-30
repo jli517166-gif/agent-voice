@@ -339,6 +339,8 @@ class Handler(BaseHTTPRequestHandler):
                     voice_id=data.get("voice","current")
                     if not isinstance(voice_id,str):raise ValueError("音色 ID 无效")
                     current=self.server.store.get()
+                    if self.headers.get("X-Agent-Voice-Pet")=="standalone" and current["voice"]["engine"]=="dsh-pet":
+                        raise ValueError("Agent Voice 当前使用桌宠声音；先切换到本地 TTS，避免循环调用")
                     if voice_id not in ("current","alloy"):
                         candidates=[p for p in current["profiles"] if p["id"]==voice_id]
                         if not candidates:raise ValueError("已保存声音配置不存在")

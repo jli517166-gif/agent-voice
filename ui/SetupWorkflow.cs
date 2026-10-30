@@ -53,7 +53,7 @@ namespace AgentVoice {
             lines.Add("点击“检查已有文件”查看匹配版本、下载来源与具体缺项。文件存在不代表运行或声音验证通过。");return string.Join("\r\n",lines);
         }
         internal async Task<string> InspectResources(string scope=null){
-            if(Config.voice.engine=="dsh-pet"&&(scope==null||scope=="current"))return "当前选择 dsh-pet 桌宠语音。它使用桌宠已安装的语音提供者，不下载本软件的 TTS 权重；请确认桌宠插件、本机 Web 地址与 FFmpeg，随后实际试听。";
+            if(Config.voice.engine=="dsh-pet"&&(scope==null||scope=="current"))return Config.voice.petEndpoint=="standalone://current"?"当前使用独立桌宠的 Edge 声音设置；需要 edge-tts、FFmpeg 和网络，朗读文字会发送给 Edge 在线语音服务。请先补齐环境，再试听确认。":"当前使用原版 dsh-pet 宿主插件的本机语音接口；需要启动插件与 Web 服务、配置本机地址并安装 FFmpeg，再试听确认。";
             if(!File.Exists(Store.Resolve(Config.engines.pythonService)))return Resources()+"\r\n尚无主服务 Python；联网准备会先安装到 runtime/core，或导入离线环境包。";
             var lines=new List<string>();var reports=new List<object>();
             string[] families=scope==null?EngineSwitching.Families(InstallEngines()):scope=="all"?new[]{"cosyvoice","gpt-sovits"}:scope=="core"?new string[0]:new[]{scope=="current"?Config.voice.engine:scope};

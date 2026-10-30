@@ -393,7 +393,12 @@ class Repair:
         if any(e not in CATALOG for e in selected):raise ValueError('未知引擎')
         rows=[]
         core=self.store.resolve(cfg['engines']['pythonService']);core_probe=self.probe(core,CATALOG['core']['packages'])
-        ffmpeg=self.store.resolve(cfg['engines']['ffmpeg']);ffmpeg_missing=bool(selected) and not ffmpeg.is_file()
+        from pet_endpoint import STANDALONE
+        pet_selected=engine=='dsh-pet' or engine=='current' and cfg['voice']['engine']=='dsh-pet'
+        if pet_selected and cfg['voice']['petEndpoint']==STANDALONE:
+            edge=self.probe(core,['edge_tts'])
+            core_probe['missing'].extend(name for name in edge['missing'] if name not in core_probe['missing'])
+        ffmpeg=self.store.resolve(cfg['engines']['ffmpeg']);ffmpeg_missing=(bool(selected) or pet_selected) and not ffmpeg.is_file()
         rows.append({'id':'core','ok':not core_probe['missing'] and not ffmpeg_missing,'python':str(core),'missingPackages':core_probe['missing'],'probe':core_probe,'ffmpegMissing':ffmpeg_missing})
         for name in selected:
             data=spec(name);python=self.store.resolve(cfg['engines'][data['pythonKey']]);source=self.store.resolve(cfg['engines'][data['sourceKey']]);model=self.store.resolve(cfg['engines'][data['modelKey']]);probe=self.probe(python,['torch','torchaudio',*CATALOG[name]['packages']])
@@ -499,7 +504,14 @@ class Repair:
                     raise ValueError('离线模式缺少 '+name+' 引擎源码、基础模型或发音资源，请先导入对应 TTS 包')
                 if name=='core':
                     candidate=Path(row['python']);python=candidate if candidate.is_file() and self.root in candidate.resolve().parents else self.python(self.root/'runtime/core')
-                    missing=self.probe(python,CATALOG['core']['packages'])['missing'];self.pip(python,[CATALOG['core']['packages'][m] for m in missing]);updates['pythonService']=self.store.portable(python)
+                    missing=self.probe(python,CATALOG['core']['packages'])['missing']
+                    from pet_endpoint import STANDALONE
+                    if (engine=='dsh-pet' or engine=='current' and cfg['voice']['engine']=='dsh-pet') and cfg['voice']['petEndpoint']==STANDALONE:
+                        missing+=self.probe(python,['edge_tts'])['missing']
+                    requirements=[CATALOG['core']['packages'][m] for m in missing if m in CATALOG['core']['packages']]
+                    if 'edge_tts' in missing:requirements.append('edge-tts==7.3.1')
+                    if requirements:self.pip(python,requirements)
+                    updates['pythonService']=self.store.portable(python)
                     if row.get('ffmpegMissing'):
                         asset=CATALOG['ffmpeg'];binary=self.download(asset['url'],'ffmpeg.exe',asset['sha256']);target=inside(self.root,self.root/'tools/ffmpeg.exe');target.parent.mkdir(exist_ok=True);shutil.copy2(binary,target);updates['ffmpeg']=self.store.portable(target)
                     continue
@@ -567,7 +579,7 @@ class Repair:
             return result
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('action',choices=['inspect','repair','resources']);p.add_argument('--root',required=True);p.add_argument('--engine',choices=['core','current','all','cosyvoice','gpt-sovits'],default='current');p.add_argument('--offline',action='store_true');p.add_argument('--prepare-only',action='store_true');p.add_argument('--dependencies-only',action='store_true');a=p.parse_args();helper=Repair(a.root,offline=a.offline)
+    p=argparse.ArgumentParser();p.add_argument('action',choices=['inspect','repair','resources']);p.add_argument('--root',required=True);p.add_argument('--engine',choices=['core','current','all','cosyvoice','gpt-sovits','dsh-pet'],default='current');p.add_argument('--offline',action='store_true');p.add_argument('--prepare-only',action='store_true');p.add_argument('--dependencies-only',action='store_true');a=p.parse_args();helper=Repair(a.root,offline=a.offline)
     try:result=helper.prepare_resources(a.engine) if a.action=='resources' else helper.repair(a.engine,verify=not a.prepare_only,dependencies_only=a.dependencies_only) if a.action=='repair' else helper.inspect(a.engine)
     except Exception as exc:helper.progress(str(exc),'failed');result={'ok':False,'error':str(exc),'log':str(helper.log)}
     print(json.dumps(result,ensure_ascii=False))

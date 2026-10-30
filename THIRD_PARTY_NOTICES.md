@@ -12,6 +12,7 @@ Agent Voice 自有代码采用根目录 MIT License。贡献者保留各自依�
 | AIRI 图标及引用的上游代码 | MIT | `docs/licenses/AIRI-MIT.txt`；用于兼容说明，不代表上游背书 |
 | ACE-Step 源码 | MIT | 唱歌引擎包必须保留其上游 `LICENSE`；模型权重及依赖仍按实际文件单独审查 |
 | dsh-pet 接口 | MIT | 按公开的 `petApi7340.voice.register` 与本机 `/voice/speak`、`/voice/voices` 契约兼容；软件不复制或分发其角色、动画、声音等素材，也不代表上游背书 |
+| dsh-pet-indesktop 设置与源码 provider 兼容层 | MIT | [上游项目](https://github.com/MerZlin/dsh-pet-indesktop)；本软件仅读取已安装程序当前用户的语音设置，或提供另行构建所需的接口适配代码，不复制或分发桌宠程序与素材；选用其 Edge 声音时，朗读文字会发送到该在线 TTS 服务 |
 | 已登记的 3dicons 素材 | CC0-1.0 | `docs/licenses/3dicons-CC0.txt` 和 `assets/setup/art/cutouts/sources.json`；不覆盖未登记图片 |
 | WebView2 | Microsoft 随 SDK 附带条款 | 构建输出的 `docs/licenses/WebView2.txt`；运行时分发条件另核查 |
 | FFmpeg、Python、Torch、CUDA 及其依赖 | 各实际版本的独立条款 | 本文件不作整体授权。FFmpeg 对应源码、GPL／LGPL 组件及专有库需按发行检查记录提供材料 |

@@ -1,8 +1,10 @@
 """Keep the unauthenticated dsh-pet bridge confined to loopback."""
 from urllib.parse import urlsplit
 
+STANDALONE='standalone://current'
 
 def validate_endpoint(value):
+    if value==STANDALONE:return value
     if not isinstance(value,str) or len(value)>200:raise ValueError('桌宠 Web 地址无效')
     parsed=urlsplit(value.rstrip('/'))
     try:port=parsed.port
