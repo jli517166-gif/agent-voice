@@ -74,7 +74,10 @@ class AgentVoiceProvider(TtsProvider):
                                                                 "Accept": "audio/mpeg"}, method="POST")
         try:
             # An explicit empty proxy map keeps the authenticated loopback call local.
-            with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request, timeout=14) as response:
+            # Local models can take substantially longer on a cold start than
+            # the pet's built-in online providers.  A short socket timeout
+            # aborts a healthy generation before Agent Voice returns audio.
+            with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request, timeout=120) as response:
                 if response.status != 200 or "audio/mpeg" not in response.headers.get("Content-Type", ""):
                     raise ValueError("unexpected audio response")
                 audio = response.read(20 * 1024 * 1024 + 1)
