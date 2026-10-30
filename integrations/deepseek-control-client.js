@@ -99,13 +99,13 @@ window.__ModuleLoader__.load({
           else if(tool==='voice_service_status')setPlayback(value);
           if(tool==='list_voice_profiles'){const items=value.profiles||[];setProfiles(items);setSelected((items.find(p=>p.active)||items[0])?.id||'');setMessage(items.length?'选择声音方案后点击“使用”。':'还没有声音方案，请在桌面端保存。');}
           else if(tool==='voice_service_status')setMessage(`服务${value.running?'已开启':'已关闭'} · 自动朗读${value.autoReading?'开启':'关闭'}\n当前声音：${value.currentProfile?.name||'当前自定义设置'} · 队列 ${value.queued||0}`);
-          else setMessage(({start_voice_service:'服务已开启',stop_voice_service:'服务已关闭',stop_speech:'朗读已停止，队列已清空',apply_voice_profile:'声音方案已切换',set_auto_reading:`自动朗读${args.enabled?'已开启':'已关闭'}`})[tool]||'操作完成');
+          else setMessage(({start_voice_service:'服务已开启',stop_voice_service:'服务已关闭',stop_speech:'朗读已停止，队列已清空',apply_voice_profile:'声音方案已切换',set_auto_reading:`自动朗读${args.enabled?'已开启':'已关闭'}`,open_singing_app:'独立唱歌软件已打开'})[tool]||'操作完成');
         }catch(error){setMessage('操作失败：'+error.message);}
         finally{setBusy(false);monitor.current?.refresh();}
       };
       const actions = [
         ['voice_service_status','查看状态'], ['start_voice_service','开启服务'], ['stop_speech','停止朗读'],
-        ['stop_voice_service','关闭服务'], ['list_voice_profiles','声音方案'], ['set_auto_reading','开启自动朗读',{enabled:true}],
+        ['stop_voice_service','关闭服务'], ['list_voice_profiles','声音方案'], ['open_singing_app','打开唱歌'], ['set_auto_reading','开启自动朗读',{enabled:true}],
         ['set_auto_reading','关闭自动朗读',{enabled:false}]
       ];
       const phase=playback.playback?.state==='error'?'error':playbackPhase(playback),playing=phase==='playing';

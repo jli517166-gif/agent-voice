@@ -1,5 +1,6 @@
 # Build output and local runtime
 dist/
+dist-*/
 build-*/
 .build-deps/
 runtime/
@@ -21,6 +22,8 @@ voice-model-packages/
 *.gpt-sovits.ttsmodel
 *.ttsengine
 *.ttsenvironment
+*.singengine
+*.singengine.sha256
 *.ttsengine.sha256
 *.ttsenvironment.sha256
 *.ckpt

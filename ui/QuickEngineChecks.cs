@@ -10,7 +10,7 @@ using System.Windows.Forms;
 namespace AgentVoice {
     public sealed partial class MainForm {
         internal async Task VerifyQuickEngine(QuickEngineServer server){
-            if(quickEngine==null||quickEngine.Items.Count!=3)throw new Exception("Home engine selector missing");
+            if(quickEngine==null||quickEngine.Items.Count!=4)throw new Exception("Home engine selector missing");
             Config.voice.referenceText="cosy reference";Store.Write(Config);
             quickEngine.SelectedIndex=1;await QuickSwitchEngine();
             if(Config.voice.engine!="gpt-sovits"||Config.voice.gptVariant!="v5turbo"||ReadVoice().engine!="gpt-sovits")throw new Exception("Home switch did not update service/config/editor together");

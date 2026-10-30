@@ -2,6 +2,7 @@
   "version": 1,
   "engines": [
     {"id":"cosyvoice","label":"CosyVoice","adapter":"engine_cosy","pythonKey":"pythonTts","sourceKey":"cosyRepo","modelKey":"cosyModel","modelField":"baseModel","capabilities":{"instructions":true,"leadingSilence":true,"trainedBundles":true,"sentenceOutput":true,"referenceRequired":true},"variants":[{"id":"cosyvoice3","label":"CosyVoice","packageType":"cosyvoice3"}]},
-    {"id":"gpt-sovits","label":"GPT-SoVITS","adapter":"engine_gpt","pythonKey":"pythonGpt","sourceKey":"gptRepo","modelKey":"gptModel","modelField":"gptModel","capabilities":{"instructions":false,"leadingSilence":false,"trainedBundles":false,"sentenceOutput":true,"referenceRequired":true},"variants":[{"id":"v5turbo","label":"GPT-SoVITS · v5 Turbo（推荐）","packageType":"gpt-sovits-v5turbo"},{"id":"proplus","label":"GPT-SoVITS · ProPlus","packageType":"gpt-sovits-proplus"}]}
+    {"id":"gpt-sovits","label":"GPT-SoVITS","adapter":"engine_gpt","pythonKey":"pythonGpt","sourceKey":"gptRepo","modelKey":"gptModel","modelField":"gptModel","capabilities":{"instructions":false,"leadingSilence":false,"trainedBundles":false,"sentenceOutput":true,"referenceRequired":true},"variants":[{"id":"v5turbo","label":"GPT-SoVITS · v5 Turbo（推荐）","packageType":"gpt-sovits-v5turbo"},{"id":"proplus","label":"GPT-SoVITS · ProPlus","packageType":"gpt-sovits-proplus"}]},
+    {"id":"dsh-pet","label":"dsh-pet 桌宠语音","adapter":"engine_pet","pythonKey":"","sourceKey":"","modelKey":"","modelField":"","capabilities":{"instructions":false,"leadingSilence":false,"trainedBundles":false,"sentenceOutput":true,"referenceRequired":false},"variants":[{"id":"dsh-pet","label":"dsh-pet · 当前音色","packageType":"external"}]}
   ]
 }

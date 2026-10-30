@@ -11,9 +11,10 @@ def spec(engine):
     if engine not in SPECS:raise ValueError('不支持的 TTS 引擎：'+str(engine))
     return SPECS[engine]
 
-def variant(voice):return voice['gptVariant'] if voice['engine']=='gpt-sovits' else 'cosyvoice3'
+def variant(voice):return voice['gptVariant'] if voice['engine']=='gpt-sovits' else voice['engine'] if voice['engine']=='dsh-pet' else 'cosyvoice3'
 
 def model_directory(store,voice):
+    if voice['engine']=='dsh-pet':return None
     s=spec(voice['engine']);return store.resolve(voice.get(s['modelField']) or store.get()['engines'][s['modelKey']])
 
 def create_adapter(store,engine):

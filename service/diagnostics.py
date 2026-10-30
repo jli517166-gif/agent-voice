@@ -17,6 +17,18 @@ def inspect_installation(store,deep=False):
             d=sd.query_devices(kind='output');item('播放设备',d.get('max_output_channels',0)>0,str(d['name']))
         except Exception as exc:item('播放设备',False,str(exc))
     for spec in CATALOG['engines']:
+        if spec['id']=='dsh-pet':
+            voice=copy.deepcopy(cfg['voice']);voice['engine']='dsh-pet'
+            section='dsh-pet/dsh-pet'
+            missing=store.missing(voice)
+            item('桌宠语音桥',not missing,'本机接口 '+voice['petEndpoint'] if not missing else '缺少：'+'；'.join(missing),section)
+            if deep and not missing:
+                try:
+                    from engine_pet import Adapter
+                    Adapter(store).prepare(voice,lambda:None)
+                    item('桌宠音色接口',True,'音色列表已返回；仍需实际生成和试听',section)
+                except Exception as exc:item('桌宠音色接口',False,str(exc),section)
+            continue
         python=store.resolve(cfg['engines'][spec['pythonKey']])
         if deep and python.is_file():
             source=store.resolve(cfg['engines'][spec['sourceKey']])
@@ -57,7 +69,7 @@ def inspect_installation(store,deep=False):
             item('当前参考录音',valid,'%.2f 秒，%d 声道；GPT 要求 3～10 秒完整短句'%(seconds,info.channels))
             if store.root not in ref.resolve().parents:item('参考资源位置',True,'参考录音在程序目录之外；保存声音方案，并在换机时自行迁移相关文件',warning=True)
         except Exception as exc:item('当前参考录音',False,str(exc))
-    active=cfg['voice']['engine']+'/'+(cfg['voice']['gptVariant'] if cfg['voice']['engine']=='gpt-sovits' else 'cosyvoice3')
+    active=cfg['voice']['engine']+'/'+(cfg['voice']['gptVariant'] if cfg['voice']['engine']=='gpt-sovits' else 'dsh-pet' if cfg['voice']['engine']=='dsh-pet' else 'cosyvoice3')
     ok=all(x['ok'] for x in checks if x['section'] in ('core',active) and not x['warning'])
     result={'ok':ok,'deep':deep,'checks':checks,'activeEngine':active,'scope':'文件／环境检查，不代表模型已经生成或实际播放成功'}
     report=store.root/'data/diagnostics/latest.json';atomic_json(report,result);result['report']=str(report)

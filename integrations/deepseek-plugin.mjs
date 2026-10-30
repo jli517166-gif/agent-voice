@@ -1,13 +1,17 @@
-import { send, startHeartbeat, mcpControl, playbackStatus } from './connector.mjs';
+import { send, startHeartbeat, mcpControl, playbackStatus, synthesizePetVoice } from './connector.mjs';
 import { writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { appRoot } from './connector.mjs';
 import { createHash } from 'node:crypto';
 export const name = 'agent-voice-public';
 export const inject = [];
-const controlTools=new Set(['voice_service_status','start_voice_service','stop_voice_service','stop_speech','list_voice_profiles','apply_voice_profile','set_auto_reading']);
+const controlTools=new Set(['voice_service_status','start_voice_service','stop_voice_service','stop_speech','list_voice_profiles','apply_voice_profile','set_auto_reading','open_singing_app','list_singing_engines']);
 
 function commandHelp() {
   return ['🎙 Agent Voice 控制台', 'status  状态', 'start  开启服务', 'stop  关闭服务',
-    'quiet  停止当前朗读', 'profiles  声音方案', 'profile <ID>  切换声音', 'auto on|off  自动朗读'].join('\n');
+    'quiet  停止当前朗读', 'profiles  声音方案', 'profile <ID>  切换声音', 'auto on|off  自动朗读',
+    'sing  打开独立唱歌软件', 'sing engines  查看唱歌引擎'].join('\n');
 }
 export async function runVoiceCommand(rawInput = '') {
   if(rawInput.trim().startsWith('ui ')){
@@ -31,12 +35,15 @@ export async function runVoiceCommand(rawInput = '') {
   } else if (normalized === 'auto') {
     if (!['on','off'].includes((values[0] || '').toLowerCase())) return {kind:'error', text:'用法：/agent-voice auto on 或 /agent-voice auto off'};
     tool = 'set_auto_reading'; args = {enabled:values[0].toLowerCase() === 'on'};
+  } else if (normalized === 'sing') {
+    tool = (values[0] || '').toLowerCase() === 'engines' ? 'list_singing_engines' : 'open_singing_app';
   } else if (normalized !== 'status') return {kind:'error', text:'未知操作。\n' + commandHelp()};
   try {
     const result = await mcpControl('deepseek', tool, args);
     if (tool === 'voice_service_status') return {kind:'success', text:`🎙 ${result.running ? '服务运行中' : '服务未启动'} · 自动朗读${result.autoReading ? '已开启' : '已关闭'} · 队列 ${result.queued ?? 0}`};
     if (tool === 'list_voice_profiles') return {kind:'success', text:'🎼 声音方案\n' + (result.profiles || []).map(item => `${item.active ? '●' : '○'} ${item.name}  (${item.id})`).join('\n')};
-    return {kind:'success', text:'✨ 操作完成：' + ({start_voice_service:'服务已开启',stop_voice_service:'服务已关闭',stop_speech:'朗读已停止',apply_voice_profile:'声音已切换',set_auto_reading:`自动朗读${args.enabled ? '已开启' : '已关闭'}`}[tool] || tool)};
+    if(tool==='list_singing_engines')return {kind:'success',text:'🎤 唱歌引擎\n'+(result.engines||[]).map(item=>`${item.active?'●':'○'} ${item.name} · ${item.installed?'已安装':'未安装'}`).join('\n')};
+    return {kind:'success', text:'✨ 操作完成：' + ({start_voice_service:'服务已开启',stop_voice_service:'服务已关闭',stop_speech:'朗读已停止',apply_voice_profile:'声音已切换',set_auto_reading:`自动朗读${args.enabled ? '已开启' : '已关闭'}`,open_singing_app:'唱歌软件已打开'}[tool] || tool)};
   } catch (error) { return {kind:'error', text:'语音控制失败：' + error.message}; }
 }
 
@@ -67,6 +74,29 @@ export function createReplyReader(deliver = event => send('deepseek', event)) {
 
 export function apply(ctx) {
   const stopHeartbeat = startHeartbeat('deepseek');
+  // dsh-pet's documented host-side extension seam.  This stays optional: the
+  // voice/MCP connector continues to work when dsh-pet is not installed.
+  ctx.inject(['petApi7340'], scope => {
+    const api = scope.petApi7340 ?? scope.get?.('petApi7340');
+    if (!api?.voice?.register) return;
+    let unregister = null;
+    const sync = () => {
+      let useAgentVoice = true;
+      try { useAgentVoice = JSON.parse(readFileSync(path.join(appRoot, 'data/settings.json'), 'utf8')).voice?.engine !== 'dsh-pet'; }
+      catch { /* On first run, retain the documented Agent Voice provider. */ }
+      if (useAgentVoice && !unregister) unregister = api.voice.register({
+        id: 'agent-voice-local', name: 'Agent Voice 当前声音',
+        synthesize: request => synthesizePetVoice(request),
+      });
+      if (!useAgentVoice && unregister) { unregister(); unregister = null; }
+    };
+    sync();
+    const timer = setInterval(sync, 2000);
+    timer.unref?.();
+    const cleanup = () => { clearInterval(timer); unregister?.(); unregister = null; };
+    if (typeof ctx.effect === 'function') ctx.effect(() => cleanup);
+    else ctx.on('dispose', cleanup);
+  });
   // Read-only native RPC avoids filling chat history with polling commands.
   ctx.inject(['connection'], scope => {
     if(!scope.connection?.fetch)return;

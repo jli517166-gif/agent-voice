@@ -15,7 +15,9 @@
     {"id":"airi-art","kind":"asset","license":"MIT","status":"notice-confirmed","notice":"docs/licenses/AIRI-MIT.txt","source":"https://github.com/moeru-ai/airi"},
     {"id":"3dicons","kind":"asset","license":"CC0-1.0","status":"notice-confirmed","notice":"docs/licenses/3dicons-CC0.txt","source":"https://github.com/realvjy/3dicons","fileMap":"assets/setup/art/cutouts/sources.json"},
     {"id":"other-art","kind":"asset","license":"NOASSERTION","status":"file-provenance-review-pending","requiredEvidence":["per-file source and license for other shipped art","screenshots reviewed for private content"]},
-    {"id":"webview2","kind":"binary","license":"LicenseRef-Microsoft-WebView2","status":"redistribution-review-pending","notice":"docs/licenses/WebView2.txt","requiredEvidence":["actual SDK and runtime version","applicable redistribution terms"]}
+    {"id":"webview2","kind":"binary","license":"LicenseRef-Microsoft-WebView2","status":"redistribution-review-pending","notice":"docs/licenses/WebView2.txt","requiredEvidence":["actual SDK and runtime version","applicable redistribution terms"]},
+    {"id":"ace-step","kind":"optional-singing-engine","license":"MIT","status":"weights-and-runtime-review-pending","source":"https://github.com/ace-step/ACE-Step","requiredEvidence":["upstream LICENSE in engine package","model weight terms","runtime dependency inventory"]},
+    {"id":"dsh-pet-api","kind":"compatibility-api","license":"MIT","status":"interface-only","source":"https://github.com/PC2005-cloud/dsh-pet","scope":"uses documented petApi7340 provider and loopback voice HTTP interfaces only; no pet character, animation, voice or other media assets distributed"}
   ],
   "limits": "Notice-confirmed does not clear every derivative, weight, runtime or product scenario. Unknown status is never converted to permission by a checksum or user checkbox. This file is not an SBOM or legal opinion."
 }

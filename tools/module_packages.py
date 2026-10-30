@@ -8,6 +8,7 @@ from pathlib import Path
 from urllib.parse import unquote,urlsplit
 
 ENGINES=('cosyvoice','gpt-sovits')
+SINGING_ENGINES=('ace-step',)
 SKIP={'.git','__pycache__','.cache','.pytest_cache','tests','test'}
 LEGAL_ROOT=Path(__file__).resolve().parents[1]
 
@@ -38,7 +39,7 @@ def inventory(root,relative):
 
 def write_package(output,kind,engine,components,paths,defaults,profile='bundled',minimum_driver='',feature=None):
     output=Path(output).resolve()
-    suffix='.ttsengine' if kind=='engine' else '.avmodule' if kind=='feature' else '.ttsenvironment'
+    suffix='.ttsengine' if kind=='engine' else '.singengine' if kind=='singing-engine' else '.avmodule' if kind=='feature' else '.ttsenvironment'
     if not str(output).endswith(suffix) or output.exists():raise ValueError('输出需要新文件，后缀为 '+suffix)
     paths=list(paths);names=[p[0] for p in paths]
     if not paths or len(names)!=len(set(n.casefold() for n in names)):raise ValueError('模块资源为空或路径重复')
@@ -89,11 +90,44 @@ def environment_package(root,engines,output,include_downloads=False,profile='bun
     for engine in dict.fromkeys(engines):
         components.append('tts-engines/'+engine+'/runtime')
         defaults['pythonTts' if engine=='cosyvoice' else 'pythonGpt']='tts-engines/'+engine+'/runtime/'+('tools/python.exe' if engine=='cosyvoice' else 'Scripts/python.exe')
+    metadata=None
     if include_downloads:
+        wheels=root/'data/environment-repair/wheels'
+        required=('torch-2.7.1+cu128-cp310-cp310-win_amd64.whl',
+                  'torchaudio-2.7.1+cu128-cp310-cp310-win_amd64.whl',
+                  'torchvision-0.22.1+cu128-cp310-cp310-win_amd64.whl')
+        missing=[name for name in required if not (wheels/name).is_file()]
+        if missing:raise ValueError('通用离线环境包缺少 Python 3.10 的 RTX 50 系 CUDA 12.8 wheels：'+', '.join(missing))
+        metadata={'gpuCompatibility':{'rtx50':{'cuda':'12.8','minimumDriver':'570.26','torch':'2.7.1'}}}
         for relative in ['data/environment-repair/wheels','data/environment-repair/downloads']:
             if (root/relative).is_dir():components.append(relative)
     if (root/'tools/system-prerequisites').is_dir():components.append('tools/system-prerequisites')
-    return write_package(output,'environment','all',components,(entry for c in components for entry in inventory(root,c)),defaults,profile,minimum_driver)
+    return write_package(output,'environment','all',components,
+                         (entry for c in components for entry in inventory(root,c)),
+                         defaults,profile,minimum_driver,feature=metadata)
+
+def singing_engine_package(root,engine,output):
+    if engine not in SINGING_ENGINES:raise ValueError('未适配唱歌引擎')
+    root=Path(root).resolve();component='singing-engines/'+engine
+    # The installed engine is a working directory, not a distributable tree.
+    # In particular it contains .env, downloaded archives, logs and songs.
+    # Export only the runtime, source and model directories required to start.
+    required=[component+'/启动歌声引擎.cmd',component+'/portable/start_gradio_ui.bat',
+              component+'/portable/python_embeded',component+'/portable/acestep',
+              component+'/portable/checkpoints/acestep-v15-turbo',component+'/portable/checkpoints/vae',
+              component+'/portable/checkpoints/config.json',component+'/portable/checkpoints/configuration.json',
+              component+'/portable/ui',
+              component+'/portable/assets',component+'/portable/scripts',
+              component+'/portable/LICENSE']
+    paths=[entry for part in required for entry in inventory(root,part)]
+    forbidden={'.env','.env.local','settings.json','proxy_config.txt'}
+    paths=[(name,path) for name,path in paths
+           if not any(part.casefold() in {'.git','.cache','gradio_outputs','downloads','output','outputs','logs'} for part in Path(name).parts)
+           and path.name.casefold() not in forbidden
+           and path.suffix.casefold() not in {'.wav','.mp3','.flac','.ogg','.m4a','.webm','.mp4','.part','.tmp'}]
+    paths.extend([(component+'/tools/launch_singing_engine.ps1',LEGAL_ROOT/'tools/launch_singing_engine.ps1'),
+                  (component+'/tools/wait_and_open_singing.ps1',LEGAL_ROOT/'tools/wait_and_open_singing.ps1')])
+    return write_package(output,'singing-engine',engine,[component],paths,{})
 
 def application_package(build,output,folder='Agent语音',audit_directory=None):
     build=Path(build).resolve();output=Path(output).resolve()
@@ -167,14 +201,15 @@ def feature_package(root,output,ident='extension',name='功能扩展',version='1
     return write_package(output,'feature','',[prefix],paths,{},feature={'id':ident,'name':name,'moduleVersion':version,'apiVersion':1,'entrypoint':prefix+'/module.exe'})
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('kind',choices=['application','engine','environment','feature']);parser.add_argument('--root',required=True);parser.add_argument('--output',required=True)
-    parser.add_argument('--engine',choices=ENGINES);parser.add_argument('--engines',nargs='*',choices=ENGINES,default=list(ENGINES));parser.add_argument('--model');parser.add_argument('--include-downloads',action='store_true');parser.add_argument('--profile',default='bundled');parser.add_argument('--minimum-driver',default='')
+    parser=argparse.ArgumentParser();parser.add_argument('kind',choices=['application','engine','environment','feature','singing-engine']);parser.add_argument('--root',required=True);parser.add_argument('--output',required=True)
+    parser.add_argument('--engine',choices=ENGINES+SINGING_ENGINES);parser.add_argument('--engines',nargs='*',choices=ENGINES,default=list(ENGINES));parser.add_argument('--model');parser.add_argument('--include-downloads',action='store_true');parser.add_argument('--profile',default='bundled');parser.add_argument('--minimum-driver',default='')
     parser.add_argument('--module-version',default='1.0.0');parser.add_argument('--module-id',default='extension');parser.add_argument('--module-name',default='功能扩展')
     parser.add_argument('--application-folder',choices=['Agent语音','Agent语音-私用版'],default='Agent语音')
     parser.add_argument('--audit-directory',help='将软件本体排除的开发记录集中保存到此目录')
     args=parser.parse_args()
     if args.kind=='application':result=application_package(args.root,args.output,args.application_folder,args.audit_directory)
     elif args.kind=='feature':result=feature_package(args.root,args.output,ident=args.module_id,name=args.module_name,version=args.module_version)
+    elif args.kind=='singing-engine':result=singing_engine_package(args.root,args.engine,args.output)
     elif args.kind=='engine':result=engine_package(args.root,args.engine,args.output,args.model)
     else:result=environment_package(args.root,args.engines,args.output,args.include_downloads,args.profile,args.minimum_driver)
     print(json.dumps(result,ensure_ascii=False))

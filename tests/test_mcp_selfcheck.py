@@ -43,7 +43,7 @@ class McpSelfcheckTests(unittest.TestCase):
         for host in ('codex', 'deepseek'):
             result = mcp_selfcheck.probe(self.store, host, self.python, self.server)
             self.assertTrue(result['protocolPassed'])
-            self.assertEqual(result['toolCount'], 8)
+            self.assertEqual(result['toolCount'], len(mcp_selfcheck.TOOLS))
             self.assertFalse(result['audioTested'])
             self.assertFalse(connected_clients(self.store.root, host, None))
         self.assertEqual(self.store.path.read_bytes(), before)
@@ -75,7 +75,7 @@ class McpSelfcheckTests(unittest.TestCase):
         receipt = McpPresence(self.store.root, 'codex')
         self.addCleanup(receipt.close)
         receipt.note('initialize', {'clientInfo': {'name': 'agent-voice-selfcheck'}})
-        receipt.note('tools/list', tool_count=8)
+        receipt.note('tools/list', tool_count=len(mcp_selfcheck.TOOLS))
         self.assertFalse(connected_clients(self.store.root, 'codex', None))
 
     def test_pending_host_never_passes_even_with_valid_probe(self):
@@ -88,14 +88,14 @@ class McpSelfcheckTests(unittest.TestCase):
 
     def test_loaded_host_passes_after_protocol_check(self):
         with patch.object(install_mcp, 'find_codex', return_value='codex'), patch.object(mcp_selfcheck, 'codex_configuration'), \
-             patch('mcp_presence.connected_clients', return_value=[{'toolCount': 8}]), patch.object(mcp_selfcheck, 'probe', return_value={'protocolPassed': True}):
+             patch('mcp_presence.connected_clients', return_value=[{'toolCount': len(mcp_selfcheck.TOOLS)}]), patch.object(mcp_selfcheck, 'probe', return_value={'protocolPassed': True}):
             result = install_mcp.inspect('codex', self.store.root, self_test=True)
         self.assertTrue(result['passed'])
         self.assertFalse(result['audioTested'])
 
     def test_loaded_host_reports_connected_on_normal_refresh(self):
         with patch.object(install_mcp, 'find_codex', return_value='codex'), patch.object(mcp_selfcheck, 'codex_configuration'), \
-             patch('mcp_presence.connected_clients', return_value=[{'toolCount': 8}]):
+             patch('mcp_presence.connected_clients', return_value=[{'toolCount': len(mcp_selfcheck.TOOLS)}]):
             result = install_mcp.inspect('codex', self.store.root)
         self.assertEqual(result['state'], 'tools-read')
         self.assertTrue(result['clientLoaded'])

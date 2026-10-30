@@ -19,25 +19,49 @@ foreach ($required in @(
     (Join-Path $runtimePath 'runtime\core\python.exe'),
     (Join-Path $runtimePath 'tts-engines\cosyvoice\source'),
     (Join-Path $runtimePath 'tts-engines\gpt-sovits\source'),
+    (Join-Path $runtimePath 'singing-engines\ace-step\portable\python_embeded\python.exe'),
+    (Join-Path $buildPath 'module.exe'),
     $Python
 )) { if (-not (Test-Path -LiteralPath $required)) { throw "缺少打包输入：$required" } }
+$cudaWheels = @(
+    'torch-2.7.1+cu128-cp310-cp310-win_amd64.whl',
+    'torchaudio-2.7.1+cu128-cp310-cp310-win_amd64.whl',
+    'torchvision-0.22.1+cu128-cp310-cp310-win_amd64.whl'
+)
+foreach ($wheel in $cudaWheels) {
+    $file = Join-Path $runtimePath "data\environment-repair\wheels\$wheel"
+    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "离线环境包缺少已校验的 RTX 50 系 wheel：$file" }
+}
 
 $software = Join-Path $targetPath '01-软件本体'
 $environment = Join-Path $targetPath '02-运行环境'
 $engines = Join-Path $targetPath '03-TTS引擎'
+$features = Join-Path $targetPath '04-功能模块'
+$singingEngines = Join-Path $targetPath '05-唱歌引擎'
 $support = Join-Path $environment '首次启动支持'
 $audit = Join-Path $targetPath '审计资料'
-New-Item -ItemType Directory -Path $software,$environment,$engines,$support,$audit -Force | Out-Null
+$staging = Join-Path $targetPath '.staging'
+$verifiedStaging = [IO.Path]::GetFullPath($staging)
+if (-not $verifiedStaging.StartsWith($targetPath.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) { throw '暂存目录超出目标目录' }
+New-Item -ItemType Directory -Path $software,$environment,$engines,$features,$singingEngines,$support,$audit,$staging -Force | Out-Null
 
 $moduleTool = Join-Path $sourceRoot 'tools\module_packages.py'
 & $Python -B -X utf8 $moduleTool application --root $buildPath --output (Join-Path $software "AgentVoice-Windows-x64-$Version.zip") --application-folder 'Agent语音' --audit-directory $audit
 if ($LASTEXITCODE -ne 0) { throw '软件本体打包失败' }
-& $Python -B -X utf8 $moduleTool environment --root $runtimePath --output (Join-Path $environment "AgentVoice-Windows-x64-双引擎离线环境-$Version.ttsenvironment") --engines cosyvoice gpt-sovits --profile 'win-x64-cosy-cu121-gpt-cu124' --minimum-driver $MinimumNvidiaDriver
+& $Python -B -X utf8 $moduleTool environment --root $runtimePath --output (Join-Path $environment "AgentVoice-Windows-x64-双引擎离线环境-$Version.ttsenvironment") --engines cosyvoice gpt-sovits --include-downloads --profile 'win-x64-cosy-cu121-gpt-cu124-rtx50-cu128' --minimum-driver $MinimumNvidiaDriver
 if ($LASTEXITCODE -ne 0) { throw '离线环境打包失败' }
 & $Python -B -X utf8 $moduleTool engine --root $runtimePath --output (Join-Path $engines "CosyVoice-基础引擎-$Version.ttsengine") --engine cosyvoice
 if ($LASTEXITCODE -ne 0) { throw 'CosyVoice 引擎打包失败' }
 & $Python -B -X utf8 $moduleTool engine --root $runtimePath --output (Join-Path $engines "GPT-SoVITS-基础引擎-$Version.ttsengine") --engine gpt-sovits
 if ($LASTEXITCODE -ne 0) { throw 'GPT-SoVITS 引擎打包失败' }
+$singingModule = Join-Path $staging 'modules\agent-singing'
+New-Item -ItemType Directory -Path $singingModule -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $buildPath 'module.exe') -Destination (Join-Path $singingModule 'module.exe')
+& $Python -B -X utf8 $moduleTool feature --root $staging --output (Join-Path $features "Agent唱歌-$Version.avmodule") --module-id agent-singing --module-name 'Agent 唱歌' --module-version $Version
+if ($LASTEXITCODE -ne 0) { throw '唱歌软件模块打包失败' }
+& $Python -B -X utf8 $moduleTool singing-engine --root $runtimePath --output (Join-Path $singingEngines "ACE-Step-1.5-$Version.singengine") --engine ace-step
+if ($LASTEXITCODE -ne 0) { throw 'ACE-Step 唱歌引擎打包失败' }
+Remove-Item -LiteralPath $verifiedStaging -Recurse -Force
 
 Copy-Item -LiteralPath (Join-Path $sourceRoot 'tools\offline_install_check.ps1') -Destination (Join-Path $support '检查并安装系统组件.ps1')
 $systemPrerequisites = Join-Path $runtimePath 'tools\system-prerequisites'
@@ -63,6 +87,8 @@ $manifest = [ordered]@{
     minimumNvidiaDriver = $MinimumNvidiaDriver
     containsVoicePackages = $false
     containsVoiceImportExportModule = $false
+    containsSingingApplication = $true
+    singingEnginePackages = @('ace-step')
     files = @($files)
 }
 $manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $targetPath '包清单.json') -Encoding UTF8

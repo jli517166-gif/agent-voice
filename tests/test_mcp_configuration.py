@@ -12,6 +12,7 @@ from state import Store
 from tools import install_mcp
 import harness_setup
 import mcp_configuration as config
+from mcp_selfcheck import TOOLS as MCP_TOOLS
 from mcp_presence import McpPresence, connected_clients
 
 
@@ -202,7 +203,7 @@ class McpConfigurationTests(unittest.TestCase):
         presence = McpPresence(self.root, 'deepseek')
         self.addCleanup(presence.close)
         presence.note('initialize', {'clientInfo': {'name': 'probe'}})
-        presence.note('tools/list', tool_count=8)
+        presence.note('tools/list', tool_count=len(MCP_TOOLS))
         self.assertEqual(connected_clients(self.root, 'deepseek', 'dsh-mcp-client'), [])
         presence.note('initialize', {'clientInfo': {'name': 'dsh-mcp-client'}})
         self.assertEqual(install_mcp.inspect_deepseek(self.root)['state'], 'tools-read')

@@ -233,11 +233,12 @@ def _check_connection(store, profile, python, server, repair):
             transaction.rollback()
             raise
     clients = connected_clients(store.root, 'deepseek', 'dsh-mcp-client')
-    listed = [c for c in clients if c.get('toolCount') == 8]
+    from mcp_selfcheck import TOOLS as EXPECTED_TOOLS
+    listed = [c for c in clients if c.get('toolCount') == len(EXPECTED_TOOLS)]
     # A tools/list receipt proves discovery, not registration in the model or
     # audible playback. The interface must retain that distinction.
     return {'ok': True, 'state': 'tools-read' if listed else 'awaiting-client', 'repaired': changed,
-            'toolCount': 8 if listed else 0, 'harnessRegistrationVerified': False,
+            'toolCount': len(EXPECTED_TOOLS) if listed else 0, 'harnessRegistrationVerified': False,
             'message': ('已修复 MCP 启动配置；请重启 Harness。' if changed else '') +
-                       ('客户端已读取 8 个工具；连接自检不测试语音生成或播放。' if listed else
+                       (('客户端已读取全部 %d 个工具；连接自检不测试语音或歌曲生成。'%len(EXPECTED_TOOLS)) if listed else
                         '配置正确，尚未确认客户端读取工具；请重启 Harness 后检查。')}

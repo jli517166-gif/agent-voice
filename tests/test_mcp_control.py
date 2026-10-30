@@ -104,6 +104,8 @@ class McpControlTests(unittest.TestCase):
             self.assertEqual(initialized["result"]["serverInfo"]["name"],"agent-voice-control")
             listing=request(2,"tools/list")["result"]["tools"]
             self.assertIn("stop_speech",[tool["name"] for tool in listing])
+            self.assertIn("generate_song",[tool["name"] for tool in listing])
+            self.assertIn("list_singing_engines",[tool["name"] for tool in listing])
             result=request(3,"tools/call",{"name":"list_voice_profiles","arguments":{}})["result"]["structuredContent"]
             self.assertEqual(result["profiles"][0]["id"],"voice-one")
             self.assertNotIn('open_voice_player',[tool['name'] for tool in listing])
@@ -111,6 +113,16 @@ class McpControlTests(unittest.TestCase):
             self.assertNotIn('resources',initialized['result']['capabilities'])
             self.assertIn('error',request(4,'resources/read',{'uri':'ui://agent-voice/player.html'}))
             process.stdin.close();process.wait(timeout=5);process.stdout.close();process.stderr.close()
+
+    def test_singing_tools_delegate_to_separate_workbench(self):
+        module=self.mcp_module();voice=module.AgentVoice('.','deepseek');manager=Mock()
+        manager.list_engines.return_value={'engines':[]};manager.select_engine.return_value={'ok':True};manager.submit.return_value={'ok':True,'jobId':'song'};manager.job.return_value={'id':'song','state':'completed'};manager.set_output_directory.return_value={'ok':True}
+        voice.singing=Mock(return_value=manager)
+        self.assertEqual(voice.call('list_singing_engines',{}),{'engines':[]})
+        voice.call('select_singing_engine',{'engine_id':'ace-step'});manager.select_engine.assert_called_with('ace-step')
+        self.assertEqual(voice.call('generate_song',{'lyrics':'你好','prompt':'流行','duration':15})['jobId'],'song')
+        manager.submit.assert_called_with('你好','流行',15)
+        self.assertEqual(voice.call('singing_job_status',{'job_id':'song'})['state'],'completed')
 
     def test_stop_waits_for_real_http_service_to_close(self):
         import hashlib,http.server,threading,time

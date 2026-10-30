@@ -25,7 +25,7 @@ namespace AgentVoice {
             WebTitle(page,"连接帮助","MCP 接入标准、适用范围和故障处理。");
             var intro=WebCard(page,38,126,902,392);
             WebCardTitle(intro,"接入步骤与 MCP 自检");
-            intro.Controls.Add(WebText("① 选择 Harness 目录，推荐安装 MCP。② 核对路径、启用状态、协议握手与只读状态调用。③ 客户端重载后自检，收到 8 个工具回执才庆祝。无需先启动 TTS。AIRI 另行验证。",7.5F,FontStyle.Regular,16,44,870,40,ContentAlignment.TopLeft));
+            intro.Controls.Add(WebText("① 选择 Harness 目录，推荐安装 MCP。② 核对路径、启用状态、协议握手与只读状态调用。③ 客户端重载后自检，收到完整工具列表才庆祝。无需先启动 TTS。AIRI 另行验证。",7.5F,FontStyle.Regular,16,44,870,40,ContentAlignment.TopLeft));
             intro.Controls.Add(WebText("Codex",9F,FontStyle.Bold,16,86,300,24,ContentAlignment.MiddleLeft));
             intro.Controls.Add(WebText("选择 Codex 安装目录或 CODEX_HOME；安装后重载插件／会话，再点击 MCP 自检。通过语言命令调用工具；不提供常驻自定义按钮，也不接管内置朗读。",7.5F,FontStyle.Regular,16,110,870,40,ContentAlignment.TopLeft));
             intro.Controls.Add(WebText("DeepSeek Harness",9F,FontStyle.Bold,16,154,300,24,ContentAlignment.MiddleLeft));
@@ -49,7 +49,7 @@ namespace AgentVoice {
             BusyStatus("正在为 "+(source=="codex"?"Codex":"DeepSeek Harness")+" 安装聊天栏快捷控制……");
             var result=Json.Object(await Service.RunTool("install_mcp.py","--source "+source+" --root "+ServiceClient.Quote(Store.Root)));
             lastMcpCheck=DateTime.MinValue;await RefreshMcpConnection(true,true);
-            string message=Json.Text(result,"message"),usage=source=="codex"?"在聊天栏技能选择器选择“语音控制”，或输入 $agent-voice-control；安装完成不表示客户端支持常驻自定义按钮。":"重启 DeepSeek Harness 后点击 MCP 自检，检查 8 个工具与只读状态调用。不需要朗读验证。聊天栏“语音”按钮与 MCP 工具是两条独立通道。";Status(message);MessageBox.Show(this,message+"\r\n\r\n"+usage+"\r\n底层工具名为 agent_voice。","聊天控制安装完成",MessageBoxButtons.OK,MessageBoxIcon.Information);
+            string message=Json.Text(result,"message"),usage=source=="codex"?"在聊天栏技能选择器选择“语音控制”，或输入 $agent-voice-control；安装完成不表示客户端支持常驻自定义按钮。":"重启 DeepSeek Harness 后点击 MCP 自检，检查完整工具列表与只读状态调用。不需要朗读验证。聊天栏“语音”按钮与 MCP 工具是两条独立通道。";Status(message);MessageBox.Show(this,message+"\r\n\r\n"+usage+"\r\n底层工具名为 agent_voice。","聊天控制安装完成",MessageBoxButtons.OK,MessageBoxIcon.Information);
         }
         readonly Dictionary<string,bool> mcpPassed=new Dictionary<string,bool>();
         readonly Dictionary<string,string> mcpMessages=new Dictionary<string,string>();
@@ -82,7 +82,7 @@ namespace AgentVoice {
             if(celebrate&&passedNames.Count>0)ShowCelebration(string.Join("、",passedNames)+" MCP");
         }
         internal static string McpStatusText(Dictionary<string,object> result,bool passed){
-            if(passed)return "MCP 自检通过 · 8 个工具已加载";
+            if(passed)return "MCP 自检通过 · 完整工具已加载";
             string state=Json.Text(result,"state");
             if(state=="awaiting-client")return "已安装并启用 · 等待客户端加载（重载插件后再检查）";
             if(state=="tools-read")return "客户端已加载 · 正在核对协议";
@@ -177,7 +177,7 @@ namespace AgentVoice {
 
             ClientIcon(clients,117,"DS");
             clients.Controls.Add(WebText("DeepSeek Harness",13F,FontStyle.Bold,70,135,600,26,ContentAlignment.MiddleLeft));
-            clients.Controls.Add(WebText("聊天栏控制入口与生成过程自动朗读。",9F,FontStyle.Regular,70,164,650,20,ContentAlignment.MiddleLeft));
+            clients.Controls.Add(WebText("聊天栏控制语音与唱歌；可把当前声音注册给 dsh-pet。",9F,FontStyle.Regular,70,164,650,20,ContentAlignment.MiddleLeft));
             clients.Controls.Add(WebHarnessStatus("deepseek","DeepSeek Harness",70,190,640));
             clients.Controls.Add(WebAsyncButton("安装 MCP","选择目录，安装 MCP；客户端重载后再次自检，无需发送验证消息。",BeginAutoHarness,762,156,132,39));
             WebDivider(clients,16,234,870);

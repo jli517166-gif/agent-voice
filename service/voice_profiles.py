@@ -42,6 +42,15 @@ def pin_reference(store,voice):
 def save_profile(store,name,voice,ident=None):
     if not isinstance(name,str) or not 0<len(name.strip())<=80:raise ValueError('声音方案名称必须为 1～80 字')
     voice=copy.deepcopy(voice);validate_voice(voice)
+    if voice['engine']=='dsh-pet':
+        # An external provider owns its voice and recordings.  Save only the
+        # selected endpoint/voice ID; never copy or claim its model assets.
+        ident=ident or uuid.uuid4().hex
+        profiles=[p for p in store.get()['profiles'] if p['id']!=ident]
+        profile={'id':ident,'name':name.strip(),'voice':voice}
+        profiles.append(profile)
+        return {'ok':True,'profile':profile,'referencePinned':False,'modelFingerprint':None,
+                'config':store.update({'profiles':profiles})}
     if not voice['referenceText'].strip():raise ValueError('请先填写参考录音逐字台词')
     registry=store.root/'data/private-assets.json';registry_prior=registry.read_bytes() if registry.exists() else None
     private=json.loads(registry_prior.decode('utf-8-sig')) if registry_prior else {'files':[]}
@@ -73,7 +82,7 @@ def apply_profile(store,ident):
     profile=next((p for p in store.get()['profiles'] if p['id']==ident),None)
     if not profile:raise ValueError('声音方案不存在')
     path=manifest_path(store,ident)
-    if path.exists():
+    if path.exists() and profile['voice']['engine']!='dsh-pet':
         record=json.loads(path.read_text(encoding='utf-8'))
         if digest(store.resolve(profile['voice']['reference']))!=record['reference']['sha256']:raise ValueError('声音方案的固定参考录音损坏，请从自己的录音备份恢复')
         _,fp=model_inventory(store,profile['voice'])

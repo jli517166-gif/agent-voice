@@ -120,6 +120,7 @@ class EnvironmentRepairTests(unittest.TestCase):
    helper=Repair(temp);directory=helper.work/'wheels';directory.mkdir(parents=True)
    names=['torch-2.7.1+cu128-cp310-cp310-win_amd64.whl','torchaudio-2.7.1+cu128-cp310-cp310-win_amd64.whl','torchvision-0.22.1+cu128-cp310-cp310-win_amd64.whl']
    for name in names:(directory/name).write_bytes(b'x')
+   (directory/'torch-2.7.1+cu128-cp311-cp311-win_amd64.whl').write_bytes(b'x'*100)
    selected=helper.local_wheels(['torch==2.7.1','torchaudio==2.7.1','torchvision==0.22.1'])
    self.assertEqual({path.name for path in selected},set(names))
    self.assertEqual(helper.local_wheels(['torch==2.6.0']),[])
@@ -156,6 +157,35 @@ class EnvironmentRepairTests(unittest.TestCase):
    helper=Repair(temp);helper.pip=Mock()
    with patch.object(helper,'system',return_value={'nvidiaSmi':'NVIDIA GeForce RTX 5070 Laptop GPU, 566.36, 8151 MiB'}):
     with self.assertRaisesRegex(RuntimeError,'570.26'):helper.install_compat_torch(Path(temp).resolve()/'python.exe')
+   helper.pip.assert_not_called()
+ def test_rtx_50_series_requires_cuda128_before_deep_diagnostics(self):
+  self.assertTrue(Repair.system_requires_cuda128({'nvidiaSmi':'NVIDIA GeForce RTX 5070 Laptop GPU, 596.13, 8151 MiB'}))
+  self.assertTrue(Repair.system_requires_cuda128({'nvidiaSmi':'NVIDIA GeForce RTX 5090, 572.83, 32759 MiB'}))
+  self.assertFalse(Repair.system_requires_cuda128({'nvidiaSmi':'NVIDIA GeForce RTX 4050 Laptop GPU, 596.13, 6141 MiB'}))
+ def test_rtx_50_series_installs_compatibility_before_deep_diagnostics(self):
+  with tempfile.TemporaryDirectory() as temp:
+   helper=Repair(temp);events=[]
+   fake_check={'name':'CUDA 与推理依赖','section':'cosyvoice/cosyvoice3','ok':True}
+   system={'nvidiaSmi':'NVIDIA GeForce RTX 5070 Laptop GPU, 596.13, 8151 MiB'}
+   def install(_):events.append('compat')
+   def diagnose(*args,**kwargs):events.append('diagnostics');return {'checks':[fake_check]}
+   with patch.object(helper,'inspect',return_value={'ok':True,'selected':['cosyvoice'],'items':[]}),patch.object(helper,'system',return_value=system),patch.object(helper,'compat_runtime_ready',return_value=False),patch.object(helper,'install_compat_torch',side_effect=install),patch('diagnostics.inspect_installation',side_effect=diagnose),patch.object(helper,'smoke',return_value=[{'id':'cosyvoice/cosyvoice3','ok':True}]):
+    result=helper.repair('cosyvoice')
+   self.assertTrue(result['verifiedUsable']);self.assertEqual(events,['compat','diagnostics'])
+   self.assertTrue(result['compatibilityRuntimeInstalled'])
+ def test_setup_prepare_only_installs_rtx50_compatibility_before_claiming_prepared(self):
+  with tempfile.TemporaryDirectory() as temp:
+   helper=Repair(temp)
+   system={'nvidiaSmi':'NVIDIA GeForce RTX 5070 Laptop GPU, 596.13, 8151 MiB'}
+   with patch.object(helper,'inspect',return_value={'ok':True,'selected':['cosyvoice'],'items':[]}),patch.object(helper,'system',return_value=system),patch.object(helper,'compat_runtime_ready',return_value=False),patch.object(helper,'install_compat_torch') as install:
+    result=helper.repair('cosyvoice',verify=False,dependencies_only=True)
+   install.assert_called_once();self.assertTrue(result['compatibilityRuntimeInstalled'])
+   self.assertFalse(result['verifiedUsable'])
+ def test_strict_offline_compatibility_never_falls_back_to_network(self):
+  with tempfile.TemporaryDirectory() as temp:
+   helper=Repair(temp,offline=True);helper.pip=Mock()
+   with patch.object(helper,'system',return_value={'nvidiaSmi':'NVIDIA GeForce RTX 5070 Laptop GPU, 596.13, 8151 MiB'}):
+    with self.assertRaisesRegex(RuntimeError,'CUDA 12.8.*离线'):helper.install_compat_torch(Path(temp).resolve()/'python.exe')
    helper.pip.assert_not_called()
  def test_unsupported_gpu_runtime_is_repaired_and_synthesized_again(self):
   with tempfile.TemporaryDirectory() as temp:

@@ -2,7 +2,7 @@ import json,sys,tempfile,unittest,zipfile
 from pathlib import Path
 from unittest.mock import Mock,patch
 sys.path[:0]=[str(Path(__file__).resolve().parents[1]/'service'),str(Path(__file__).resolve().parents[1]/'tools')]
-from module_packages import engine_package,environment_package,application_package,feature_package
+from module_packages import engine_package,environment_package,application_package,feature_package,singing_engine_package
 from environment_repair import Repair,CATALOG
 
 class ModulePackageTests(unittest.TestCase):
@@ -24,6 +24,17 @@ class ModulePackageTests(unittest.TestCase):
             self.put(name)
         with self.assertRaisesRegex(ValueError,'最低 NVIDIA 驱动'):
             environment_package(self.root,[],self.root/'unsafe.ttsenvironment')
+    def test_universal_environment_package_contains_cuda128_offline_wheels(self):
+        for name in ['runtime/core/python.exe','tools/ffmpeg.exe','tools/ffprobe.exe']:
+            self.put(name)
+        for name in ['torch-2.7.1+cu128-cp310-cp310-win_amd64.whl','torchaudio-2.7.1+cu128-cp310-cp310-win_amd64.whl','torchvision-0.22.1+cu128-cp310-cp310-win_amd64.whl']:
+            self.put('data/environment-repair/wheels/'+name)
+        output=self.root/'universal.ttsenvironment'
+        environment_package(self.root,[],output,include_downloads=True,profile='win-x64-universal-cuda',minimum_driver='551.61')
+        manifest,names=self.manifest(output)
+        self.assertEqual(manifest['gpuCompatibility']['rtx50']['minimumDriver'],'570.26')
+        self.assertEqual(manifest['gpuCompatibility']['rtx50']['cuda'],'12.8')
+        self.assertTrue(any('torch-2.7.1+cu128' in name for name in names))
     def test_unknown_engine_outside_model_and_existing_output_rejected(self):
         with self.assertRaises(ValueError):engine_package(self.root,'unknown',self.root/'x.ttsengine')
         with self.assertRaises(ValueError):engine_package(self.root,'cosyvoice',self.root/'x.ttsengine','../outside')
@@ -33,10 +44,30 @@ class ModulePackageTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'离线资源'):helper.download('https://invalid/file','missing.zip','0'*64)
             remote.assert_not_called()
         wheel=self.put('data/environment-repair/downloads/pip-24.3.1.whl')
-        helper.download=Mock(return_value=wheel);helper.run=Mock();helper.pip(self.root/'runtime/core/python.exe',['numpy==1.26.4'])
+        helper.download=Mock(return_value=wheel);helper.run=Mock();helper.probe=Mock(return_value={'missing':['pip','setuptools','wheel']});helper.pip(self.root/'runtime/core/python.exe',['numpy==1.26.4'])
         for call in helper.run.call_args_list:
             command=call.args[0];self.assertIn('--no-index',command);self.assertNotIn('--index-url',command)
         self.assertEqual(helper.env()['HF_HUB_OFFLINE'],'1')
+    def test_offline_repair_uses_bundled_pip_without_a_second_download(self):
+        self.put('runtime/core/python.exe')
+        helper=Repair(self.root,offline=True)
+        helper.probe=Mock(return_value={'missing':[]})
+        helper.download=Mock(side_effect=AssertionError('offline pip download must not run'))
+        helper.run=Mock()
+        helper.pip(self.root/'runtime/core/python.exe',['torch==2.7.1'],no_deps=True)
+        commands=[call.args[0] for call in helper.run.call_args_list]
+        self.assertTrue(any('--no-index' in command for command in commands))
+        self.assertTrue(any('from pip._internal.cli.main import main' in command[5] for command in commands))
+        helper.download.assert_not_called()
+    def test_pinned_binary_wheel_install_does_not_need_build_tools(self):
+        self.put('runtime/core/python.exe')
+        helper=Repair(self.root,offline=True)
+        helper.probe=Mock(side_effect=[{'missing':[]},{'missing':['setuptools','wheel']}])
+        helper.download=Mock(side_effect=AssertionError('no bootstrap download expected'))
+        helper.run=Mock()
+        helper.pip(self.root/'runtime/core/python.exe',[str(self.put('data/environment-repair/wheels/torch.whl'))],no_deps=True)
+        self.assertEqual(helper.run.call_count,1)
+        helper.probe.assert_called_once_with(self.root/'runtime/core/python.exe',['pip'])
     def test_prepare_only_does_not_claim_real_synthesis(self):
         helper=Repair(self.root)
         with patch.object(helper,'inspect',return_value={'ok':True,'selected':['cosyvoice'],'items':[]}),patch.object(helper,'system',return_value={}),patch.object(helper,'smoke') as smoke:
@@ -63,6 +94,24 @@ class ModulePackageTests(unittest.TestCase):
         self.assertTrue(all(n=='manifest.json' or n.startswith('payload/modules/extension/') for n in names))
         self.put('modules/extension/reference.wav')
         with self.assertRaisesRegex(ValueError,'录音'):feature_package(self.root,self.root/'audio.avmodule')
+
+    def test_singing_engine_has_its_own_root_and_package_type(self):
+        for name in ('portable/start_gradio_ui.bat','portable/python_embeded/python.exe','portable/acestep/engine.py',
+                     'portable/checkpoints/acestep-v15-turbo/model.safetensors','portable/checkpoints/vae/vae.safetensors',
+                     'portable/checkpoints/config.json','portable/checkpoints/configuration.json',
+                     'portable/ui/main.py','portable/assets/icon.png',
+                     'portable/scripts/start.py','portable/LICENSE'):
+            self.put('singing-engines/ace-step/'+name)
+        self.put('singing-engines/ace-step/启动歌声引擎.cmd')
+        self.put('singing-engines/ace-step/portable/.env',b'secret')
+        self.put('singing-engines/ace-step/portable/gradio_outputs/private.wav')
+        self.put('singing-engines/ace-step/downloads/user-song.wav')
+        output=self.root/'ace-step.singengine';singing_engine_package(self.root,'ace-step',output)
+        manifest,names=self.manifest(output)
+        self.assertEqual(manifest['kind'],'singing-engine');self.assertEqual(manifest['engine'],'ace-step')
+        self.assertEqual(manifest['components'],['singing-engines/ace-step']);self.assertEqual(manifest['defaults'],{})
+        self.assertTrue(all(n=='manifest.json' or n.startswith('payload/singing-engines/ace-step/') for n in names))
+        self.assertFalse(any('.env' in n or 'private.wav' in n or 'user-song.wav' in n for n in names))
 
     def test_private_archive_has_distinct_installation_root_and_no_agent_instructions(self):
         self.put('agent语音.exe');self.put('AGENTS.md',b'local maintenance only')

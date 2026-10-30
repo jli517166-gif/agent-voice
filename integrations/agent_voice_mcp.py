@@ -25,8 +25,15 @@ TOOLS = [
     {"name":"list_voice_profiles","description":"列出已保存的声音方案及当前使用的声音。","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":True,"destructiveHint":False,"idempotentHint":True}},
     {"name":"apply_voice_profile","description":"按声音方案 ID 切换当前声音配置。","inputSchema":{"type":"object","properties":{"profile_id":{"type":"string","description":"list_voice_profiles 返回的声音方案 ID"}},"required":["profile_id"],"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
     {"name":"set_auto_reading","description":"启用或关闭当前 Harness 进度说明和最终回复的自动朗读。","inputSchema":{"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"],"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
+    {"name":"list_singing_engines","description":"列出独立唱歌软件已适配、已安装和当前选中的引擎。","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":True,"destructiveHint":False,"idempotentHint":True}},
+    {"name":"open_singing_app","description":"打开独立的 Agent 唱歌桌面软件。","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
+    {"name":"select_singing_engine","description":"切换独立唱歌软件当前使用的引擎。","inputSchema":{"type":"object","properties":{"engine_id":{"type":"string","description":"list_singing_engines 返回的引擎 ID"}},"required":["engine_id"],"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
+    {"name":"open_singing_engine","description":"启动当前唱歌引擎并打开它的原生界面。","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
+    {"name":"generate_song","description":"把歌词提交给独立唱歌软件后台生成；立即返回任务 ID，可继续查询状态。","inputSchema":{"type":"object","properties":{"lyrics":{"type":"string","minLength":1,"maxLength":8000},"prompt":{"type":"string","maxLength":1000},"duration":{"type":"integer","minimum":5,"maximum":300}},"required":["lyrics"],"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
+    {"name":"singing_job_status","description":"按任务 ID 查询唱歌生成进度和输出文件。","inputSchema":{"type":"object","properties":{"job_id":{"type":"string"}},"required":["job_id"],"additionalProperties":False},"annotations":{"readOnlyHint":True,"destructiveHint":False,"idempotentHint":True}},
+    {"name":"set_singing_output_directory","description":"设置独立唱歌软件以后保存歌曲的目录。","inputSchema":{"type":"object","properties":{"path":{"type":"string","minLength":1}},"required":["path"],"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
 ]
-LOCAL_VOICE_FIELDS=('engine','baseModel','gptModel','gptVariant','reference','referenceText','instruction','style','speed','leadingSilence','volume','advancedEnabled','assetScope')
+LOCAL_VOICE_FIELDS=('engine','baseModel','gptModel','gptVariant','petEndpoint','petVoice','reference','referenceText','instruction','style','speed','leadingSilence','volume','advancedEnabled','assetScope')
 
 def local_listener(port):
     """Windows may time out instead of refusing an unused loopback port.
@@ -62,6 +69,12 @@ class AgentVoice:
         path=self.root/"data/settings.json"
         if not path.is_file():raise ValueError("未找到 Agent Voice 设置："+str(path))
         return json.loads(path.read_text(encoding="utf-8-sig"))
+
+    def singing(self):
+        service=str(self.root/'service')
+        if service not in sys.path:sys.path.insert(0,service)
+        from singing import SingingManager
+        return SingingManager(self.root)
 
     def request(self,path,data=None,timeout=5):
         cfg=self.settings();body=None if data is None else json.dumps(data,ensure_ascii=False).encode("utf-8")
@@ -182,6 +195,17 @@ class AgentVoice:
             self.request("/api/config",{"harness":harness})
             if self.host=="codex":self.request("/api/connections/reload",{})
             return {"ok":True,"host":self.host,"enabled":args["enabled"]}
+        if name=="list_singing_engines":return self.singing().list_engines()
+        if name=="open_singing_app":
+            app=next((p for p in (self.root/'Agent唱歌.exe',self.root/'modules/agent-singing/module.exe') if p.is_file()),None)
+            if app is None:raise ValueError('独立唱歌软件尚未安装；请先安装 Agent 唱歌功能模块')
+            subprocess.Popen([str(app),'--root',str(self.root)],cwd=str(self.root),stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+            return {'ok':True,'opened':True,'application':app.name}
+        if name=="select_singing_engine":return self.singing().select_engine(args.get('engine_id'))
+        if name=="open_singing_engine":return self.singing().open_engine()
+        if name=="generate_song":return self.singing().submit(args.get('lyrics'),args.get('prompt',''),args.get('duration',30))
+        if name=="singing_job_status":return self.singing().job(args.get('job_id'))
+        if name=="set_singing_output_directory":return self.singing().set_output_directory(args.get('path'))
         raise ValueError("未知工具："+str(name))
 
 def response(ident,result=None,error=None):
@@ -209,7 +233,7 @@ def main():
                 if ident is None:continue
                 if method=="initialize":
                     requested=message.get("params",{}).get("protocolVersion","2025-06-18")
-                    response(ident,{"protocolVersion":requested,"capabilities":{"tools":{"listChanged":False}},"serverInfo":{"name":"agent-voice-control","version":"1.5.1"},"instructions":"通过语言命令控制本机 Agent Voice。执行用户明确要求的朗读、停止、服务启停和声音切换。朗读提交成功只代表进入队列，不代表播放完成。Codex 不提供自定义面板或浮窗，也没有接管内置朗读按钮。"})
+                    response(ident,{"protocolVersion":requested,"capabilities":{"tools":{"listChanged":False}},"serverInfo":{"name":"agent-voice-control","version":"1.6.0"},"instructions":"通过语言命令控制本机 Agent Voice 与独立唱歌软件。执行用户明确要求的朗读、停止、服务启停、声音切换、唱歌引擎切换和歌曲生成。生成任务提交成功不等于生成完成，应查询任务状态。"})
                     note(method,message.get("params",{}))
                 elif method=="ping":response(ident,{})
                 elif method=="tools/list":

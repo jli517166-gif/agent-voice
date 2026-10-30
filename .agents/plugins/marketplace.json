@@ -9,7 +9,7 @@
       "category": "Productivity",
       "interface": {
         "displayName": "语音控制",
-        "description": "在 Codex 聊天栏控制语音服务、朗读和声音方案。"
+        "description": "在 Codex 聊天栏控制语音服务、朗读、声音方案和可选唱歌工作台。"
       }
     }
   ]

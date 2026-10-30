@@ -37,7 +37,7 @@ namespace AgentVoice {
         bool polling,operation,exiting;
         BusyOverlay busyOverlay;
         string page="home",lastJob="";
-        Button serviceToggle,generate,saveVoiceButton,playButton,backButton;
+        Button serviceToggle,generate,saveVoiceButton,playButton,backButton,referenceButton;
         ComboBox phrases;
         Label queueSummary;
         TextBox body,profileName;
@@ -46,7 +46,7 @@ namespace AgentVoice {
         readonly Dictionary<string,CheckBox> checks=new Dictionary<string,CheckBox>();
         ComboBox engineChoice,outputChoice;
         TextBox baseModelPath;
-        Label engineDetails;
+        Label engineDetails,modelHint,referenceTitle;
         readonly List<Control> cosyOnlyControls=new List<Control>();
         ListBox profileList;
         Label profileEmpty;
@@ -67,7 +67,7 @@ namespace AgentVoice {
             var brand=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,BackColor=Color.Transparent,Padding=new Padding(5,8,0,0)};brand.Controls.Add(new Label{Text="AGENT VOICE",Font=new Font("Segoe UI",11F,FontStyle.Bold),AutoSize=true,Margin=new Padding(0,0,0,3)});brand.Controls.Add(new Label{Text="本地语音工作台",Font=new Font(Font.FontFamily,10.5F),AutoSize=true,Margin=new Padding(0)});sideLayout.Controls.Add(brand,0,0);
             var navigation=new BufferedFlow{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoScroll=true,BackColor=Color.Transparent,Padding=new Padding(0,4,0,4)};sideLayout.Controls.Add(navigation,0,1);
             AddNav(navigation,"控制台","home","语音服务、引擎切换、输入文字与播放控制。",true);
-            
+            AddActionNav(navigation,"唱歌","打开独立唱歌工作台；唱歌引擎、任务和输出目录与 TTS 分开。",OpenSinging,true);
             AddNav(navigation,"模块","modules","安装或管理扩展、TTS 引擎和运行环境。",true);
             AddNav(navigation,"声音方案","voices","保存和切换整套声音设置。",true);
             AddNav(navigation,"连接","connections","连接 Harness 或 AIRI。",true);
@@ -88,6 +88,8 @@ namespace AgentVoice {
         Label SideLabel(string text){return new Label{Text=text,AutoSize=false,Width=150,Height=18,TextAlign=ContentAlignment.BottomLeft,Font=new Font(Font.FontFamily,8F),Margin=new Padding(10,6,0,4)};}
         Label TopStatus(string text){return new Label{Text=text,AutoSize=false,AutoEllipsis=true,Dock=DockStyle.Fill,TextAlign=ContentAlignment.MiddleCenter,Font=new Font(Font.FontFamily,8.5F),Margin=new Padding(2,0,2,0),Padding=new Padding(4,0,4,0)};}
         void AddNav(FlowLayoutPanel navigation,string text,string id,string note,bool important){var button=EntryBtn(text,note,()=>ShowPage(id));button.Tag=important?"nav-primary":"nav";button.Name="nav_"+id;button.AutoSize=false;button.Width=UiPx(164);button.Height=UiPx(44);button.TextAlign=ContentAlignment.MiddleLeft;button.Padding=new Padding(UiPx(14),0,0,0);button.Margin=new Padding(0,UiPx(3),0,UiPx(3));navigationButtons[id]=button;navigation.Controls.Add(button);}
+        void AddActionNav(FlowLayoutPanel navigation,string text,string note,Action action,bool important){var button=EntryBtn(text,note,action);button.Tag=important?"nav-primary":"nav";button.AutoSize=false;button.Width=UiPx(164);button.Height=UiPx(44);button.TextAlign=ContentAlignment.MiddleLeft;button.Padding=new Padding(UiPx(14),0,0,0);button.Margin=new Padding(0,UiPx(3),0,UiPx(3));navigation.Controls.Add(button);}
+        void OpenSinging(){string executable=new[]{Store.Resolve("Agent唱歌.exe"),Store.Resolve("modules/agent-singing/module.exe")}.FirstOrDefault(File.Exists);if(string.IsNullOrEmpty(executable))throw new InvalidOperationException("独立唱歌软件尚未安装；请在模块页导入 Agent 唱歌模块。");Process.Start(new ProcessStartInfo(executable,"--root "+ServiceClient.Quote(Store.Root)){WorkingDirectory=Store.Root,UseShellExecute=false});Status("已打开独立唱歌工作台。");}
         Button Btn(string text,Action action){var b=new AnimeButton{Text=text,AutoSize=true,MinimumSize=new Size(108,40),Margin=new Padding(0,3,10,3),Padding=new Padding(10,0,10,0),Cursor=Cursors.Hand,Tag="secondary"};b.BorderSize=1;b.Click+=(s,e)=>{try{action();}catch(Exception exc){Status(exc.Message);}};return b;}
         Button Primary(Button button){button.Tag="primary";button.Font=new Font(Font.FontFamily,Font.Size,FontStyle.Bold);button.MinimumSize=new Size(Math.Max(128,button.MinimumSize.Width),42);return button;}
         Button Danger(Button button){button.Tag="danger";return button;}
@@ -242,13 +244,13 @@ namespace AgentVoice {
             model.Controls.Add(WebButton("恢复默认模型",null,()=>baseModelPath.Text="",174,108,150,38));
             cosyOnlyControls.AddRange(model.Controls.Cast<Control>().Skip(cosyStart));
             BuildVariantControls(model);
-            model.Controls.Add(WebText("模型目录留空时使用设置中的默认路径；切换引擎只改变显示，不会改动音量与句首空白。",8F,FontStyle.Regular,16,152,870,21,ContentAlignment.MiddleLeft));
+            modelHint=WebText("模型目录留空时使用设置中的默认路径；切换引擎只改变显示，不会改动音量与句首空白。",8F,FontStyle.Regular,16,152,870,21,ContentAlignment.MiddleLeft);model.Controls.Add(modelHint);
 
             var reference=WebCard(page,38,468,902,176);
-            WebCardTitle(reference,"参考声音与语速");
+            referenceTitle=WebCardTitle(reference,"参考声音与语速");
             reference.Controls.Add(WebText("语速（1 为原速）",9.5F,FontStyle.Regular,16,42,200,25,ContentAlignment.MiddleLeft));
             var speed=Number(.7M,1.3M,.01M,2);speed.SetBounds(228,40,110,30);numbers["speed"]=speed;reference.Controls.Add(speed);
-            reference.Controls.Add(WebButton("参考声音","为当前引擎选择参考录音和逐字一致的台词。",()=>ShowPage("cosyReference"),16,78,110,38));
+            referenceButton=WebButton("参考声音","为当前引擎选择参考录音和逐字一致的台词。",()=>ShowPage("cosyReference"),16,78,110,38);reference.Controls.Add(referenceButton);
             reference.Controls.Add(WebButton("保存或切换声音方案","把当前声音保存为可复用方案。",()=>ShowPage("voices"),282,78,210,38));
             voiceHint=WebText("当前引擎直接生成最终语音。",8F,FontStyle.Regular,16,122,870,42,ContentAlignment.TopLeft);
             reference.Controls.Add(voiceHint);
@@ -260,13 +262,13 @@ namespace AgentVoice {
             var v=Config.voice;var applied=Config.profiles.FirstOrDefault(p=>Json.Canonical(p.voice)==Json.Canonical(v));
             if(quickEngine!=null)quickEngine.SelectedIndex=EngineSwitching.Index(v);
             if(quickVoice!=null){quickVoice.DataSource=null;quickVoice.DataSource=Config.profiles.ToList();quickVoice.SelectedItem=applied;}
-            if(homeVoiceSummary!=null)homeVoiceSummary.Text=EngineLabel(v)+"   ·   语速 "+v.speed.ToString("0.00")+"×   ·   "+(applied!=null?applied.name:(v.reference.Length>0?"当前参考声音":"待选择参考声音"));
-            baseModelPath.Text=v.baseModel;gptModelPath.Text=v.gptModel;
+            if(homeVoiceSummary!=null)homeVoiceSummary.Text=EngineLabel(v)+"   ·   语速 "+v.speed.ToString("0.00")+"×   ·   "+(applied!=null?applied.name:(v.engine=="dsh-pet"?"桌宠当前音色":v.reference.Length>0?"当前参考声音":"待选择参考声音"));
+            baseModelPath.Text=v.baseModel;gptModelPath.Text=v.gptModel;petEndpointPath.Text=v.petEndpoint;petVoiceId.Text=v.petVoice;
             if(fields.ContainsKey("reference")){fields["reference"].Text=v.reference;fields["referenceText"].Text=v.referenceText;fields["instruction"].Text=v.instruction;checks["advancedEnabled"].Checked=v.advancedEnabled;SelectEngineVoice(v);numbers["speed"].Value=(decimal)v.speed;numbers["leadingSilence"].Value=(decimal)v.leadingSilence;numbers["volume"].Value=(decimal)v.volume;}
             UpdateVoiceControls();UpdateTopStatus(harnessOnline);RefreshPhrases();RefreshProfiles();
         }
-        VoiceConfig ReadVoice(){var v=Config.voice.Clone();v.baseModel=baseModelPath.Text.Trim();v.gptModel=gptModelPath.Text.Trim();v.gptVariant=SelectedVariant();v.advancedEnabled=checks["advancedEnabled"].Checked;v.reference=fields["reference"].Text.Trim();v.referenceText=fields["referenceText"].Text;v.instruction=fields["instruction"].Text;v.engine=SelectedEngine();v.speed=(double)numbers["speed"].Value;v.leadingSilence=(double)numbers["leadingSilence"].Value;v.volume=(double)numbers["volume"].Value;return v;}
-        void ValidatePaths(VoiceConfig v){if(!new[]{"cosyvoice","gpt-sovits"}.Contains(v.engine))throw new InvalidOperationException("请选择支持的 TTS 引擎。");if(v.engine=="cosyvoice"&&v.baseModel.Length>0){string folder=Store.Resolve(v.baseModel);if(!Directory.Exists(folder)||new[]{"cosyvoice3.yaml","llm.pt","flow.pt","hift.pt"}.Any(name=>!File.Exists(Path.Combine(folder,name))))throw new InvalidOperationException("请选择完整 CosyVoice 3 模型目录。");}if(v.engine=="gpt-sovits"&&v.gptModel.Length>0&&!Directory.Exists(Store.Resolve(v.gptModel)))throw new InvalidOperationException("GPT-SoVITS 模型目录不存在。");if(v.reference.Length>0&&!File.Exists(Store.Resolve(v.reference)))throw new InvalidOperationException("参考录音不存在。");}
+        VoiceConfig ReadVoice(){var v=Config.voice.Clone();v.baseModel=baseModelPath.Text.Trim();v.gptModel=gptModelPath.Text.Trim();v.petEndpoint=petEndpointPath.Text.Trim();v.petVoice=petVoiceId.Text.Trim();v.gptVariant=SelectedVariant();v.advancedEnabled=checks["advancedEnabled"].Checked;v.reference=fields["reference"].Text.Trim();v.referenceText=fields["referenceText"].Text;v.instruction=fields["instruction"].Text;v.engine=SelectedEngine();v.speed=(double)numbers["speed"].Value;v.leadingSilence=(double)numbers["leadingSilence"].Value;v.volume=(double)numbers["volume"].Value;return v;}
+        void ValidatePaths(VoiceConfig v){if(!new[]{"cosyvoice","gpt-sovits","dsh-pet"}.Contains(v.engine))throw new InvalidOperationException("请选择支持的 TTS 引擎。");if(v.engine=="dsh-pet"){if(!System.Text.RegularExpressions.Regex.IsMatch(v.petEndpoint,@"^http://127\.0\.0\.1:[0-9]{2,5}/dsh-pet-7340$"))throw new InvalidOperationException("桌宠地址格式应为 http://127.0.0.1:<端口>/dsh-pet-7340");return;}if(v.engine=="cosyvoice"&&v.baseModel.Length>0){string folder=Store.Resolve(v.baseModel);if(!Directory.Exists(folder)||new[]{"cosyvoice3.yaml","llm.pt","flow.pt","hift.pt"}.Any(name=>!File.Exists(Path.Combine(folder,name))))throw new InvalidOperationException("请选择完整 CosyVoice 3 模型目录。");}if(v.engine=="gpt-sovits"&&v.gptModel.Length>0&&!Directory.Exists(Store.Resolve(v.gptModel)))throw new InvalidOperationException("GPT-SoVITS 模型目录不存在。");if(v.reference.Length>0&&!File.Exists(Store.Resolve(v.reference)))throw new InvalidOperationException("参考录音不存在。");}
         async Task Persist(Settings next,object patch){if(await Service.Running()){var response=await Service.Request("/api/config",patch,90000);Config=Json.Decode<Settings>(Json.Encode(response["config"]));}else{Store.Write(next);Config=Json.Copy(next);}Status("配置已保存。");}
         async Task SaveDraft(){var next=Json.Copy(Config);next.voice=ReadVoice();ValidatePaths(next.voice);await Persist(next,new {voice=next.voice});if(await Service.Running())await WaitForVoice(next.voice);UpdateVoiceControls();}
         async Task WaitForVoice(VoiceConfig expected){
@@ -307,7 +309,7 @@ namespace AgentVoice {
         }
         async Task Poll(){if(polling||IsDisposed)return;polling=true;try{var health=await Service.Request("/health",null,1000);if(Json.Text(health,"service")!="agent-voice-public")throw new InvalidOperationException("端口被其他服务占用");await SyncRemoteVoice(health);UpdateQueue(health);serviceToggle.Text="关闭服务";var missing=health["missing"] as object[];connection.Text="服务：已开启\r\n输出："+(missing!=null&&missing.Length>0?"声音待配置":(Convert.ToBoolean(health["airiConnected"])?"AIRI 桌宠":"本地播放"));object states;var connections=health.TryGetValue("harnessConnections",out states)?states as Dictionary<string,object>:null;object rawChecks;var verified=health.TryGetValue("verification",out rawChecks)?rawChecks as Dictionary<string,object>:null;
                 if(verified!=null){foreach(var entry in verified){var item=entry.Value as Dictionary<string,object>;if(item!=null&&Json.Text(item,"state")=="verified"&&connections!=null&&connections.ContainsKey(entry.Key))((Dictionary<string,object>)connections[entry.Key])["state"]="verified";}UpdateVerification(verified);}modelStatus=Json.Text(health,"serviceState");tips.SetToolTip(statusSystem,Json.Text(health,"error"));UpdateHarnessIndicators(connections,true);UpdateTopStatus(true);await ResumeAiriVerification(Convert.ToBoolean(health["airiConnected"]));}catch{UpdateQueue(null);pendingAiriVerification=false;modelStatus="offline";serviceToggle.Text="启动服务";connection.Text="服务：关闭或未响应\r\n输出：待命";UpdateHarnessIndicators(null,false);UpdateTopStatus(false);UpdateAiriStatus("AIRI · 服务关闭",ForeColor);}finally{if(Config.voice.assetScope=="private")connection.Text+="\r\n声音：私有";polling=false;}if(!testingMode)await RefreshMcpConnection(false);}
-        void UpdateTopStatus(bool online){if(statusSystem==null)return;string label="未就绪";switch(modelStatus){case "ready":label="声音已就绪";break;case "loading":label="模型加载中";break;case "unconfigured":label="声音待配置";break;case "error":label="声音故障 · 请自检";break;case "generating":label="语音生成中";break;case "playing":label="正在播放";break;case "queued":label="等待播放";break;case "not_loaded":label="模型尚未加载";break;}statusSystem.Text="● 系统 · "+(online?label:"服务关闭或未响应");statusSystem.ForeColor=online?(modelStatus=="error"?Color.Salmon:modelStatus=="ready"?Color.FromArgb(80,235,190):Color.Gold):ForeColor;statusEngine.Text="● 引擎 · "+(Config.voice.engine=="gpt-sovits"?"GPT-SoVITS":"CosyVoice");statusVoice.Text=Config.voice.engine=="gpt-sovits"?"● 版本 · "+(Config.voice.gptVariant=="v5turbo"?"v5 Turbo":"ProPlus"):"● 声音 · CosyVoice";statusOutput.Text="● 输出 · TTS 直出";}
+        void UpdateTopStatus(bool online){if(statusSystem==null)return;string label="未就绪";switch(modelStatus){case "ready":label="声音已就绪";break;case "loading":label="模型加载中";break;case "unconfigured":label="声音待配置";break;case "error":label="声音故障 · 请自检";break;case "generating":label="语音生成中";break;case "playing":label="正在播放";break;case "queued":label="等待播放";break;case "not_loaded":label="模型尚未加载";break;}statusSystem.Text="● 系统 · "+(online?label:"服务关闭或未响应");statusSystem.ForeColor=online?(modelStatus=="error"?Color.Salmon:modelStatus=="ready"?Color.FromArgb(80,235,190):Color.Gold):ForeColor;statusEngine.Text="● 引擎 · "+(Config.voice.engine=="dsh-pet"?"dsh-pet":Config.voice.engine=="gpt-sovits"?"GPT-SoVITS":"CosyVoice");statusVoice.Text=Config.voice.engine=="dsh-pet"?"● 声音 · 桌宠":Config.voice.engine=="gpt-sovits"?"● 版本 · "+(Config.voice.gptVariant=="v5turbo"?"v5 Turbo":"ProPlus"):"● 声音 · CosyVoice";statusOutput.Text="● 输出 · TTS 直出";}
         void RefreshPhrases(){string selected=Convert.ToString(phrases.SelectedItem);phrases.Items.Clear();foreach(var text in Config.phrases)phrases.Items.Add(text);if(phrases.Items.Contains(selected))phrases.SelectedItem=selected;else if(phrases.Items.Count>0)phrases.SelectedIndex=0;}
         void ApplySelectedPhrase(){if(phrases.SelectedItem!=null)body.Text=Convert.ToString(phrases.SelectedItem);}
         void UpdateQueue(Dictionary<string,object> health){
@@ -371,7 +373,7 @@ namespace AgentVoice {
             else {string file=Path.Combine(Store.Root,"data","profile-request-"+Guid.NewGuid().ToString("N")+".json");try{string arguments=mode+" --root "+ServiceClient.Quote(Store.Root);if(payload!=null){Directory.CreateDirectory(Path.GetDirectoryName(file));File.WriteAllText(file,Json.Encode(payload),new System.Text.UTF8Encoding(false));arguments+=" --file "+ServiceClient.Quote(file);}else arguments+=" --id "+ServiceClient.Quote(id);result=Json.Object(await Service.RunTool("voice_profiles.py",arguments));}finally{if(File.Exists(file))File.Delete(file);}}
             Config=Json.Decode<Settings>(Json.Encode(result["config"]));return result;
         }
-        async Task SaveProfile(){var draft=ReadVoice();ValidatePaths(draft);string name=profileName.Text.Trim();if(name.Length==0)name="声音 "+DateTime.Now.ToString("MM-dd HH:mm");var result=await ProfileOperation("save",null,new {name=name,voice=draft});var saved=Json.Decode<SavedVoice>(Json.Encode(result["profile"]));WriteProfileFolder(saved);RefreshProfiles();Status("已保存方案与固定参考录音，模型记录校验信息："+ProfileFolder(saved));}
+        async Task SaveProfile(){var draft=ReadVoice();ValidatePaths(draft);string name=profileName.Text.Trim();if(name.Length==0)name="声音 "+DateTime.Now.ToString("MM-dd HH:mm");var result=await ProfileOperation("save",null,new {name=name,voice=draft});var saved=Json.Decode<SavedVoice>(Json.Encode(result["profile"]));WriteProfileFolder(saved);RefreshProfiles();Status(draft.engine=="dsh-pet"?"已保存桌宠语音地址与音色选择；桌宠本身需保持在线。":"已保存方案与固定参考录音，模型记录校验信息："+ProfileFolder(saved));}
         async Task Diagnose(){var text=await Service.RunTool("diagnose.py","--root "+ServiceClient.Quote(Store.Root)+" --deep");var result=Json.Object(text);var checks=result["checks"] as object[];string details=string.Join("\r\n",checks.Select(o=>{var c=(Dictionary<string,object>)o;return (Convert.ToBoolean(c["ok"])?"✓ ":"✗ ")+Json.Text(c,"name")+"："+Json.Text(c,"detail");}).ToArray());Status("自检已完成："+Json.Text(result,"report"));MessageBox.Show(this,details+"\r\n\r\n"+Json.Text(result,"scope"),Convert.ToBoolean(result["ok"])?"自检通过 · 请试听确认":"自检发现问题",MessageBoxButtons.OK,MessageBoxIcon.Information);}
         async Task RecoverVoice(){if(!await Service.Running())await Service.Start();var r=await Service.Request("/api/recover",new {},30000);Status(Json.Text(r,"message"));await Poll();}
         string ProfileDirectory(){string directory=Store.Resolve("data/voice-configurations");Directory.CreateDirectory(directory);return directory;}

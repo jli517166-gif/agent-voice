@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "engines": [
+    {
+      "id": "ace-step",
+      "name": "ACE-Step 1.5",
+      "adapter": "ace-step",
+      "roots": ["singing-engines/ace-step", "tts-engines/ace-step"],
+      "launcher": "启动歌声引擎.cmd",
+      "python": "portable/python_embeded/python.exe",
+      "port": 7860,
+      "capabilities": ["text-to-song", "lyrics", "style-prompt", "duration"]
+    }
+  ]
+}

@@ -7,18 +7,18 @@ using System.Text;
 namespace AgentVoice {
     // Per-engine recall stays local; selecting installation targets never changes the active voice.
     internal static class EngineSwitching {
-        internal static int Index(VoiceConfig voice){return voice.engine=="cosyvoice"?0:voice.gptVariant=="proplus"?2:1;}
-        internal static string Label(int index){return index==0?"CosyVoice":index==1?"GPT-SoVITS · v5 Turbo":"GPT-SoVITS · ProPlus";}
-        internal static string[] Families(IEnumerable<int> indices){return indices.Select(i=>i==0?"cosyvoice":"gpt-sovits").Distinct().ToArray();}
+        internal static int Index(VoiceConfig voice){return voice.engine=="cosyvoice"?0:voice.engine=="dsh-pet"?3:voice.gptVariant=="proplus"?2:1;}
+        internal static string Label(int index){return index==0?"CosyVoice":index==1?"GPT-SoVITS · v5 Turbo":index==2?"GPT-SoVITS · ProPlus":"dsh-pet 桌宠语音";}
+        internal static string[] Families(IEnumerable<int> indices){return indices.Where(i=>i>=0&&i<=2).Select(i=>i==0?"cosyvoice":"gpt-sovits").Distinct().ToArray();}
         static Dictionary<string,VoiceConfig> Read(SettingsStore store){string file=store.Resolve("data/engine-voices.json");return File.Exists(file)?Json.Decode<Dictionary<string,VoiceConfig>>(File.ReadAllText(file,Encoding.UTF8)):new Dictionary<string,VoiceConfig>();}
         internal static VoiceConfig Target(SettingsStore store,Settings config,int index){
-            if(index<0||index>2)throw new InvalidOperationException("请选择支持的 TTS 引擎。");
+            if(index<0||index>3)throw new InvalidOperationException("请选择支持的 TTS 引擎。");
             if(Index(config.voice)==index)return config.voice.Clone();
             var saved=Read(store);VoiceConfig target;
             if(saved.TryGetValue(index.ToString(),out target)&&Index(target)==index)return target.Clone();
             var profile=config.profiles.LastOrDefault(p=>Index(p.voice)==index);
             if(profile!=null)return profile.voice.Clone();
-            target=config.voice.Clone();target.engine=index==0?"cosyvoice":"gpt-sovits";if(index>0)target.gptVariant=index==1?"v5turbo":"proplus";
+            target=config.voice.Clone();target.engine=index==0?"cosyvoice":index==3?"dsh-pet":"gpt-sovits";if(index==1||index==2)target.gptVariant=index==1?"v5turbo":"proplus";
             // A trained model from the other engine/variant is never carried across implicitly.
             if(index==0)target.baseModel="";else target.gptModel="";
             return target;

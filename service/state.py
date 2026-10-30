@@ -11,7 +11,7 @@ SOURCES = ("codex", "deepseek")
 
 def defaults():
     return {"version":4,"port":8820,"token":uuid.uuid4().hex,
-        "voice":{"engine":"cosyvoice","baseModel":"","gptModel":"","gptVariant":"v5turbo",
+        "voice":{"engine":"cosyvoice","baseModel":"","gptModel":"","gptVariant":"v5turbo","petEndpoint":"http://127.0.0.1:3080/dsh-pet-7340","petVoice":"",
                  "speed":1,"style":"chat","reference":"","referenceText":"","instruction":"","leadingSilence":.35,"volume":1,"assetScope":"public","advancedEnabled":False},
         "engines":{"pythonService":"runtime/core/python.exe","pythonTts":"tts-engines/cosyvoice/runtime/tools/python.exe","cosyRepo":"tts-engines/cosyvoice/source","cosyModel":"tts-engines/cosyvoice/models/Fun-CosyVoice3-0.5B",
                    "pythonGpt":"tts-engines/gpt-sovits/runtime/Scripts/python.exe","gptRepo":"tts-engines/gpt-sovits/source","gptModel":"tts-engines/gpt-sovits/models/GPT-SoVITS",
@@ -30,10 +30,10 @@ def migrate_settings(saved):
         cleanup['keepLatestBeyondAge']=bool(cleanup.get('keepLatest',0))
     if value.get('version',1) not in (1,2,3,4):return value
     value['version']=4;value.pop('modelRoots',None)
-    if isinstance(value.get('profiles'),list):value['profiles']=[p for p in value['profiles'] if not isinstance(p,dict) or not isinstance(p.get('voice'),dict) or p['voice'].get('engine','cosyvoice') in ('cosyvoice','gpt-sovits')]
+    if isinstance(value.get('profiles'),list):value['profiles']=[p for p in value['profiles'] if not isinstance(p,dict) or not isinstance(p.get('voice'),dict) or p['voice'].get('engine','cosyvoice') in ('cosyvoice','gpt-sovits','dsh-pet')]
     obsolete={'model','index','pitch','formant','indexRate','rmsMix','f0Method','protect','processing','synthesisMode','piperModel','mossModel','mossVoice','mossReference','f5Model','f5Steps'}
     for voice in [value.get('voice',{})]+[p.get('voice',{}) for p in value.get('profiles',[]) if isinstance(p,dict)]:
-        if voice.get('engine','cosyvoice') not in ('cosyvoice','gpt-sovits'):voice['engine']='cosyvoice'
+        if voice.get('engine','cosyvoice') not in ('cosyvoice','gpt-sovits','dsh-pet'):voice['engine']='cosyvoice'
         for key in obsolete:voice.pop(key,None)
     paths=value.get('engines',{})
     if 'pythonService' not in paths and paths.get('pythonRvc'):paths['pythonService']=paths['pythonRvc']
@@ -61,10 +61,14 @@ def number(value, low, high, name):
 def validate_voice(voice):
     from engine_registry import ENGINE_IDS,spec
     if set(voice)!=set(defaults()['voice']):raise ValueError('声音配置包含缺失或已移除的字段')
-    for key in ('engine','baseModel','gptModel','gptVariant','style','reference','referenceText','instruction','assetScope'):
+    for key in ('engine','baseModel','gptModel','gptVariant','petEndpoint','petVoice','style','reference','referenceText','instruction','assetScope'):
         if not isinstance(voice[key],str) or len(voice[key])>8000:raise ValueError('声音配置字段错误：'+key)
     for key,low,high in (('speed',.7,1.3),('volume',0,1.5),('leadingSilence',.2,1)):number(voice[key],low,high,key)
-    if voice['engine'] not in ENGINE_IDS:raise ValueError('只支持 CosyVoice、GPT-SoVITS v5 Turbo 和 ProPlus')
+    if voice['engine'] not in ENGINE_IDS:raise ValueError('不支持该 TTS 引擎')
+    if voice['engine']=='dsh-pet':
+        from pet_endpoint import validate_endpoint
+        validate_endpoint(voice['petEndpoint'])
+        if len(voice['petVoice'])>100:raise ValueError('桌宠音色 ID 过长')
     if voice['gptVariant'] not in [v['id'] for v in spec('gpt-sovits')['variants']]:raise ValueError('GPT-SoVITS 版本无效')
     if not isinstance(voice['advancedEnabled'],bool) or voice['assetScope'] not in ('public','private'):raise ValueError('高级声音开关或资产范围无效')
 
@@ -179,7 +183,10 @@ class Store:
     def missing(self,voice=None):
         data=self.get();voice=voice or data['voice'];missing=[]
         if not data['engines']['pythonService'] or not self.resolve(data['engines']['pythonService']).is_file():missing.append('主服务 Python 运行时')
-        if voice['engine']=='cosyvoice':
+        if voice['engine']=='dsh-pet':
+            ffmpeg=self.resolve(data['engines']['ffmpeg'])
+            if not ffmpeg or not ffmpeg.is_file():missing.append('FFmpeg 音频转换器')
+        elif voice['engine']=='cosyvoice':
             for key in ('pythonTts','cosyRepo'):
                 if not data['engines'][key] or not self.resolve(data['engines'][key]).exists():missing.append(key)
             model=voice.get('baseModel') or data['engines']['cosyModel']
@@ -190,6 +197,7 @@ class Store:
             if not Path(cfg['python']).is_file():missing.append(voice['engine']+' Python 运行时')
             for file in required_files(cfg):
                 if not file.is_file():missing.append(str(file))
-        if not voice['reference'] or not self.resolve(voice['reference']).is_file():missing.append('参考录音')
-        if not voice['referenceText'].strip():missing.append('参考录音对应台词')
+        if voice['engine']!='dsh-pet':
+            if not voice['reference'] or not self.resolve(voice['reference']).is_file():missing.append('参考录音')
+            if not voice['referenceText'].strip():missing.append('参考录音对应台词')
         return missing

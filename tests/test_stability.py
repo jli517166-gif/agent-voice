@@ -174,7 +174,7 @@ class RecoveryApiTests(unittest.TestCase):
     def test_catalog_and_recovery_clear_error_and_reload(self):
         f=self.fixture;f.actor.prepare=Mock();f.server.jobs.last_error='device lost'
         self.assertEqual(f.request('/health')['serviceState'],'error')
-        ids=[e['id'] for e in f.request('/api/engines')['engines']];self.assertEqual(ids,['cosyvoice','gpt-sovits'])
+        ids=[e['id'] for e in f.request('/api/engines')['engines']];self.assertEqual(ids,['cosyvoice','gpt-sovits','dsh-pet'])
         r=f.request('/api/recover',{});self.assertEqual(r['state'],'loading')
         deadline=time.monotonic()+2
         while not f.actor.prepare.called and time.monotonic()<deadline:time.sleep(.01)

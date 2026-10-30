@@ -1,6 +1,6 @@
 ---
 name: agent-voice-control
-description: Control Agent Voice with language commands: read requested text, stop speech, start or stop voice service, inspect or switch saved voices, or change automatic reading.
+description: Control Agent Voice and its optional independent singing workbench with language commands: read text, stop speech, manage the voice service, switch saved voices, change automatic reading, or generate songs.
 ---
 
 # Agent Voice Control
@@ -16,6 +16,7 @@ Use the `agent_voice` MCP tools for the requested voice operation. Report the re
 - If a requested profile is named rather than identified, call `list_voice_profiles`, match the exact or closest unambiguous name, then pass its ID to `apply_voice_profile`.
 - If the service must be running for an operation, call `start_voice_service` first only when the user asked for that operation and starting the service is required to complete it.
 - Surface MCP error text as an actionable desktop-app instruction; do not edit Agent Voice files or settings directly.
+- Singing is a separate application and engine family. Use `open_singing_app` to show it, `list_singing_engines` before selecting an engine, and `generate_song` only when the user explicitly supplies or requests lyrics. A returned job ID means queued, not completed; use `singing_job_status` to check it.
 
 ## Common commands
 
@@ -26,3 +27,6 @@ Use the `agent_voice` MCP tools for the requested voice operation. Report the re
 - 切换到某声音 → resolve the name, then `apply_voice_profile`
 - 开启／关闭自动朗读 → `set_auto_reading`
 - 朗读这段文字 → `read_text`
+- 打开唱歌软件 → `open_singing_app`
+- 查看／切换唱歌引擎 → `list_singing_engines` / `select_singing_engine`
+- 按歌词生成歌曲 → `generate_song`, then `singing_job_status`

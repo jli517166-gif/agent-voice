@@ -4,7 +4,9 @@ import subprocess
 from pathlib import Path
 
 TOOLS = {'voice_service_status', 'start_voice_service', 'stop_voice_service',
-         'read_text', 'stop_speech', 'list_voice_profiles', 'apply_voice_profile', 'set_auto_reading'}
+         'read_text', 'stop_speech', 'list_voice_profiles', 'apply_voice_profile', 'set_auto_reading',
+         'list_singing_engines', 'open_singing_app', 'select_singing_engine', 'open_singing_engine', 'generate_song',
+         'singing_job_status', 'set_singing_output_directory'}
 
 
 def probe(store, source, python, server):
@@ -52,5 +54,5 @@ def codex_configuration(store, python, server, codex, run):
         raise ValueError('Codex MCP 路径与当前软件不一致，请重新安装 MCP 后重载客户端')
     enabled, disabled = item.get('enabled_tools'), item.get('disabled_tools')
     if (enabled is not None and not TOOLS.issubset(set(enabled))) or TOOLS.intersection(disabled or []):
-        raise ValueError('Codex 禁用了部分语音工具，请在 MCP 设置恢复全部 8 个工具')
+        raise ValueError('Codex 禁用了部分语音或唱歌工具，请在 MCP 设置恢复全部工具')
     return item

@@ -10,6 +10,8 @@ Agent Voice 是 Windows 本地语音服务与桌面控制台，连接 Codex、De
 - 支持 CosyVoice，以及 GPT-SoVITS 的 v5 Turbo、ProPlus 适配。
 - 自动朗读按完整句子排队，支持停止、取消及失败恢复。
 - MCP 提供服务启停、朗读控制、状态查询和声音方案切换。
+- 可选的 Agent 唱歌是独立桌面模块，唱歌引擎、任务和输出目录不与 TTS 混用；MCP 可打开工作台、切换引擎并提交歌曲。
+- DeepSeek Harness 安装连接器并启用 dsh-pet 宿主插件后，可把 Agent Voice 当前声音注册给桌宠；也可在声音设置中选择 dsh-pet 的本机语音接口作为朗读引擎。两个方向按当前引擎自动避免循环调用。
 - AIRI 可接收语音并同步嘴型；不开启联动也可使用本机播放。
 - 首次配置按需准备引擎与环境，各步骤可跳过，支持联网准备和离线资源安装。
 - 使用须知、开源许可和适用范围集中在“设置 → 须知与许可”，按需阅读，不拦截配置与朗读。
@@ -22,7 +24,7 @@ Agent Voice 是 Windows 本地语音服务与桌面控制台，连接 Codex、De
 
 需要 Windows 10／11 64 位、.NET Framework 4.8，以及适配的 NVIDIA 显卡和驱动。具体显存、磁盘和依赖要求取决于所选引擎。
 
-**源码仓库及软件本体不包含 CosyVoice、GPT-SoVITS、Python 环境、预训练权重或参考录音。** 引擎和环境需要另行准备。普通使用者下载 Release 中的软件 ZIP；以下命令面向需要从源码构建的开发者。
+**源码仓库及软件本体不包含 CosyVoice、GPT-SoVITS、ACE-Step、Python 环境、预训练权重或参考录音。** 引擎、环境和唱歌模块需要另行准备。普通使用者下载 Release 中的软件 ZIP；以下命令面向需要从源码构建的开发者。
 
 开发主线为 `main`：
 
@@ -50,6 +52,7 @@ powershell -File .\build.ps1
 | 安装与目录 | [安装手册](docs/guides/安装手册.md)、[资源安装指南](docs/guides/模块安装与配置指南.md) |
 | 环境与运行 | [环境补齐说明](docs/guides/环境补齐说明.md)、[TTS 使用手册](docs/guides/TTS使用手册.md) |
 | 连接 | [接入说明](docs/guides/接入说明.md)、[MCP 开发说明](docs/guides/MCP控制插件开发说明.md) |
+| 唱歌 | [独立唱歌功能](docs/guides/独立唱歌功能.md) |
 | 开发 | [贡献指南](CONTRIBUTING.md)、[架构与开发](docs/架构与开发.md) |
 | 训练 | [基础训练指南](docs/guides/音色训练从零开始.md)、[高级训练指南](docs/guides/高级CosyVoice训练手册.md)、[GPT-SoVITS 指南](docs/guides/GPT-SoVITS训练指南.md) |
 | 故障与隐私 | [故障排查](docs/guides/稳定性与故障排查.md)、[本地数据与隐私](docs/本地数据与隐私.md) |

@@ -92,3 +92,35 @@ export async function playbackStatus(root = appRoot) {
   const state=health.playback?.state;
   return {running:true,playback:{state:['idle','queued','generating','playing'].includes(state)?state:'unknown'},queued:health.queued??0};
 }
+
+// Official dsh-pet host extension.  The pet owns its playback queue/cache and
+// asks providers for one MP3 at a time; Agent Voice only performs synthesis.
+export async function synthesizePetVoice({text, rate = 1}, root = appRoot) {
+  if (typeof text !== 'string' || !text.trim()) throw new Error('桌宠没有提供可合成的文字');
+  const cfg = JSON.parse(await readFile(path.join(root, 'data/settings.json'), 'utf8'));
+  if (cfg.voice?.engine === 'dsh-pet') throw new Error('当前已选择桌宠自己的语音，请在桌宠插件中停用 Agent Voice 语音提供者以避免循环调用');
+  const speed = Number.isFinite(Number(rate)) ? Math.max(.7, Math.min(1.3, Number(rate))) : 1;
+  let response;
+  try {
+    response = await fetch(`http://127.0.0.1:${cfg.port}/v1/audio/speech`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', Authorization:`Bearer ${cfg.token}`},
+      body: JSON.stringify({model:'agent-voice-tts', input:text, voice:'current', speed, response_format:'mp3'}),
+      // dsh-pet enforces its own 15 second provider deadline.  Finishing a
+      // little earlier leaves time for the caller to receive the bytes.
+      signal: AbortSignal.timeout(14_000),
+    });
+  } catch (error) {
+    if (error.cause?.code === 'ECONNREFUSED') throw new Error('Agent Voice 服务未启动');
+    if (error.name === 'TimeoutError') throw new Error('Agent Voice 未在桌宠的 15 秒时限内完成合成');
+    throw error;
+  }
+  if (!response.ok) {
+    let detail = '';
+    try { detail = (await response.json())?.error?.message || ''; } catch {}
+    throw new Error(detail || `Agent Voice 合成失败（HTTP ${response.status}）`);
+  }
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (!bytes.byteLength) throw new Error('Agent Voice 返回了空音频');
+  return bytes;
+}

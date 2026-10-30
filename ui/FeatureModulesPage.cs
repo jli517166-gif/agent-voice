@@ -11,9 +11,9 @@ namespace AgentVoice {
         FlowLayoutPanel installedModules;
         void BuildModules(){
             var stack=Stack(NewPage("modules"));var card=Card(stack,"模块");
-            Add(card,Hint("功能扩展、TTS 引擎和运行环境可按需安装。"));
+            Add(card,Hint("功能扩展、TTS、唱歌引擎和运行环境可按需安装。"));
             Add(card,Row(AsyncBtn("导入模块",ImportOptionalModule),Btn("刷新列表",RefreshOptionalModules)));
-            Add(card,Hint("功能模块为 .avmodule，引擎包为 .ttsengine，环境包为 .ttsenvironment。模块会运行本地代码，请确认来源可信。安装功能模块不要求先安装 TTS。"));
+            Add(card,Hint("功能模块为 .avmodule，TTS 为 .ttsengine，唱歌引擎为 .singengine，环境为 .ttsenvironment。模块会运行本地代码，请确认来源可信。"));
             var list=Card(stack,"已安装的功能模块");installedModules=new BufferedFlow{AutoSize=true,Dock=DockStyle.Top,FlowDirection=FlowDirection.TopDown,WrapContents=false};Add(list,installedModules);RefreshOptionalModules();
         }
         void RefreshOptionalModules(){
@@ -26,7 +26,7 @@ namespace AgentVoice {
             WalkTheme(installedModules);
         }
         async Task ImportOptionalModule(){
-            string file;using(var d=new OpenFileDialog{Title="导入模块",Filter="模块包|*.avmodule;*.ttsengine;*.ttsenvironment",CheckFileExists=true}){if(d.ShowDialog(this)!=DialogResult.OK)return;file=d.FileName;}
+            string file;using(var d=new OpenFileDialog{Title="导入模块",Filter="模块包|*.avmodule;*.ttsengine;*.singengine;*.ttsenvironment",CheckFileExists=true}){if(d.ShowDialog(this)!=DialogResult.OK)return;file=d.FileName;}
             var manifest=ModulePackages.Inspect(file);
             if(MessageBox.Show(this,manifest.name+"\r\n\r\n模块会运行本地代码，仅安装来源可信的文件。安装范围：软件内的独立模块目录。","安装所选模块",MessageBoxButtons.OKCancel,MessageBoxIcon.Information)!=DialogResult.OK)return;
             if(await Service.Running())throw new InvalidOperationException("请先关闭语音服务，再安装模块。");

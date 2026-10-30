@@ -1,5 +1,5 @@
 """App-local environment repair with a real end-to-end synthesis check."""
-import argparse,copy,hashlib,json,os,platform,shutil,subprocess,sys,time,urllib.request,uuid,zipfile
+import argparse,copy,hashlib,json,os,platform,re,shutil,subprocess,sys,time,urllib.request,uuid,zipfile
 from pathlib import Path
 import runtime_paths
 from state import Store,atomic_json
@@ -150,7 +150,7 @@ class Repair:
             result=json.loads(p.stdout.strip().splitlines()[-1]);return {'missing':[k for k,v in result.items() if v is not True],'details':result}
         except (ValueError,OSError,subprocess.TimeoutExpired) as exc:return {'missing':list(modules),'error':str(exc)}
     def local_wheels(self,requirements):
-        """Use operator-provided wheels before any network source."""
+        """Use only the pinned CUDA 12.8 wheels matching the TTS Python 3.10 ABI."""
         directory=self.work/'wheels'
         if not directory.is_dir():return []
         available=list(directory.glob('*.whl'));selected=[]
@@ -161,7 +161,8 @@ class Repair:
             for wheel in available:
                 parts=wheel.stem.lower().replace('_','-').split('-')
                 if len(parts)<2 or parts[0]!=canonical:continue
-                if version and not parts[1].startswith(version):continue
+                if version and parts[1]!=version+'+cu128':continue
+                if not wheel.name.lower().endswith('-cp310-cp310-win_amd64.whl'):continue
                 matches.append(wheel)
             if not matches:return []
             selected.append(max(matches,key=lambda path:path.stat().st_size))
@@ -177,15 +178,20 @@ class Repair:
                 requirements=self.torch_wheels(python,requirements,index)
             except (OSError,ValueError) as error:
                 self.progress('独立下载解析未完成，尝试原官方 pip 通道：'+str(error))
-        asset=CATALOG['pip'];wheel=self.download(asset['url'],'pip-24.3.1.whl',asset['sha256'])
-        # The wheel is run directly, so a broken/missing pip does not block repair.
-        code="import sys;sys.path.insert(0,"+repr(str(wheel))+");sys.path.insert(0,"+repr(str(Path(__file__).parent))+");import pip._vendor.requests as requests;from download_control import DownloadGate,hook_requests;hook_requests(requests,DownloadGate("+repr(str(self.root))+"));from pip._internal.cli.main import main;raise SystemExit(main())"
+        if self.offline and not self.probe(python,['pip'])['missing']:
+            # Complete offline environment packs already contain pip.  Do not
+            # require a second downloaded pip wheel before using local wheels.
+            code="from pip._internal.cli.main import main;raise SystemExit(main())"
+        else:
+            asset=CATALOG['pip'];wheel=self.download(asset['url'],'pip-24.3.1.whl',asset['sha256'])
+            # Online repair keeps the download gate and its cancel/pause hooks.
+            code="import sys;sys.path.insert(0,"+repr(str(wheel))+");sys.path.insert(0,"+repr(str(Path(__file__).parent))+");import pip._vendor.requests as requests;from download_control import DownloadGate,hook_requests;hook_requests(requests,DownloadGate("+repr(str(self.root))+"));from pip._internal.cli.main import main;raise SystemExit(main())"
         # Large CUDA dependency trees frequently cross slower mirrors.  Pip's
         # short default read timeout turns a temporary stall into a full failed
         # environment repair, so keep the official sources but retry patiently.
         base=[python,'-I','-X','utf8','-c',code,'install','--disable-pip-version-check','--no-user','--prefer-binary','--retries','10','--timeout','120','--cache-dir',str(self.work/'pip-cache')]
         bootstrap=list(CATALOG.get('bootstrapPackages') or [])
-        if not target and bootstrap and self.probe(python,['setuptools','wheel'])['missing']:
+        if not target and not no_deps and bootstrap and self.probe(python,['setuptools','wheel'])['missing']:
             bootstrap_sources=[(str(self.work/'wheels'),None)] if self.offline else [(None,candidate) for candidate in list(CATALOG.get('pipIndexes') or ['https://pypi.org/simple'])]
             bootstrap_failure=None
             for bootstrap_link,bootstrap_index in bootstrap_sources:
@@ -302,6 +308,22 @@ class Repair:
         try:numbers=tuple(int(part) for part in str(version).split('.')[:2])
         except (TypeError,ValueError):return None
         return len(numbers)==2 and numbers>=(570,26)
+    @staticmethod
+    def system_requires_cuda128(system):
+        """Return true for consumer Blackwell GPUs that cannot use cu121/cu124 kernels."""
+        text=str((system or {}).get('nvidiaSmi') or '')
+        return bool(re.search(r'(?im)\b(?:geforce\s+)?rtx\s+50\d{2}\b',text))
+    def compat_runtime_ready(self,python):
+        from pipeline import hidden_process
+        code="import json,torch;print(json.dumps({'torch':torch.__version__,'cuda':torch.version.cuda}))"
+        try:
+            run=subprocess.run([str(python),'-I','-X','utf8','-c',code],capture_output=True,text=True,encoding='utf-8',timeout=90,env=self.env(),**hidden_process())
+            if run.returncode:return False
+            info=json.loads(run.stdout.strip().splitlines()[-1])
+            version=str(info.get('torch') or '').split('+')[0]
+            cuda=str(info.get('cuda') or '')
+            return tuple(int(part) for part in version.split('.')[:2])>=(2,7) and tuple(int(part) for part in cuda.split('.')[:2])>=(12,8)
+        except (OSError,ValueError,IndexError,subprocess.TimeoutExpired):return False
     def install_compat_torch(self,python):
         profile=CATALOG.get('cuda128Compatibility') or {}
         requirements=list(profile.get('torch') or [])
@@ -320,12 +342,12 @@ class Repair:
         # and transformers fails with "torchvision::nms does not exist".
         needs_torchvision=bool((shadow/'torchvision').is_dir()) or 'gpt-sovits' in str(python).lower()
         if needs_torchvision and torchvision:requirements.append(torchvision)
-        local=self.local_wheels(requirements)
+        local=self.local_wheels(requirements);links=list(profile.get('torchFindLinks') or [])
         self.progress('正在安装新显卡兼容的 CUDA 12.8 推理运行时'+('（使用本地安装包）' if local else ''))
         if local:
             self.pip(python,[str(path) for path in local],no_deps=True,timeout=timeout)
         else:
-            links=list(profile.get('torchFindLinks') or [])
+            if self.offline:raise RuntimeError('CUDA 12.8 兼容运行时缺少离线 wheel。请导入包含 RTX 50 系支持的离线环境包，或关闭严格离线后重试。')
             if links:self.pip(python,requirements,find_links=links,no_deps=True,timeout=timeout)
             else:self.pip(python,requirements,index=profile.get('torchIndex'),no_deps=True,timeout=timeout)
         if (shadow/'torchvision').is_dir() and torchvision:
@@ -364,6 +386,10 @@ class Repair:
     def inspect(self,engine):
         self.progress('正在检查环境依赖，不下载文件')
         cfg=self.store.get();selected=['cosyvoice','gpt-sovits'] if engine=='all' else [cfg['voice']['engine'] if engine=='current' else engine] if engine!='core' else []
+        if selected==['dsh-pet']:
+            # This optional bridge uses another application's voice provider;
+            # only our core playback runtime is applicable here.
+            selected=[]
         if any(e not in CATALOG for e in selected):raise ValueError('未知引擎')
         rows=[]
         core=self.store.resolve(cfg['engines']['pythonService']);core_probe=self.probe(core,CATALOG['core']['packages'])
@@ -511,6 +537,14 @@ class Repair:
             if updates:self.store.update({'engines':updates})
             result=self.inspect(engine)
             result['system']=self.system()
+            # The setup wizard calls repair with verify=False before its own
+            # final speech test.  RTX 50 compatibility must be installed now,
+            # or setup would report prepared while leaving cu121/cu124 active.
+            if result['ok'] and result['selected'] and self.system_requires_cuda128(result['system']):
+                current=self.store.get()
+                for name in result['selected']:
+                    data=spec(name);python=self.store.resolve(current['engines'][data['pythonKey']])
+                    if not self.compat_runtime_ready(python):self.install_compat_torch(python);result['compatibilityRuntimeInstalled']=True
             if verify and result['ok'] and result['selected']:
                 self.progress('正在验证推理源码与 CUDA')
                 from diagnostics import inspect_installation

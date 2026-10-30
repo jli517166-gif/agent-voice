@@ -23,7 +23,7 @@ namespace AgentVoice {
     }
     public sealed class VoiceConfig {
         public string engine="cosyvoice",style="chat",reference="",referenceText="",instruction="",assetScope="public";
-        public string baseModel="",gptModel="",gptVariant="v5turbo";
+        public string baseModel="",gptModel="",gptVariant="v5turbo",petEndpoint="http://127.0.0.1:3080/dsh-pet-7340",petVoice="";
         public bool advancedEnabled=false;
         public double speed=1,leadingSilence=.35,volume=1;
         public VoiceConfig Clone() { return Json.Copy(this); }
@@ -94,7 +94,7 @@ namespace AgentVoice {
             if(File.Exists(FilePath)){var raw=Json.Object(File.ReadAllText(FilePath,Encoding.UTF8));object cleanupValue;if(raw.TryGetValue("cleanup",out cleanupValue)){var old=cleanupValue as Dictionary<string,object>;if(old!=null&&!old.ContainsKey("keepLatestBeyondAge"))settings.cleanup.keepLatestBeyondAge=settings.cleanup.keepLatest>0;}}
             if(settings.privacy==null)settings.privacy=new PrivacyConfig();
             if(settings.engines.pythonService.Replace('\\','/').EndsWith("tts-engines/cosyvoice/runtime/tools/python.exe",StringComparison.OrdinalIgnoreCase))settings.engines.pythonService="runtime/core/python.exe";
-            settings.profiles.RemoveAll(p=>!new[]{"cosyvoice","gpt-sovits"}.Contains(p.voice.engine));if(!new[]{"cosyvoice","gpt-sovits"}.Contains(settings.voice.engine))settings.voice.engine="cosyvoice";
+            settings.profiles.RemoveAll(p=>!new[]{"cosyvoice","gpt-sovits","dsh-pet"}.Contains(p.voice.engine));if(!new[]{"cosyvoice","gpt-sovits","dsh-pet"}.Contains(settings.voice.engine))settings.voice.engine="cosyvoice";
             return settings;}
         public void Write(Settings settings) {
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath));

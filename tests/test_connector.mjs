@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, unlink, rmdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { startHeartbeat, send, playbackStatus } from '../integrations/connector.mjs';
+import { startHeartbeat, send, playbackStatus, synthesizePetVoice } from '../integrations/connector.mjs';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'agent-voice-heartbeat-'));
 const data = path.join(root, 'data'), settings = path.join(data, 'settings.json');
@@ -42,6 +42,13 @@ try {
   assert.equal((await playbackStatus(root)).running,false);
   globalThis.fetch=async()=>({ok:true,json:async()=>({service:'another-app'})});
   await assert.rejects(playbackStatus(root),/不是 Agent Voice/);
+  let petRequest;
+  globalThis.fetch=async(url,options)=>{petRequest={url,options};return {ok:true,arrayBuffer:async()=>Uint8Array.from([1,2,3]).buffer};};
+  assert.deepEqual([...await synthesizePetVoice({text:'桌宠测试',rate:2},root)],[1,2,3]);
+  assert.ok(petRequest.url.endsWith('/v1/audio/speech'));
+  assert.equal(JSON.parse(petRequest.options.body).speed,1.3,'pet rate is constrained to the public TTS API range');
+  await writeFile(settings,JSON.stringify({port:12345,token:'test-token',harness:{deepseek:true},voice:{engine:'dsh-pet'}}));
+  await assert.rejects(synthesizePetVoice({text:'避免循环'},root),/避免循环调用/);
   console.log(JSON.stringify({ok:true, checks:['startup heartbeat','periodic heartbeat','bearer authentication','non-blocking timer','reload disposes previous timer','final event unchanged','stop disposes timer']}));
 } finally {
   stop?.(); Object.assign(globalThis, original);
@@ -52,12 +59,14 @@ const { default: hostPlugin, apply, inject, createReplyReader, runVoiceCommand }
 assert.equal(hostPlugin.apply, apply);
 assert.equal(hostPlugin.inject, inject);
 assert.deepEqual(inject, []);
-let registered, disposed,statusHandler,controlHandler;
+let registered, disposed,statusHandler,controlHandler,petDefinition,petDisposed;
 const listeners = new Map();
 const fake = {
-  inject(dependencies,callback) { assert.ok(['commands','connection'].includes(dependencies[0]));callback(this); },
+  inject(dependencies,callback) { assert.ok(['commands','connection','petApi7340'].includes(dependencies[0]));callback(this); },
   connection:{fetch:{register(route){assert.deepEqual(route.methods,['POST']);if(route.path==='/api/agent-voice-playback')statusHandler=route.fetch;else{assert.equal(route.path,'/api/agent-voice-control');controlHandler=route.fetch;}}}},
   commands: { register(definition) { registered = definition; return {dispose(){disposed = true;}}; } },
+  petApi7340:{voice:{register(definition){petDefinition=definition;return ()=>{petDisposed=true;};}}},
+  effect(callback){this.cleanup=callback();},
   on(name, callback) { listeners.set(name, callback); },
 };
 apply(fake);
@@ -68,10 +77,12 @@ assert.equal((await controlHandler(new Request('http://local/api/agent-voice-con
 assert.equal((await runVoiceCommand('ui {"tool":"execute_shell"}')).kind,'error');
 assert.equal(registered.name, 'agent-voice');
 assert.equal(registered.definitionId, 'agent-voice.control');
+assert.equal(petDefinition.id,'agent-voice-local');
+assert.equal(petDefinition.name,'Agent Voice 当前声音');
 assert.match(registered.input.hint, /profile/);
 const help = await runVoiceCommand('help');
 assert.equal(help.kind, 'success'); assert.match(help.text, /Agent Voice/); assert.match(help.text, /停止当前朗读/);
-listeners.get('dispose')(); assert.equal(disposed, true);
+listeners.get('dispose')(); fake.cleanup?.(); assert.equal(disposed, true);assert.equal(petDisposed,true);
 const headlessListeners=new Map();
 apply({inject(){},on(name,callback){headlessListeners.set(name,callback);}});
 assert.equal(typeof headlessListeners.get('session/event'),'function','reply reader loads without commands');

@@ -142,6 +142,7 @@ def install(source,root):
 
 def inspect(source,root,repair=False,self_test=False):
     from mcp_selfcheck import probe,codex_configuration
+    from mcp_selfcheck import TOOLS as EXPECTED_TOOLS
     from mcp_presence import connected_clients
     store=Store(root);cfg=store.get()
     python=store.resolve(cfg['engines']['pythonService']);server=store.root/'integrations/agent_voice_mcp.py'
@@ -158,15 +159,15 @@ def inspect(source,root,repair=False,self_test=False):
         loaded=result['state']=='tools-read'
     else:
         codex_configuration(store,python,server,find_codex(),run)
-        loaded=any(c.get('toolCount')==8 for c in connected_clients(store.root,'codex',None))
+        loaded=any(c.get('toolCount')==len(EXPECTED_TOOLS) for c in connected_clients(store.root,'codex',None))
         result={'ok':True,'state':'tools-read' if loaded else 'awaiting-client'}
     result.update(source=source,installed=True,enabled=True,installationPassed=True,clientLoaded=loaded,passed=False,audioTested=False)
     if self_test:
         result.update(probe(store,source,python,server))
         result['passed']=loaded
-    result['message']=('MCP 配置已安装并启用；客户端已读取 8 个工具。' if loaded else
+    result['message']=(('MCP 配置已安装并启用；客户端已读取全部 %d 个工具。'%len(EXPECTED_TOOLS)) if loaded else
                        'MCP 配置已安装并启用，但尚无客户端读取工具回执。请重载插件或重启 Harness，然后点击 MCP 自检。')
-    if self_test:result['message']+=' 协议握手、8 个工具和只读状态调用通过；未生成语音。'
+    if self_test:result['message']+=' 协议握手、全部工具和只读状态调用通过；未生成语音或歌曲。'
     return result
 
 if __name__=="__main__":

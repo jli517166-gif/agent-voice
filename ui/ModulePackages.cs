@@ -11,9 +11,10 @@ using System.Web.Script.Serialization;
 
 namespace AgentVoice {
     public sealed class ModuleFile {public string path,sha256;public long size;}
+    public sealed class GpuRequirement {public string cuda,minimumDriver,torch;}
     public sealed class ModuleManifest {
         public string format,kind,name,engine,platform,profile,minimumDriver,id,entrypoint,moduleVersion;
-        public int version,apiVersion;public string[] components;public Dictionary<string,string> defaults;public ModuleFile[] files;
+        public int version,apiVersion;public string[] components;public Dictionary<string,string> defaults;public ModuleFile[] files;public Dictionary<string,GpuRequirement> gpuCompatibility;
     }
     public sealed class ModuleMove {public string target,backup;public bool existed;}
     public sealed class ModuleJournal {public string stage,backup;public bool hadSettings;public List<ModuleMove> moves=new List<ModuleMove>();}
@@ -42,11 +43,31 @@ namespace AgentVoice {
             try{using(var process=Process.Start(new ProcessStartInfo("nvidia-smi","--query-gpu=driver_version --format=csv,noheader,nounits"){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true})){if(!process.WaitForExit(15000)){try{process.Kill();}catch{}throw new InvalidOperationException("NVIDIA 驱动检测超时");}string output=process.StandardOutput.ReadToEnd().Split(new[]{'\r','\n'},StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();return process.ExitCode==0?output:"";}}
             catch(InvalidOperationException){throw;}catch{return "";}
         }
+        static bool HasRtx50(){
+            try{using(var process=Process.Start(new ProcessStartInfo("nvidia-smi","--query-gpu=name --format=csv,noheader,nounits"){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true})){
+                if(!process.WaitForExit(15000)){try{process.Kill();}catch{}throw new InvalidOperationException("NVIDIA 显卡型号检测超时");}
+                string names=process.StandardOutput.ReadToEnd();
+                return process.ExitCode==0&&System.Text.RegularExpressions.Regex.IsMatch(names,@"\b(?:GeForce\s+)?RTX\s+50\d{2}\b",System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            }}catch(InvalidOperationException){throw;}catch{return false;}
+        }
+        internal static GpuRequirement Rtx50Requirement(ModuleManifest manifest){
+            GpuRequirement gpu;
+            if(manifest.gpuCompatibility==null||!manifest.gpuCompatibility.TryGetValue("rtx50",out gpu)||gpu==null)
+                throw new InvalidOperationException("这份旧离线环境包不含 RTX 50 系兼容运行时。请使用含 CUDA 12.8 的新版离线环境包。");
+            return gpu;
+        }
         static void CheckCompatibility(ModuleManifest manifest){
-            if(manifest.kind!="environment"||string.IsNullOrWhiteSpace(manifest.minimumDriver)||manifest.minimumDriver=="0")return;
-            Version required=ParsedVersion(manifest.minimumDriver),current;string detected=NvidiaDriver();
+            if(manifest.kind!="environment")return;
+            bool rtx50=HasRtx50();
+            GpuRequirement gpu=rtx50?Rtx50Requirement(manifest):null;
+            if((string.IsNullOrWhiteSpace(manifest.minimumDriver)||manifest.minimumDriver=="0")&&!rtx50)return;
+            Version required=string.IsNullOrWhiteSpace(manifest.minimumDriver)||manifest.minimumDriver=="0"?new Version(0,0):ParsedVersion(manifest.minimumDriver),current;string detected=NvidiaDriver();
             if(!Version.TryParse(detected,out current))throw new InvalidOperationException("未检测到可用的 NVIDIA 驱动；此环境包最低需要 "+required+"。请先安装或更新显卡驱动，再导入环境包。");
             if(current<required)throw new InvalidOperationException("当前 NVIDIA 驱动 "+current+" 低于环境包最低要求 "+required+"。请先更新显卡驱动，再导入环境包。");
+            if(rtx50){
+                Version floor=ParsedVersion(gpu.minimumDriver);
+                if(current<floor)throw new InvalidOperationException("RTX 50 系需要 NVIDIA 驱动 "+floor+" 或更高，当前为 "+current+"。请更新驱动后重试。");
+            }
         }
         static bool Relative(string path){return !string.IsNullOrEmpty(path)&&!path.Contains('\\')&&!path.Contains(':')&&!path.StartsWith("/")&&path.Split('/').All(p=>p.Length>0&&p!="."&&p!=".."&&!p.EndsWith(".")&&!p.EndsWith(" ")&&p.IndexOfAny(Path.GetInvalidFileNameChars())<0);}
         static bool Under(string path,string folder){return path==folder||path.StartsWith(folder+"/",StringComparison.Ordinal);}
@@ -60,6 +81,7 @@ namespace AgentVoice {
         }
         static bool ComponentAllowed(ModuleManifest m,string path){
             if(m.kind=="feature")return System.Text.RegularExpressions.Regex.IsMatch(path??"","^modules/[a-z][a-z0-9-]{0,63}$")&&(m.id==null||path=="modules/"+m.id);
+            if(m.kind=="singing-engine")return System.Text.RegularExpressions.Regex.IsMatch(path??"","^singing-engines/[a-z][a-z0-9-]{0,63}$")&&path=="singing-engines/"+m.engine;
             if(m.kind=="engine"){
                 string prefix="tts-engines/"+m.engine+"/";
                 return path==prefix+"source"||(m.engine=="gpt-sovits"&&path==prefix+"nltk_data")||(path.StartsWith(prefix+"models/",StringComparison.Ordinal)&&path.Split('/').Length==4);
@@ -67,12 +89,19 @@ namespace AgentVoice {
             return path=="runtime/core"||path=="tools/ffmpeg.exe"||path=="tools/ffprobe.exe"||path=="tools/system-prerequisites"||path=="tts-engines/cosyvoice/runtime"||path=="tts-engines/gpt-sovits/runtime"||path=="data/environment-repair/wheels"||path=="data/environment-repair/downloads";
         }
         static void Validate(ModuleManifest m,string file){
-            if(m==null||m.format!="agent-voice-module"||m.version!=1||m.platform!="windows-x64"||!new[]{"engine","environment","feature"}.Contains(m.kind))throw new InvalidDataException("不支持的模块格式、平台或版本");
+            if(m==null||m.format!="agent-voice-module"||m.version!=1||m.platform!="windows-x64"||!new[]{"engine","environment","feature","singing-engine"}.Contains(m.kind))throw new InvalidDataException("不支持的模块格式、平台或版本");
             if(m.kind=="engine"&&!new[]{"cosyvoice","gpt-sovits"}.Contains(m.engine))throw new InvalidDataException("尚未适配的 TTS 引擎");
-            if(!file.EndsWith(m.kind=="engine"?".ttsengine":m.kind=="feature"?".avmodule":".ttsenvironment",StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("包后缀和模块类型不一致");
+            if(m.kind=="singing-engine"&&m.engine!="ace-step")throw new InvalidDataException("尚未适配的唱歌引擎");
+            string suffix=m.kind=="engine"?".ttsengine":m.kind=="singing-engine"?".singengine":m.kind=="feature"?".avmodule":".ttsenvironment";
+            if(!file.EndsWith(suffix,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("包后缀和模块类型不一致");
             if(m.files==null||m.files.Length==0||m.files.Length>100000||m.components==null||m.components.Length==0||m.defaults==null)throw new InvalidDataException("模块清单为空或超出限制");
             if(m.components.Distinct(StringComparer.OrdinalIgnoreCase).Count()!=m.components.Length)throw new InvalidDataException("模块目标重复");
             if(m.kind=="environment"&&!m.components.Contains("runtime/core"))throw new InvalidDataException("环境包必须包含主服务运行时");
+            if(m.kind=="environment"&&m.gpuCompatibility!=null&&m.gpuCompatibility.ContainsKey("rtx50")){
+                string prefix="data/environment-repair/wheels/";
+                foreach(var filename in new[]{"torch-2.7.1+cu128-cp310-cp310-win_amd64.whl","torchaudio-2.7.1+cu128-cp310-cp310-win_amd64.whl","torchvision-0.22.1+cu128-cp310-cp310-win_amd64.whl"})
+                    if(!m.files.Any(f=>f.path==prefix+filename&&f.size>0))throw new InvalidDataException("RTX 50 系离线资源缺失："+filename);
+            }
             foreach(string c in m.components){if(!Relative(c)||!ComponentAllowed(m,c)||m.components.Any(other=>other!=c&&(Under(c,other)||Under(other,c))))throw new InvalidDataException("模块目标不允许："+c);}
             long total=0;var names=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach(var f in m.files){
@@ -85,6 +114,10 @@ namespace AgentVoice {
             if(m.kind=="feature"){
                 if(!System.Text.RegularExpressions.Regex.IsMatch(m.id??"","^[a-z][a-z0-9-]{0,63}$")||m.apiVersion!=1||m.components.Length!=1||m.components[0]!="modules/"+m.id||m.entrypoint!="modules/"+m.id+"/module.exe"||string.IsNullOrWhiteSpace(m.name)||m.name.Length>80)throw new InvalidDataException("功能模块标识或主程序接口版本不兼容");
                 if(m.defaults.Count!=0||total>128L*1024*1024||m.files.Any(f=>f.path=="modules/"+m.id+"/module.json"||!new[]{".exe",".dll",".py",".json",".md",".txt",".png",".svg",".gif"}.Contains(Path.GetExtension(f.path).ToLowerInvariant()))||!m.files.Any(f=>f.path==m.entrypoint&&f.size>0))throw new InvalidDataException("功能模块不能携带声音权重、录音、改写设置或缺少入口");
+                return;
+            }
+            if(m.kind=="singing-engine"){
+                if(m.defaults.Count!=0||m.components.Length!=1||m.components[0]!="singing-engines/"+m.engine)throw new InvalidDataException("唱歌引擎包不能修改 TTS 设置或安装到其他位置");
                 return;
             }
             var allowed=new Dictionary<string,string>{{"pythonService","runtime/core/python.exe"},{"pythonTts","tts-engines/cosyvoice/runtime/tools/python.exe"},{"pythonGpt","tts-engines/gpt-sovits/runtime/Scripts/python.exe"},{"ffmpeg","tools/ffmpeg.exe"}};
@@ -111,7 +144,7 @@ namespace AgentVoice {
         static void Restore(SettingsStore store,ModuleJournal journal){
             if(journal==null||!journal.stage.StartsWith("data/module-install/stage-",StringComparison.Ordinal)||!journal.backup.StartsWith("data/module-backups/",StringComparison.Ordinal))throw new InvalidDataException("安装恢复记录损坏，请保留备份并查看日志");
             foreach(var item in Enumerable.Reverse(journal.moves)){
-                if(!new[]{new ModuleManifest{kind="environment"},new ModuleManifest{kind="engine",engine="cosyvoice"},new ModuleManifest{kind="engine",engine="gpt-sovits"},new ModuleManifest{kind="feature"}}.Any(m=>ComponentAllowed(m,item.target)))throw new InvalidDataException("恢复记录包含未批准目标");
+                if(!new[]{new ModuleManifest{kind="environment"},new ModuleManifest{kind="engine",engine="cosyvoice"},new ModuleManifest{kind="engine",engine="gpt-sovits"},new ModuleManifest{kind="feature"},new ModuleManifest{kind="singing-engine",engine="ace-step"}}.Any(m=>ComponentAllowed(m,item.target)))throw new InvalidDataException("恢复记录包含未批准目标");
                 string target=Inside(store,item.target),backup=Inside(store,item.backup);
                 if(!item.backup.StartsWith(journal.backup+"/",StringComparison.Ordinal))throw new InvalidDataException("安装备份路径异常");
                 if(File.Exists(backup)||Directory.Exists(backup)){Remove(target);Move(backup,target);}

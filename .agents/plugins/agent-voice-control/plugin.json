@@ -1,14 +1,14 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "agent-voice-control",
-  "version": "1.5.1",
-  "description": "Control the local Agent Voice service from a Codex conversation.",
+  "version": "1.6.0",
+  "description": "Control local Agent Voice speech and the optional independent singing workbench from a Codex conversation.",
   "extensions": {
     "com.openai": {
       "requires_local_executor": true,
       "interface": {
         "displayName": "语音控制",
-        "shortDescription": "用语言命令朗读、停止和切换声音",
+        "shortDescription": "用语言命令控制朗读、声音与唱歌",
         "brandColor": "#0B9FD8",
         "composerIcon": "./assets/voice-core.png",
         "logo": "./assets/voice-core.png",

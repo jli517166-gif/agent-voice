@@ -1,4 +1,4 @@
-﻿param([string]$OutputDirectory = '',[string]$Version = '0.2.0-preview.7')
+﻿param([string]$OutputDirectory = '',[string]$Version = '0.2.0-preview.8')
 $ErrorActionPreference = 'Stop'
 $sourceRoot = $PSScriptRoot
 $webSdk = & (Join-Path $sourceRoot 'tools\restore_webview2.ps1') -Root $sourceRoot
@@ -26,7 +26,7 @@ Get-ChildItem -LiteralPath (Join-Path $sourceRoot 'docs\licenses') -File -ErrorA
 foreach ($folder in @('service','integrations','tools')) {
     $target = Join-Path $OutputDirectory $folder
     New-Item -ItemType Directory -Path $target -Force | Out-Null
-    Get-ChildItem -LiteralPath (Join-Path $sourceRoot $folder) -File | Where-Object { $folder -ne 'tools' -or $_.Name -in @('software_update.py','prepare_airi.py','export_connector.py','connect_harness.py','verify_harness.py','install_mcp.py','diagnose.py','voice_profiles.py','provision_core_runtime.py','core-requirements.txt','prepare_training.py','prepare_gpt_resources.py','environment_repair.py','train_cosy_lora.py','prepare_cosy_tokens.py','privacy_tools.py','offline_install_check.ps1') } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $target $_.Name) -Force }
+    Get-ChildItem -LiteralPath (Join-Path $sourceRoot $folder) -File | Where-Object { $folder -ne 'tools' -or $_.Name -in @('software_update.py','prepare_airi.py','export_connector.py','connect_harness.py','verify_harness.py','install_mcp.py','diagnose.py','voice_profiles.py','provision_core_runtime.py','core-requirements.txt','prepare_training.py','prepare_gpt_resources.py','environment_repair.py','train_cosy_lora.py','prepare_cosy_tokens.py','privacy_tools.py','offline_install_check.ps1','singing_control.py') } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $target $_.Name) -Force }
 }
 $agentAssets = Join-Path $sourceRoot '.agents'
 if (Test-Path -LiteralPath (Join-Path $sourceRoot 'assets')) {
@@ -57,6 +57,8 @@ if (Test-Path -LiteralPath $guideRoot) {
 }
 New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'tts-engines\gpt-sovits') -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'voices'),(Join-Path $OutputDirectory 'trained-voices'),(Join-Path $OutputDirectory 'data'),(Join-Path $OutputDirectory 'tts-engines'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\source'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\runtime\tools'),(Join-Path $OutputDirectory 'tts-engines\cosyvoice\models') -Force | Out-Null
+& (Join-Path $sourceRoot 'tools\build_singing.ps1') -OutputDirectory $OutputDirectory | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'Separate singing workbench compilation failed' }
 $manifestPython = $env:AGENT_VOICE_BUILD_PYTHON
 if ([string]::IsNullOrEmpty($manifestPython)) { $manifestPython = (Get-Command python -ErrorAction Stop).Source }
 & $manifestPython -B -X utf8 (Join-Path $sourceRoot 'tools\software_update.py') manifest --root $OutputDirectory --edition public --version $Version | Out-Null

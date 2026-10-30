@@ -16,7 +16,7 @@ HERE=Path(__file__).resolve().parent
 # as speed and volume are copied into each queued job and must not tear down a
 # healthy model or cancel work that is already in progress.
 MODEL_VOICE_FIELDS=(
-    'engine','baseModel','gptModel','gptVariant','reference','referenceText',
+    'engine','baseModel','gptModel','gptVariant','petEndpoint','petVoice','reference','referenceText',
     'instruction','leadingSilence','style','advancedEnabled',
 )
 
@@ -49,6 +49,9 @@ class Pipeline:
 
     def signature(self,voice):
         voice=effective_voice(voice)
+        if voice['engine']=='dsh-pet':
+            cfg=self.store.get()
+            return json.dumps([model_voice(voice),cfg['engines']['ffmpeg']],sort_keys=True)
         from engine_registry import worker_config,gpt_required,model_directory
         cfg=self.store.get();reference=self.store.resolve(voice['reference']);model=model_directory(self.store,voice)
         files=([reference]+gpt_required(worker_config(self.store,voice))[1:]) if voice['engine']=='gpt-sovits' else [reference]+[model/n for n in ['llm.pt','flow.pt','hift.pt','cosyvoice3.yaml']]
@@ -104,7 +107,7 @@ class Pipeline:
                     os.replace(base,target)
                     from audio_policy import mark_synthesized_wav
                     mark_synthesized_wav(target)
-                    return {'sampleRate':rate,'duration':duration,'synthesisMode':'base','engine':voice['engine'],'variant':voice['gptVariant'] if voice['engine']=='gpt-sovits' else None,'advancedEnabled':voice.get('advancedEnabled',False),'attempts':attempt+1,'recoveredErrors':recovered}
+                    return {'sampleRate':rate,'duration':duration,'synthesisMode':'base','engine':voice['engine'],'variant':voice['gptVariant'] if voice['engine']=='gpt-sovits' else voice['petVoice'] if voice['engine']=='dsh-pet' else None,'advancedEnabled':voice.get('advancedEnabled',False),'attempts':attempt+1,'recoveredErrors':recovered}
                 except Exception as exc:
                     check()
                     if attempt==2 or not retryable(exc):raise

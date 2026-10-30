@@ -285,10 +285,10 @@ class Handler(BaseHTTPRequestHandler):
                         if voice['engine']=='cosyvoice' and voice['baseModel']:
                             from model_integrity import model_ready
                             model_ready(self.server.store.resolve(voice['baseModel']))
-                        if voice['engine']!='cosyvoice':
+                        if voice['engine']=='gpt-sovits':
                             from local_tts import worker_config,validate_config
                             validate_config(worker_config(self.server.store,voice))
-                        if voice['reference']:
+                        if voice['engine']!='dsh-pet' and voice['reference']:
                             file=self.server.store.resolve(voice['reference'])
                             if not file.is_file() or file.stat().st_size>40*1024**2:raise ValueError('参考录音不存在或超过 40 MB')
                     config=self.server.store.update(data)
