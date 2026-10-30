@@ -18,7 +18,7 @@ namespace AgentSinging {
         readonly JavaScriptSerializer json=new JavaScriptSerializer{MaxJsonLength=16*1024*1024};
         readonly ComboBox engines=new ComboBox();readonly Label engineState=new Label(),output=new Label(),status=new Label();
         readonly TextBox prompt=new TextBox(),lyrics=new TextBox();readonly NumericUpDown duration=new NumericUpDown();readonly Button generate=new Button();
-        readonly Timer poll=new Timer{Interval=1000};string currentJob="";
+        readonly Timer poll=new Timer{Interval=1000};string currentJob="";bool updatingEngineSelection;
         static readonly Color Back=Color.FromArgb(13,15,20),Panel=Color.FromArgb(24,27,35),Ink=Color.FromArgb(245,246,250),Muted=Color.FromArgb(171,175,190),Accent=Color.FromArgb(169,137,255);
         static string ResolveRoot(){
             var args=Environment.GetCommandLineArgs();
@@ -36,7 +36,7 @@ namespace AgentSinging {
             top.Controls.Add(TextLabelAt("唱歌引擎",18,18,94,28));engines.DropDownStyle=ComboBoxStyle.DropDownList;engines.SetBounds(18,52,280,38);StyleInput(engines);top.Controls.Add(engines);
             top.Controls.Add(AsyncButtonAt("刷新",314,52,86,38,async()=>await RefreshEngines()));top.Controls.Add(AsyncButtonAt("启动 / 打开引擎",414,52,168,38,async()=>await OpenEngine()));
             engineState.SetBounds(604,18,350,76);engineState.ForeColor=Muted;engineState.TextAlign=ContentAlignment.MiddleLeft;top.Controls.Add(engineState);
-            engines.SelectedIndexChanged+=async(s,e)=>{var item=engines.SelectedItem as EngineChoice;if(item!=null)await RunSafe(async()=>{await Call("select",new Dictionary<string,object>{{"engine",item.Id}});await RefreshEngines();});};
+            engines.SelectedIndexChanged+=async(s,e)=>{if(updatingEngineSelection)return;var item=engines.SelectedItem as EngineChoice;if(item!=null)await RunSafe(async()=>{await Call("select",new Dictionary<string,object>{{"engine",item.Id}});await RefreshEngines();});};
             var left=Card(new Rectangle(38,266,614,392));Controls.Add(left);left.Controls.Add(TextLabelAt("写下这首歌",22,18,260,34));
             left.Controls.Add(TextLabelAt("风格描述",18,68,100,24));prompt.Multiline=true;prompt.SetBounds(18,96,578,72);prompt.Text="清亮女声，梦幻电子流行，咬字清楚，旋律完整";StyleInput(prompt);left.Controls.Add(prompt);
             left.Controls.Add(TextLabelAt("歌词",18,184,100,24));lyrics.Multiline=true;lyrics.ScrollBars=ScrollBars.Vertical;lyrics.SetBounds(18,212,578,158);lyrics.Text="[Verse]\r\n晚风穿过屏幕的光\r\n让沉默也学会歌唱";StyleInput(lyrics);left.Controls.Add(lyrics);
@@ -64,7 +64,7 @@ namespace AgentSinging {
         }
         async Task RunSafe(Func<Task> work){try{UseWait(true);await work();}catch(Exception e){MessageBox.Show(this,e.Message,"操作未完成",MessageBoxButtons.OK,MessageBoxIcon.Warning);status.Text=e.Message;}finally{UseWait(false);}}
         void UseWait(bool value){UseWaitCursor=value;generate.Enabled=!value;}
-        async Task RefreshEngines(){await RunSafe(async()=>{var result=await Call("list");output.Text=Convert.ToString(result["outputDirectory"]);var rows=result["engines"] as System.Collections.ArrayList;string selected=Convert.ToString(result["activeEngine"]);engines.Items.Clear();if(rows!=null)foreach(Dictionary<string,object> row in rows){var item=new EngineChoice(row);engines.Items.Add(item);if(item.Id==selected)engines.SelectedItem=item;}var active=engines.SelectedItem as EngineChoice;engineState.Text=active==null?"没有可用引擎":active.Status;status.Text="独立唱歌软件已就绪。";});}
+        async Task RefreshEngines(){await RunSafe(async()=>{var result=await Call("list");output.Text=Convert.ToString(result["outputDirectory"]);var rows=result["engines"] as System.Collections.ArrayList;string selected=Convert.ToString(result["activeEngine"]);updatingEngineSelection=true;try{engines.Items.Clear();if(rows!=null)foreach(Dictionary<string,object> row in rows){var item=new EngineChoice(row);engines.Items.Add(item);if(item.Id==selected)engines.SelectedItem=item;}}finally{updatingEngineSelection=false;}var active=engines.SelectedItem as EngineChoice;engineState.Text=active==null?"没有可用引擎":active.Status;status.Text="独立唱歌软件已就绪。";});}
         async Task OpenEngine(){await RunSafe(async()=>{var result=await Call("open");status.Text=Convert.ToString(result["message"]);});}
         void ChooseOutput(){using(var dialog=new FolderBrowserDialog{Description="选择歌曲保存位置",SelectedPath=output.Text})if(dialog.ShowDialog(this)==DialogResult.OK){var ignored=RunSafe(async()=>{var result=await Call("output",new Dictionary<string,object>{{"path",dialog.SelectedPath}});output.Text=Convert.ToString(result["outputDirectory"]);status.Text="歌曲保存位置已更新。";});}}
         void OpenOutput(){if(Directory.Exists(output.Text))Process.Start("explorer.exe","\""+output.Text+"\"");}
